@@ -6,87 +6,53 @@
 [![Maintenance](https://img.shields.io/badge/Maintenance-Actively%20Maintained-green.svg)](https://github.com/CharlesJ-ABu/FactorMiner)
 [![GitHub](https://img.shields.io/badge/GitHub-CharlesJ--ABu-blue.svg)](https://github.com/CharlesJ-ABu)
 
-专业的量化因子挖掘、评估和优化平台，基于V3架构设计，帮助量化交易者和研究人员构建高质量的量化因子。
-
 > 🚀 **项目状态**: 积极维护中，定期更新功能和修复问题  
 > 👨‍💻 **维护者**: [@CharlesJ-ABu](https://github.com/CharlesJ-ABu)  
 > 📅 **最后更新**: 2025年8月  
 > 🎯 **目标**: 构建最先进的量化因子挖掘平台
 
-## 🚀 主要特性
+专业的量化因子挖掘、评估和优化平台，基于V3架构设计，帮助量化交易者和研究人员构建高质量的量化因子。
 
-- **V3架构设计**：全新的透明因子存储系统，支持多种计算类型
-- **丰富的因子库**：包含27个Hazel技术因子，覆盖价格、动量、趋势、波动率、成交量等维度
-- **多种因子类型**：技术因子、统计因子、机器学习因子、高级因子
-- **全面评估体系**：IC、IR、胜率、有效性得分等多种评估指标
-- **智能优化算法**：贪婪算法、遗传算法、Lasso回归等多种优化方法
-- **因子组合集成**：等权重、IC加权、ML加权等多种组合方式
-- **Web用户界面**：直观的Web界面，支持实时进度显示和批量下载
-- **完整API接口**：提供完整的API接口，支持程序化调用
-- **数据管理功能**：支持多交易所数据下载、智能合并、数据质量检查
-- **因子对比系统**：新挖掘因子与现有因子库的智能对比
-- **ML模型管理**：自动保存和加载.pkl模型文件，支持模型推理
+## 📋 目录
 
-## 🏗️ 项目架构
+- [🚀 快速开始](#-快速开始)
+- [✨ 主要特性](#-主要特性)
+- [🏗️ 项目架构](#️-项目架构)
+- [📦 安装部署](#-安装部署)
+- [📚 使用指南](#-使用指南)
+- [🔧 配置说明](#-配置说明)
+- [🛠️ 维护工具](#️-维护工具)
+- [🤝 贡献指南](#-贡献指南)
+- [🔮 未来规划](#-未来规划)
 
-### V3架构核心组件
+## 🚀 快速开始
 
-- **`TransparentFactorStorage`**: 透明因子存储系统
-- **`FactorEngine`**: 统一因子计算引擎
-- **`FactorDefinition`**: 标准化因子定义结构
-- **支持的计算类型**: `formula`、`function`、`pipeline`、`ml_model`
-
-### 模块化设计
-
-- **`@factor_miner/`**: 核心算法和因子构建逻辑
-- **`@factorlib/`**: 因子存储和管理
-- **`@webui/`**: Web用户界面，作为核心算法的客户端
-- **`@data/`**: 数据管理和存储
-- **`@config/`**: 配置管理
-
-## 📦 安装
-
-### 环境要求
-
-- Python 3.8+
-- 推荐使用虚拟环境
-
-### 安装步骤
-
-1. 克隆项目
+### 1. 环境准备
 ```bash
-git clone https://github.com/your-username/FactorMiner.git
+# 克隆项目
+git clone https://github.com/CharlesJ-ABu/FactorMiner.git
 cd FactorMiner
-```
 
-2. 创建虚拟环境
-```bash
+# 创建虚拟环境
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 # 或
-venv\Scripts\activate  # Windows
-```
+venv\Scripts\activate     # Windows
 
-3. 安装依赖
-```bash
+# 安装依赖
 pip install -r requirements.txt
 ```
 
-## 🎯 快速开始
-
-### 使用Web界面
-
-1. 启动Web服务
+### 2. 启动Web界面
 ```bash
+# 启动Web服务
 python run_webui.py
+
+# 在浏览器中访问
+# http://localhost:8080
 ```
 
-2. 在浏览器中访问 `http://localhost:5000`
-
-3. 按照界面提示进行因子挖掘
-
-### 使用示例代码
-
+### 3. 运行示例代码
 ```bash
 # 进入examples目录
 cd examples
@@ -94,15 +60,14 @@ cd examples
 # 运行因子挖掘工作流示例
 python factor_mining_workflow.py
 
-# 运行数据管理示例
-python data_management_demo.py
-
 # 运行透明因子存储演示
 python transparent_factor_demo.py
+
+# 运行交易因子使用示例
+python trading_factor_usage.py
 ```
 
-### 使用Python API
-
+### 4. 使用预构建因子
 ```python
 from factor_miner.core.factor_engine import get_global_engine
 from factor_miner.core.factor_storage import get_global_storage
@@ -111,16 +76,177 @@ from factor_miner.core.factor_storage import get_global_storage
 storage = get_global_storage()
 engine = get_global_engine()
 
-# 计算单个因子
-factor_series = engine.compute_single_factor('factor_id', data)
-
-# 获取因子信息
-factor_info = storage.get_factor_info('factor_id')
+# 计算Hazel技术因子
+factor_series = engine.compute_single_factor('Hazel-price_momentum_5', data)
 ```
 
-## 📚 功能模块
+### 5. 5分钟快速体验
+```bash
+# 1. 启动Web界面
+python run_webui.py
 
-### 因子构建
+# 2. 访问 http://localhost:8080
+
+# 3. 在"数据下载"页面下载BTC_USDT的1小时数据
+
+# 4. 在"因子挖掘"页面选择"技术因子"开始挖掘
+
+# 5. 查看挖掘结果和评估报告
+```
+
+## ✨ 主要特性
+
+### 🎯 核心功能
+- **V3架构设计**: 全新的透明因子存储系统，支持多种计算类型
+- **丰富的因子库**: 包含27个Hazel技术因子，覆盖价格、动量、趋势、波动率、成交量等维度
+- **多种因子类型**: 技术因子、统计因子、机器学习因子、高级因子
+- **全面评估体系**: IC、IR、胜率、有效性得分等多种评估指标
+
+### 🚀 高级功能
+- **智能优化算法**: 贪婪算法、遗传算法、Lasso回归等多种优化方法
+- **因子组合集成**: 等权重、IC加权、ML加权等多种组合方式
+- **ML模型管理**: 自动保存和加载.pkl模型文件，支持模型推理
+- **批量下载优化**: 智能分批下载，支持多时间框架和交易对
+
+### 💻 用户体验
+- **Web用户界面**: 直观的Web界面，支持实时进度显示和批量下载
+- **完整API接口**: 提供完整的API接口，支持程序化调用
+- **数据管理功能**: 支持多交易所数据下载、智能合并、数据质量检查
+- **因子对比系统**: 新挖掘因子与现有因子库的智能对比
+
+## 🏗️ 项目架构
+
+### V3架构核心组件
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    FactorMiner V3.0                        │
+├─────────────────────────────────────────────────────────────┤
+│  WebUI (Flask)          │  Core Engine                     │
+│  ├─ 数据管理            │  ├─ TransparentFactorStorage     │
+│  ├─ 因子挖掘            │  ├─ FactorEngine                │
+│  ├─ 因子评估            │  ├─ FactorBuilder               │
+│  └─ 因子优化            │  └─ FactorEvaluator             │
+├─────────────────────────────────────────────────────────────┤
+│  Factor Library         │  Data Management                 │
+│  ├─ 27个Hazel因子      │  ├─ DataDownloader              │
+│  ├─ ML模型文件          │  ├─ SmartBatchDownloader        │
+│  └─ 评估结果            │  └─ Data Quality Check          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 支持的计算类型
+- **`formula`**: 数学公式计算
+- **`function`**: Python函数计算
+- **`pipeline`**: ML流水线计算
+- **`ml_model`**: 预训练模型推理
+
+### 模块化设计
+- **`@factor_miner/`**: 核心算法和因子构建逻辑
+- **`@factorlib/`**: 因子存储和管理
+- **`@webui/`**: Web用户界面，作为核心算法的客户端
+- **`@data/`**: 数据管理和存储
+- **`@config/`**: 配置管理
+
+## 📦 安装部署
+
+### 环境要求
+- **Python**: 3.8+
+- **内存**: 建议8GB+
+- **存储**: 建议50GB+ (用于存储市场数据)
+- **网络**: 稳定的网络连接 (用于数据下载)
+
+### 详细安装步骤
+
+#### 1. 系统依赖
+```bash
+# Ubuntu/Debian
+sudo apt-get update
+sudo apt-get install python3-dev python3-pip python3-venv
+
+# macOS
+brew install python3
+
+# Windows
+# 下载并安装Python 3.8+
+```
+
+#### 2. 项目安装
+```bash
+# 克隆项目
+git clone https://github.com/CharlesJ-ABu/FactorMiner.git
+cd FactorMiner
+
+# 创建虚拟环境
+python3 -m venv venv
+
+# 激活虚拟环境
+source venv/bin/activate  # Linux/macOS
+# 或
+venv\Scripts\activate     # Windows
+
+# 升级pip
+pip install --upgrade pip
+
+# 安装依赖
+pip install -r requirements.txt
+```
+
+#### 3. 配置设置
+```bash
+# 复制配置文件模板
+cp config/user_config_template.py config/user_config.py
+
+# 编辑配置文件，添加API密钥
+nano config/user_config.py
+```
+
+## 📚 使用指南
+
+### 🎯 因子库概览
+
+#### Hazel技术因子库 (27个因子)
+FactorMiner现在包含27个预构建的Hazel技术因子，覆盖多个维度：
+
+**价格因子 (5个)**
+- `Hazel-raw_close`, `Hazel-raw_high`, `Hazel-raw_low`, `Hazel-raw_open`, `Hazel-raw_volume`
+
+**动量因子 (3个)**
+- `Hazel-price_momentum_5`: 5期价格动量
+- `Hazel-volume_momentum_5`: 5期成交量动量
+- `Hazel-momentum_strength`: 动量强度指标
+
+**趋势因子 (2个)**
+- `Hazel-trend_strength_10`: 10期趋势强度
+- `Hazel-trend_consistency_3`: 3期趋势一致性
+
+**波动率因子 (2个)**
+- `Hazel-volatility_10`: 10期波动率
+- `Hazel-volatility_change`: 波动率变化
+
+**价格位置因子 (2个)**
+- `Hazel-price_position_20`: 20期价格位置
+- `Hazel-support_resistance_20`: 20期支撑阻力
+
+**成交量因子 (4个)**
+- `Hazel-volume_acceleration`: 成交量加速度
+- `Hazel-volume_breakout_20`: 20期成交量突破
+- `Hazel-volume_price_ratio`: 成交量价格比率
+- `Hazel-volume_price_divergence`: 成交量价格背离
+
+**技术评分 (2个)**
+- `Hazel-technical_score`: 综合技术评分
+- `Hazel-market_sentiment_10`: 10期市场情绪
+
+**其他技术因子 (7个)**
+- `Hazel-price_acceleration`: 价格加速度
+- `Hazel-price_breakout_20`: 20期价格突破
+- `Hazel-price_breakdown_20`: 20期价格崩溃
+- `Hazel-price_reversal`: 价格反转
+- `Hazel-long_price_change_20`: 20期长期价格变化
+- `Hazel-medium_price_change_10`: 10期中期价格变化
+- `Hazel-short_price_change_1`: 1期短期价格变化
+
+### 🔧 因子构建
 
 #### 技术因子 (`factor_miner/factors/technical.py`)
 - **趋势指标**: 移动平均线、趋势强度、价格位置
@@ -140,12 +266,13 @@ factor_info = storage.get_factor_info('factor_id')
 - **自定义因子**: 用户定义的复杂因子
 
 #### 机器学习因子 (`factor_miner/factors/ml_factors.py`)
-- **集成学习**: 随机森林、梯度提升
-- **降维技术**: PCA、特征选择
-- **模型存储**: 自动保存`.pkl`模型文件
-- **推理接口**: 通过`ml_model`计算类型加载模型
+- **集成学习**: 随机森林、梯度提升、Lasso、Ridge回归
+- **降维技术**: PCA主成分分析、特征选择（F检验、互信息）
+- **自适应模型**: 滚动窗口训练、动态特征选择
+- **模型存储**: 自动保存`.pkl`模型文件，支持模型版本管理
+- **推理接口**: 通过`ml_model`计算类型加载模型，支持实时预测
 
-### 因子评估
+### 📊 因子评估
 
 #### 评估指标
 - **IC (信息系数)**: 因子与未来收益的相关性
@@ -154,11 +281,11 @@ factor_info = storage.get_factor_info('factor_id')
 - **有效性得分**: 综合评估指标
 
 #### 评估流程
-- 自动计算多个时间窗口的IC值
-- 生成详细的评估报告
-- 支持样本内外测试
+1. 自动计算多个时间窗口的IC值
+2. 生成详细的评估报告
+3. 支持样本内外测试
 
-### 因子优化
+### 🎯 因子优化
 
 #### 优化方法
 - **贪婪算法**: 逐步选择最优因子
@@ -170,76 +297,56 @@ factor_info = storage.get_factor_info('factor_id')
 - 最小化因子间相关性
 - 控制因子数量
 
-### 因子组合
+### 🔗 因子组合
 
 #### 组合方法
 - **等权重组合**: 所有因子权重相等
 - **IC加权组合**: 根据IC值确定权重
 - **ML加权组合**: 使用机器学习方法确定权重
 
-## 🏗️ 项目结构
+### 📈 数据管理
 
-```
-FactorMiner/
-├── README.md                    # 项目主文档
-├── requirements.txt             # 依赖包
-├── run_webui.py                 # WebUI启动脚本
-├── config/                      # 配置文件目录
-│   ├── settings.py              # 主配置文件
-│   ├── webui_config.py          # WebUI配置
-│   └── user_config.py           # 用户配置（API密钥等）
-├── factor_miner/                # 核心因子挖掘模块
-│   ├── core/                    # 核心功能
-│   │   ├── factor_engine.py     # 因子计算引擎
-│   │   ├── factor_storage.py    # 透明因子存储
-│   │   ├── factor_builder.py    # 因子构建器
-│   │   ├── factor_evaluator.py  # 因子评估器
-│   │   ├── factor_optimizer.py  # 因子优化器
-│   │   ├── data_loader.py       # 数据加载器
-│   │   ├── data_downloader.py   # 数据下载器
-│   │   └── feature_pipeline.py  # 特征工程管道
-│   ├── factors/                 # 因子类型
-│   │   ├── technical.py         # 技术因子
-│   │   ├── statistical.py       # 统计因子
-│   │   ├── ml_factors.py        # 机器学习因子
-│   │   └── advanced.py          # 高级因子
-│   └── api/                     # API接口
-│       └── factor_api.py        # 因子API
-├── factorlib/                   # 因子库
-│   ├── definitions/             # 因子定义文件
-│   ├── functions/               # 因子函数代码
-│   ├── models/                  # ML模型文件
-│   ├── evaluations/             # 评估结果
-│   ├── exports/                 # 导出文件
-│   └── temp/                    # 临时文件
-├── webui/                       # WebUI模块
-│   ├── app.py                   # Flask应用
-│   ├── static/                  # 静态文件
-│   ├── templates/               # HTML模板
-│   └── routes/                  # 路由
-├── data/                        # 数据目录
-│   └── binance/                 # Binance数据
-│       ├── spot/                # 现货数据
-│       └── futures/             # 期货数据（永续合约）
-├── scripts/                     # 实用脚本
-│   ├── factor_mining.py         # 因子挖掘脚本
-│   ├── factorlib_health_check.py # 因子库健康检查
-│   ├── factor_analysis_tool.py  # 因子分析工具
-│   ├── repair_empty_evaluations.py # 修复空评估结果
-│   └── clean_factor_names.py    # 清理因子名称
-├── examples/                    # 示例代码
-│   ├── factor_mining_workflow.py # 因子挖掘工作流
-│   ├── data_management_demo.py  # 数据管理演示
-│   ├── transparent_factor_demo.py # 透明因子存储演示
-│   ├── factor_storage_demo.py   # 因子存储演示
-│   └── trading_factor_usage.py  # 交易因子使用示例
-├── docs/                        # 文档目录
-│   ├── README.md                # 文档总览
-│   ├── api.md                   # API文档
-│   ├── factor_storage_guide.md  # 因子存储架构指南
-│   └── vpn_setup.md            # VPN设置指南
-└── logs/                        # 日志目录
-```
+#### 数据下载
+1. 访问WebUI的"数据下载"页面
+2. 选择交易类型（现货/期货）
+3. 选择交易对和时间框架
+4. 设置时间范围并开始下载
+5. 支持智能合并，避免重复数据
+
+#### 数据查看
+1. 访问WebUI的"数据查看"页面
+2. 查看现有数据覆盖情况
+3. 检查数据质量和完整性
+4. 支持多时间框架查询
+
+### 🔍 因子挖掘
+
+#### 基本流程
+1. 选择数据源和交易对
+2. 选择因子类型（技术、统计、ML、高级）
+3. 设置评估参数（最小IC、最小IR）
+4. 开始挖掘并监控进度
+5. 查看因子对比报告
+6. 选择要保存的因子
+
+#### 因子对比
+- 自动对比新因子与现有因子库
+- 比较因子定义、函数代码、模型文件
+- 识别重复、相似或全新的因子
+- 支持选择性保存
+
+### 📊 因子评估
+
+#### 评估指标
+- **IC值**: 衡量因子预测能力
+- **IR值**: 衡量因子稳定性
+- **胜率**: 衡量因子准确性
+- **有效性得分**: 综合评估指标
+
+#### 评估流程
+1. 自动计算多个时间窗口的IC值
+2. 生成详细的评估报告
+3. 保存评估结果到因子库
 
 ## 🔧 配置说明
 
@@ -286,80 +393,7 @@ EXCHANGE_CONFIGS = {
 }
 ```
 
-## 📖 使用指南
-
-### 数据管理
-
-#### 数据下载
-1. 访问WebUI的"数据下载"页面
-2. 选择交易类型（现货/期货）
-3. 选择交易对和时间框架
-4. 设置时间范围并开始下载
-5. 支持智能合并，避免重复数据
-
-#### 数据查看
-1. 访问WebUI的"数据查看"页面
-2. 查看现有数据覆盖情况
-3. 检查数据质量和完整性
-4. 支持多时间框架查询
-
-### 因子挖掘
-
-#### 基本流程
-1. 选择数据源和交易对
-2. 选择因子类型（技术、统计、ML、高级）
-3. 设置评估参数（最小IC、最小IR）
-4. 开始挖掘并监控进度
-5. 查看因子对比报告
-6. 选择要保存的因子
-
-#### 因子对比
-- 自动对比新因子与现有因子库
-- 比较因子定义、函数代码、模型文件
-- 识别重复、相似或全新的因子
-- 支持选择性保存
-
-### 因子评估
-
-#### 评估指标
-- **IC值**: 衡量因子预测能力
-- **IR值**: 衡量因子稳定性
-- **胜率**: 衡量因子准确性
-- **有效性得分**: 综合评估指标
-
-#### 评估流程
-1. 自动计算多个时间窗口的IC值
-2. 生成详细的评估报告
-3. 保存评估结果到因子库
-
-### 最佳实践
-
-1. **数据预处理**
-   - 确保数据质量，处理缺失值
-   - 统一数据格式和时间戳
-   - 进行数据标准化
-
-2. **因子构建**
-   - 从简单因子开始，逐步增加复杂度
-   - 注意因子的经济含义
-   - 避免过度拟合
-
-3. **因子评估**
-   - 使用多个评估指标
-   - 进行样本内外测试
-   - 考虑交易成本和滑点
-
-4. **因子优化**
-   - 根据实际需求选择优化方法
-   - 控制因子数量，避免过拟合
-   - 定期重新评估和更新
-
-5. **风险管理**
-   - 设置止损和止盈
-   - 控制仓位大小
-   - 监控因子表现
-
-## 🛠️ 维护和工具
+## 🛠️ 维护工具
 
 ### 实用脚本
 
@@ -381,10 +415,10 @@ python scripts/repair_empty_evaluations.py
 python scripts/clean_factor_names.py
 ```
 
-#### 因子挖掘
+#### 因子注册
 ```bash
-# 批量因子挖掘
-python scripts/factor_mining.py
+# 注册Hazel技术因子
+python scripts/register_hazel_factors.py
 ```
 
 ### 定期维护
@@ -392,6 +426,71 @@ python scripts/factor_mining.py
 1. **每周**: 运行健康检查脚本
 2. **每月**: 分析因子性能，清理无效因子
 3. **每季度**: 更新因子库，优化因子组合
+
+## 🏗️ 项目结构
+
+```
+FactorMiner/
+├── README.md                    # 项目主文档
+├── requirements.txt             # 依赖包
+├── run_webui.py                 # WebUI启动脚本
+├── config/                      # 配置文件目录
+│   ├── settings.py              # 主配置文件
+│   ├── webui_config.py          # WebUI配置
+│   └── user_config.py           # 用户配置（API密钥等）
+├── factor_miner/                # 核心因子挖掘模块
+│   ├── core/                    # 核心功能
+│   │   ├── factor_engine.py     # 因子计算引擎
+│   │   ├── factor_storage.py    # 透明因子存储
+│   │   ├── factor_builder.py    # 因子构建器
+│   │   ├── factor_evaluator.py  # 因子评估器
+│   │   ├── factor_optimizer.py  # 因子优化器
+│   │   ├── data_loader.py       # 数据加载器
+│   │   ├── data_downloader.py   # 数据下载器
+│   │   └── feature_pipeline.py  # 特征工程管道
+│   ├── factors/                 # 因子类型
+│   │   ├── technical.py         # 技术因子
+│   │   ├── statistical.py       # 统计因子
+│   │   ├── ml_factors.py        # 机器学习因子
+│   │   └── advanced.py          # 高级因子
+│   └── api/                     # API接口
+│       └── factor_api.py        # 因子API
+├── factorlib/                   # 因子库
+│   ├── definitions/             # 因子定义文件 (包含27个Hazel因子)
+│   ├── functions/               # 因子函数代码 (包含27个Hazel因子实现)
+│   ├── models/                  # ML模型文件 (.pkl格式)
+│   ├── evaluations/             # 评估结果
+│   ├── exports/                 # 导出文件
+│   └── temp/                    # 临时文件
+├── webui/                       # WebUI模块
+│   ├── app.py                   # Flask应用
+│   ├── static/                  # 静态文件
+│   ├── templates/               # HTML模板
+│   └── routes/                  # 路由
+├── data/                        # 数据目录
+│   └── binance/                 # Binance数据
+│       ├── spot/                # 现货数据
+│       └── futures/             # 期货数据（永续合约）
+├── scripts/                     # 实用脚本
+│   ├── register_hazel_factors.py # Hazel因子注册脚本
+│   ├── factorlib_health_check.py # 因子库健康检查
+│   ├── factor_analysis_tool.py  # 因子分析工具
+│   ├── repair_empty_evaluations.py # 修复空评估结果
+│   └── clean_factor_names.py    # 清理因子名称
+├── examples/                    # 示例代码
+│   ├── factor_mining_workflow.py # 因子挖掘工作流
+│   ├── transparent_factor_demo.py # 透明因子存储演示
+│   ├── factor_storage_demo.py   # 因子存储演示
+│   ├── trading_factor_usage.py  # 交易因子使用示例
+│   ├── data_management_demo.py  # 数据管理演示
+│   └── batch_download_demo.py   # 批量下载演示
+├── docs/                        # 文档目录
+│   ├── README.md                # 文档总览
+│   ├── api.md                   # API文档
+│   ├── factor_storage_guide.md  # 因子存储架构指南
+│   └── vpn_setup.md            # VPN设置指南
+└── logs/                        # 日志目录
+```
 
 ## 🧪 测试
 
@@ -414,13 +513,11 @@ python tests/test_basic.py
 - [因子存储架构指南](docs/factor_storage_guide.md) - V3架构详解
 - [VPN设置指南](docs/vpn_setup.md) - 网络配置说明
 
-## 🤝 贡献
+## 🤝 贡献指南
 
 欢迎贡献代码！FactorMiner是一个开源项目，我们欢迎所有形式的贡献。
 
 ### 如何贡献
-
-### 贡献指南
 
 1. **Fork 项目**
 2. **创建功能分支** (`git checkout -b feature/AmazingFeature`)
@@ -478,8 +575,10 @@ python tests/test_basic.py
 ## 🔮 未来规划
 
 ### 短期目标 (1-3个月)
+- [x] 扩展Hazel技术因子库 (已完成)
+- [x] 修复ML因子挖掘和存储问题 (已完成)
+- [x] 优化批量数据下载功能 (已完成)
 - [ ] 增加更多交易所支持
-- [ ] 优化ML因子训练流程
 - [ ] 增强因子可视化功能
 
 ### 中期目标 (3-6个月)
@@ -491,6 +590,47 @@ python tests/test_basic.py
 - [ ] 构建因子交易策略
 - [ ] 实现自动化因子挖掘
 - [ ] 开发移动端应用
+
+## 💡 最佳实践
+
+### 🚀 快速上手流程
+1. **环境准备** → 安装Python 3.8+和依赖包
+2. **数据获取** → 下载BTC_USDT等主流交易对数据
+3. **因子使用** → 直接使用27个预构建的Hazel因子
+4. **因子挖掘** → 基于现有数据挖掘新的技术因子
+5. **因子评估** → 使用IC、IR等指标评估因子质量
+6. **因子组合** → 构建多因子组合策略
+
+### 📊 数据预处理
+- 确保数据质量，处理缺失值
+- 统一数据格式和时间戳
+- 进行数据标准化
+
+### 🔧 因子构建
+- 从简单因子开始，逐步增加复杂度
+- 注意因子的经济含义
+- 避免过度拟合
+
+### 📈 因子评估
+- 使用多个评估指标
+- 进行样本内外测试
+- 考虑交易成本和滑点
+
+### ⚡ 因子优化
+- 根据实际需求选择优化方法
+- 控制因子数量，避免过拟合
+- 定期重新评估和更新
+
+### 🛡️ 风险管理
+- 设置止损和止盈
+- 控制仓位大小
+- 监控因子表现
+
+### 🎯 常见使用场景
+- **量化研究**: 使用Hazel因子库进行因子研究
+- **策略开发**: 基于因子挖掘结果开发交易策略
+- **风险管理**: 使用因子评估结果进行风险控制
+- **学术研究**: 因子挖掘算法的研究和改进
 
 ---
 
