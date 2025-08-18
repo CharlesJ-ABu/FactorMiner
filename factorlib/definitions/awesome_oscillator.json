@@ -1,0 +1,21 @@
+{
+  "factor_id": "awesome_oscillator",
+  "name": "精彩震荡指标",
+  "description": "Awesome Oscillator - 中位价短长均线差",
+  "category": "momentum",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/awesome_oscillator.py",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "fast": 5,
+    "slow": 34
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {}
+}
+

@@ -1,0 +1,24 @@
+{
+  "factor_id": "bb_bandwidth_v3",
+  "name": "透明布林带宽度",
+  "description": "完全透明的布林带宽度实现",
+  "category": "volatility",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/bb_bandwidth_v3.py",
+    "function_code": "\ndef calculate(data, period=20, std_dev=2):\n    \"\"\"\n    计算布林带指标\n    \n    参数:\n        - period: 周期\n        - std_dev: 标准差倍数\n    \"\"\"\n    # 1. 计算中轨(SMA)\n    middle = data['close'].rolling(window=period).mean()\n    \n    # 2. 计算标准差\n    std = data['close'].rolling(window=period).std()\n    \n    # 3. 计算上轨和下轨\n    upper = middle + (std * std_dev)\n    lower = middle - (std * std_dev)\n    \n    # 4. 计算带宽\n    bandwidth = (upper - lower) / middle\n    \n    return bandwidth  # 返回带宽\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "period": 20,
+    "std_dev": 2
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "5b765e6e",
+    "created_at": "2025-08-09T22:23:17.125316"
+  }
+}

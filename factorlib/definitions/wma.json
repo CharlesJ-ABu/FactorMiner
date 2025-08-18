@@ -1,0 +1,25 @@
+{
+  "factor_id": "wma",
+  "name": "加权移动平均线",
+  "description": "Weighted Moving Average - 线性递减权重的移动平均",
+  "category": "trend",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/wma.py",
+    "function_code": "def calculate(data, period=20, **kwargs):\n    weights = np.arange(1, period+1)\n    return data['close'].rolling(window=period).apply(lambda x: np.dot(x, weights)/weights.sum(), raw=True)\n",
+    "entry_point": "calculate",
+    "imports": [
+      "import pandas as pd",
+      "import numpy as np"
+    ]
+  },
+  "parameters": {
+    "period": 20
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.323504"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "factor_id": "ema",
+  "name": "指数移动平均线",
+  "description": "Exponential Moving Average - 对近期价格赋予更高权重",
+  "category": "trend",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/ema.py",
+    "function_code": "def calculate(data, period=20, **kwargs):\n    return data['close'].ewm(span=period).mean()\n",
+    "entry_point": "calculate",
+    "imports": [
+      "import pandas as pd",
+      "import numpy as np"
+    ]
+  },
+  "parameters": {
+    "period": 20
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.328839"
+  }
+}

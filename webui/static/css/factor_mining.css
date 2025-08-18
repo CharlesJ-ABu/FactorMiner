@@ -1,0 +1,367 @@
+/* 因子挖掘页面专用样式 */
+
+/* 进度容器样式 */
+.progress-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    padding: 30px;
+    margin: 30px 0;
+    color: white;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* 进度步骤样式 */
+.progress-step {
+    display: flex;
+    align-items: center;
+    margin: 20px 0;
+    padding: 20px;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    transition: all 0.4s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.progress-step.active {
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 30px rgba(33, 150, 243, 0.5);
+}
+
+.progress-step.completed {
+    background: rgba(76, 175, 80, 0.3);
+}
+
+.progress-step.error {
+    background: rgba(244, 67, 54, 0.3);
+}
+
+/* 步骤图标样式 */
+.step-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 20px;
+    font-size: 20px;
+    transition: all 0.3s ease;
+}
+
+.step-icon.pending {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.step-icon.active {
+    background: #2196F3;
+    animation: pulse 2s infinite;
+}
+
+.step-icon.completed {
+    background: #4CAF50;
+}
+
+.step-icon.error {
+    background: #F44336;
+}
+
+/* 步骤内容样式 */
+.step-content {
+    flex: 1;
+}
+
+.step-title {
+    font-weight: 700;
+    margin-bottom: 8px;
+    font-size: 18px;
+}
+
+.step-description {
+    font-size: 14px;
+    opacity: 0.9;
+    margin-bottom: 15px;
+}
+
+/* 进度条样式 */
+.step-progress {
+    margin-top: 15px;
+}
+
+.progress-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    transition: width 0.6s ease;
+    border-radius: 4px;
+}
+
+/* 步骤详情样式 */
+.step-details {
+    font-size: 13px;
+    opacity: 0.8;
+    margin-top: 8px;
+    font-style: italic;
+}
+
+/* 步骤时间样式 */
+.step-time {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-top: 5px;
+    font-family: 'Courier New', monospace;
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+/* 时间信息显示样式 */
+#timeDisplay, #systemDisplay {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px 15px;
+    border-radius: 8px;
+    margin: 5px 0;
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+}
+
+#timeDisplay {
+    color: #FFD700;
+    font-weight: 600;
+}
+
+#systemDisplay {
+    color: #87CEEB;
+    font-weight: 500;
+}
+
+/* 总体进度样式 */
+.overall-progress-section {
+    text-align: center;
+    margin-top: 30px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+}
+
+.overall-progress {
+    height: 12px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.3);
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+/* 状态徽章样式 */
+.status-badge {
+    padding: 6px 16px;
+    border-radius: 25px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.pending {
+    background: #FFF3E0;
+    color: #E65100;
+}
+
+.status-badge.running {
+    background: #E3F2FD;
+    color: #1565C0;
+}
+
+.status-badge.completed {
+    background: #E8F5E8;
+    color: #2E7D32;
+}
+
+.status-badge.error {
+    background: #FFEBEE;
+    color: #C62828;
+}
+
+/* 提示信息样式 */
+.alert-custom {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.alert-custom.info {
+    background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+    color: #1565C0;
+}
+
+.alert-custom.success {
+    background: linear-gradient(135deg, #E8F5E8, #C8E6C9);
+    color: #2E7D32;
+}
+
+.alert-custom.warning {
+    background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+    color: #F57C00;
+}
+
+.alert-custom.error {
+    background: linear-gradient(135deg, #FFEBEE, #FFCDD2);
+    color: #C62828;
+}
+
+/* 加载动画样式 */
+.loading-spinner {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+}
+
+/* 动画定义 */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 子进度条样式 */
+.sub-progress-container {
+    margin-top: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.sub-progress-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.sub-progress-item {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.sub-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.sub-progress-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #495057;
+}
+
+.sub-progress-status {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #e9ecef;
+    color: #6c757d;
+}
+
+.sub-progress-status.running {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.sub-progress-status.completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.sub-progress-status.error {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.sub-progress-bar {
+    height: 6px;
+    background: #e9ecef;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.sub-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    border-radius: 3px;
+    transition: width 0.6s ease;
+    width: 0%;
+}
+
+.sub-progress-details {
+    font-size: 12px;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+/* 子进度条动画 */
+.sub-progress-fill.animate {
+    animation: progressPulse 2s ease-in-out infinite;
+}
+
+@keyframes progressPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .progress-container {
+        padding: 20px;
+        margin: 20px 0;
+    }
+    
+    .progress-step {
+        flex-direction: column;
+        text-align: center;
+        padding: 15px;
+    }
+    
+    .step-icon {
+        margin-right: 0;
+        margin-bottom: 15px;
+    }
+
+    .sub-progress-container {
+        padding: 10px;
+    }
+    
+    .sub-progress-item {
+        padding: 8px;
+    }
+    
+    .sub-progress-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+}

@@ -1,0 +1,27 @@
+{
+  "factor_id": "macd_histogram",
+  "name": "MACD柱状图",
+  "description": "MACD Histogram - MACD快线与信号线的差值",
+  "category": "momentum",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/macd_histogram.py",
+    "function_code": "def calculate(data, fast_period=12, slow_period=26, signal_period=9, **kwargs):\n    ema_fast = data['close'].ewm(span=fast_period).mean()\n    ema_slow = data['close'].ewm(span=slow_period).mean()\n    macd_line = ema_fast - ema_slow\n    signal_line = macd_line.ewm(span=signal_period).mean()\n    return macd_line - signal_line\n",
+    "entry_point": "calculate",
+    "imports": [
+      "import pandas as pd",
+      "import numpy as np"
+    ]
+  },
+  "parameters": {
+    "fast_period": 12,
+    "slow_period": 26,
+    "signal_period": 9
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.313739"
+  }
+}

@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+
+{% block title %}因子评估 - {{ config.title }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.css">
+<script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<div class="row">
+    <div class="col-12">
+        <h2>📊 因子评估</h2>
+        <p class="text-muted">支持多因子、多交易对、多时间框架的批量评估</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-cog me-2"></i>评估参数</h5>
+            </div>
+            <div class="card-body">
+                <form id="evaluationForm">
+                    <div class="mb-3">
+                        <label class="form-label">因子（可多选）</label>
+                        <select class="form-select" id="factorSelect" multiple size="8"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">交易所 / 类型</label>
+                        <div class="d-flex gap-2">
+                            <select class="form-select" id="exchangeSelect">
+                                <option value="binance" selected>Binance</option>
+                            </select>
+                            <select class="form-select" id="tradeTypeSelect">
+                                <option value="futures" selected>期货</option>
+                                <option value="spot">现货</option>
+                        </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">交易对（可多选）</label>
+                        <select class="form-select" id="symbolsSelect" multiple size="8"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">时间框架（可多选）</label>
+                        <select class="form-select" id="timeframesSelect" multiple size="6"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">数据时间范围</label>
+                        <div class="text-muted small mb-2" id="rangeInfo">—</div>
+                        <div id="rangeSlider"></div>
+                        <input type="hidden" id="startDate">
+                        <input type="hidden" id="endDate">
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-play me-2"></i>开始批量评估
+                    </button>
+                </form>
+
+                <div class="mt-3" id="progressBox" style="display:none;">
+                    <div class="d-flex justify-content-between small mb-1"><span>进度</span><span id="progressText">0/0</span></div>
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width:0%"></div>
+                    </div>
+                    <div class="row mt-2 small text-muted">
+                        <div class="col-4">成功：<span id="succCount">0</span></div>
+                        <div class="col-4">失败：<span id="failCount">0</span></div>
+                        <div class="col-4">预计剩余：<span id="etaText">--</span></div>
+                    </div>
+                    <div class="small mt-1">当前：<span id="currentTask">—</span></div>
+                    <div class="mt-2 border rounded p-2" style="max-height:120px; overflow:auto;">
+                        <div class="small text-muted mb-1">最近日志</div>
+                        <ul id="progressLog" class="small mb-0" style="padding-left: 18px;"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>评估结果</h5>
+                <button class="btn btn-sm btn-outline-secondary" id="exportBtn">导出CSV</button>
+            </div>
+            <div class="card-body">
+                <div id="evaluationResults" style="display:none;">
+                    <div class="row mb-3 text-center">
+                        <div class="col-3"><div class="border rounded p-2"><div class="text-muted small">平均IC</div><div id="avgIC">0.0000</div></div></div>
+                        <div class="col-3"><div class="border rounded p-2"><div class="text-muted small">平均IR</div><div id="avgIR">0.0000</div></div></div>
+                        <div class="col-3"><div class="border rounded p-2"><div class="text-muted small">平均胜率</div><div id="avgWinRate">0.0%</div></div></div>
+                        <div class="col-3"><div class="border rounded p-2"><div class="text-muted small">样本数</div><div id="totalCount">0</div></div></div>
+                                </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header"><span class="small text-muted">按因子聚合</span> IC 条形图</div>
+                                <div class="card-body"><canvas id="icBarChart" height="160"></canvas></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header"><span class="small text-muted">按因子聚合</span> IR 条形图</div>
+                                <div class="card-body"><canvas id="irBarChart" height="160"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+                        <div class="table-responsive">
+                        <table class="table table-sm align-middle text-center" id="resultsTable">
+                                <thead>
+                                    <tr>
+                                    <th style="cursor:pointer;" onclick="sortResults('factor_id')">因子</th>
+                                    <th style="cursor:pointer;" onclick="sortResults('symbol')">交易对</th>
+                                    <th style="cursor:pointer;" onclick="sortResults('timeframe')">时间框架</th>
+                                    <th style="cursor:pointer;" onclick="sortResults('ic_pearson')">IC</th>
+                                    <th style="cursor:pointer;" onclick="sortResults('ic_spearman')">等级IC</th>
+                                    <th style="cursor:pointer;" onclick="sortResults('win_rate')">胜率</th>
+                                    <th style="cursor:pointer;" onclick="sortResults('sharpe_ratio')">夏普</th>
+                                    <th style="cursor:pointer;" onclick="sortResults('long_short_return')">多空收益</th>
+                                    </tr>
+                                </thead>
+                            <tbody id="resultsBody"></tbody>
+                            </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let resultsData = [];
+let resultsSortField = 'factor_id';
+let resultsSortAsc = true;
+let localDataRows = [];
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadFactors();
+    await refreshLocalMeta();
+});
+
+async function loadFactors() {
+    const sel = document.getElementById('factorSelect');
+    sel.innerHTML = '';
+    try {
+        const res = await fetch('/api/factors/list');
+        const data = await res.json();
+        if (data.success) {
+            (data.factors || []).forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f.id; opt.textContent = f.name;
+                sel.appendChild(opt);
+            });
+        }
+    } catch {}
+}
+
+document.getElementById('exchangeSelect').addEventListener('change', refreshLocalMeta);
+document.getElementById('tradeTypeSelect').addEventListener('change', refreshLocalMeta);
+document.getElementById('symbolsSelect').addEventListener('change', updateTimeframesForSelection);
+document.getElementById('timeframesSelect').addEventListener('change', updateRangeForSelection);
+
+async function refreshLocalMeta() {
+    const ex = document.getElementById('exchangeSelect').value;
+    const tt = document.getElementById('tradeTypeSelect').value;
+    const url = `/api/data/local-data?exchange=${ex}&trade_type=${tt}`;
+    const symbolsSel = document.getElementById('symbolsSelect');
+    const tfsSel = document.getElementById('timeframesSelect');
+    symbolsSel.innerHTML = '';
+    tfsSel.innerHTML = '';
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.success) {
+            const rows = data.data || [];
+            localDataRows = rows;
+            const symbols = [...new Set(rows.map(r => r.symbol))].sort();
+            symbols.forEach(s => { const o = document.createElement('option'); o.value=s; o.textContent=s; symbolsSel.appendChild(o);});
+            // 初始时间框架：基于全部数据的去重并按分钟排序
+            const tfs = [...new Set(rows.map(r => r.timeframe))].sort((a,b)=>timeframeToMinutes(a)-timeframeToMinutes(b));
+            tfs.forEach(tf => { const o = document.createElement('option'); o.value=tf; o.textContent=tf; tfsSel.appendChild(o);});
+            // 计算全局可用时间范围
+            const starts = rows.map(r => r.date_range && r.date_range.start).filter(Boolean).map(s => new Date(s));
+            const ends = rows.map(r => r.date_range && r.date_range.end).filter(Boolean).map(s => new Date(s));
+            if (starts.length && ends.length) {
+                setupRangeSlider(new Date(Math.min(...starts)), new Date(Math.max(...ends)));
+            }
+        }
+    } catch {}
+}
+
+// 根据已选择交易对，动态过滤并排序时间框架（按从小到大）
+function updateTimeframesForSelection() {
+    const tfsSel = document.getElementById('timeframesSelect');
+    const selectedSymbols = Array.from(document.getElementById('symbolsSelect').selectedOptions).map(o=>o.value);
+    if (!localDataRows || localDataRows.length===0) return;
+    let timeframes = [];
+    // 包含式（并集）展示：覆盖所选交易对的所有可用时间框架
+    if (!selectedSymbols.length) {
+        // 未选择交易对时，展示全部时间框架
+        timeframes = [...new Set(localDataRows.map(r=>r.timeframe))];
+    } else {
+        const union = new Set();
+        selectedSymbols.forEach(sym => {
+            localDataRows.filter(r=>r.symbol===sym).forEach(r=>union.add(r.timeframe));
+        });
+        timeframes = [...union];
+    }
+    timeframes.sort((a,b)=>timeframeToMinutes(a)-timeframeToMinutes(b));
+    // 记录原选择，尽量保留
+    const prev = new Set(Array.from(tfsSel.selectedOptions).map(o=>o.value));
+    tfsSel.innerHTML = '';
+    timeframes.forEach(tf => {
+        const o = document.createElement('option'); o.value=tf; o.textContent=tf; if (prev.has(tf)) o.selected = true; tfsSel.appendChild(o);
+    });
+    // 更新时间范围（根据最新选择的交易对与时间框架）
+    updateRangeForSelection();
+}
+
+// 根据当前选择（交易对/时间框架）动态更新可用时间范围滑条
+function updateRangeForSelection() {
+    if (!localDataRows || localDataRows.length===0) return;
+    const selectedSymbols = Array.from(document.getElementById('symbolsSelect').selectedOptions).map(o=>o.value);
+    const selectedTFs = Array.from(document.getElementById('timeframesSelect').selectedOptions).map(o=>o.value);
+    let rows = localDataRows;
+    if (selectedSymbols.length) {
+        rows = rows.filter(r => selectedSymbols.includes(r.symbol));
+    }
+    if (selectedTFs.length) {
+        rows = rows.filter(r => selectedTFs.includes(r.timeframe));
+    }
+    const starts = rows.map(r => r.date_range && r.date_range.start).filter(Boolean).map(s => new Date(s));
+    const ends = rows.map(r => r.date_range && r.date_range.end).filter(Boolean).map(s => new Date(s));
+    if (starts.length && ends.length) {
+        setupRangeSlider(new Date(Math.min(...starts)), new Date(Math.max(...ends)));
+    }
+}
+
+// 将时间框架字符串转换为分钟数，便于排序（1m/3m/5m/15m/1h/2h/4h/6h/8h/12h/1d）
+function timeframeToMinutes(tf) {
+    if (!tf) return Number.MAX_SAFE_INTEGER;
+    const match = tf.match(/^(\d+)([mhd])$/);
+    if (!match) return Number.MAX_SAFE_INTEGER;
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+    switch (unit) {
+        case 'm': return value;
+        case 'h': return value * 60;
+        case 'd': return value * 60 * 24;
+        default: return Number.MAX_SAFE_INTEGER;
+    }
+}
+
+function setupRangeSlider(startDate, endDate) {
+    const container = document.getElementById('rangeSlider');
+    const info = document.getElementById('rangeInfo');
+    if (container.noUiSlider) container.noUiSlider.destroy();
+    const totalMs = endDate - startDate;
+    noUiSlider.create(container, { start: [0, 100], connect: true, step: 1, range: { min: 0, max: 100 } });
+    const update = (values) => {
+        const sv = parseInt(values[0], 10), ev = parseInt(values[1], 10);
+        const s = new Date(startDate.getTime() + (sv/100)*totalMs);
+        const e = new Date(startDate.getTime() + (ev/100)*totalMs);
+        document.getElementById('startDate').value = s.toISOString().slice(0,10);
+        document.getElementById('endDate').value = e.toISOString().slice(0,10);
+        info.textContent = `${s.toISOString().slice(0,10)} ~ ${e.toISOString().slice(0,10)}`;
+    };
+    container.noUiSlider.on('update', update);
+    update([0,100]);
+}
+
+document.getElementById('evaluationForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const factor_ids = Array.from(document.getElementById('factorSelect').selectedOptions).map(o=>o.value);
+    const symbols = Array.from(document.getElementById('symbolsSelect').selectedOptions).map(o=>o.value);
+    const timeframes = Array.from(document.getElementById('timeframesSelect').selectedOptions).map(o=>o.value);
+    const start_date = document.getElementById('startDate').value;
+    const end_date = document.getElementById('endDate').value;
+    const exchange = document.getElementById('exchangeSelect').value;
+    const trade_type = document.getElementById('tradeTypeSelect').value;
+    if (!factor_ids.length || !symbols.length || !timeframes.length || !start_date || !end_date) {
+        alert('请选择因子/交易对/时间框架并设置时间范围');
+        return;
+    }
+    // 生成任务队列（顺序执行，便于实时更新进度）
+    const tasks = [];
+    factor_ids.forEach(fid => {
+        symbols.forEach(sym => {
+            timeframes.forEach(tf => tasks.push({ factor_id: fid, symbol: sym, timeframe: tf }));
+        });
+    });
+
+    const total = tasks.length;
+    let done = 0, succ=0, fail=0;
+    const t0 = Date.now();
+    resultsData = [];
+    document.getElementById('evaluationResults').style.display = 'block';
+    const pb = document.querySelector('#progressBox .progress-bar');
+    const pt = document.getElementById('progressText');
+    document.getElementById('progressBox').style.display = 'block';
+    pb.style.width = '0%'; pt.textContent = `0/${total}`;
+
+    const logUl = document.getElementById('progressLog');
+    const etaEl = document.getElementById('etaText');
+    const succEl = document.getElementById('succCount');
+    const failEl = document.getElementById('failCount');
+    const curEl = document.getElementById('currentTask');
+
+    for (const task of tasks) {
+        curEl.textContent = `${task.factor_id} / ${task.symbol} / ${task.timeframe}`;
+        try {
+            const res = await fetch('/api/factors/evaluate', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    factor_id: task.factor_id,
+                    exchange,
+                    trade_type,
+                    symbol: task.symbol,
+                    timeframe: task.timeframe,
+                    start_date,
+                    end_date
+                })
+            });
+            const data = await res.json();
+            done += 1; const pct = Math.round((done/total)*100);
+            pb.style.width = `${pct}%`; pt.textContent = `${done}/${total}`;
+            if (data.success) {
+                const li = document.createElement('li'); li.textContent = `✅ ${task.factor_id} | ${task.symbol} | ${task.timeframe}`; logUl.prepend(li);
+                succ += 1; succEl.textContent = succ;
+                const r = data.results || {};
+                resultsData.push({
+                    factor_id: task.factor_id,
+                    symbol: task.symbol,
+                    timeframe: task.timeframe,
+                    ic_pearson: r.ic_pearson,
+                    ic_spearman: r.ic_spearman,
+                    win_rate: r.win_rate,
+                    sharpe_ratio: r.sharpe_ratio,
+                    long_short_return: r.long_short_return
+                });
+            } else {
+                const li = document.createElement('li'); li.textContent = `❌ ${task.factor_id} | ${task.symbol} | ${task.timeframe} | ${data.message||'失败'}`; logUl.prepend(li);
+                fail += 1; failEl.textContent = fail;
+            }
+        } catch (err) {
+            done += 1; const pct = Math.round((done/total)*100);
+            pb.style.width = `${pct}%`; pt.textContent = `${done}/${total}`;
+            const li = document.createElement('li'); li.textContent = `❌ ${task.factor_id} | ${task.symbol} | ${task.timeframe} | ${err.message}`; logUl.prepend(li);
+            fail += 1; failEl.textContent = fail;
+        }
+        // 估算ETA
+        const dt = (Date.now()-t0)/1000; const rate = done>0? dt/done: 0; const remain = Math.max(0, total-done);
+        const eta = rate? Math.round(remain*rate): 0; etaEl.textContent = `${eta}s`;
+        // 实时渲染结果
+        renderResults();
+    }
+});
+
+function renderResults() {
+    // 汇总均值
+    if (resultsData.length) {
+        const mean = k => {
+            const v = resultsData.map(r=>r[k]).filter(x=>typeof x==='number');
+            if (!v.length) return null; return v.reduce((a,b)=>a+b,0)/v.length;
+        };
+        const ic = mean('ic_pearson');
+        const ir = mean('sharpe_ratio');
+        const wr = mean('win_rate');
+        document.getElementById('avgIC').textContent = ic!=null? ic.toFixed(4):'0.0000';
+        document.getElementById('avgIR').textContent = ir!=null? ir.toFixed(4):'0.0000';
+        document.getElementById('avgWinRate').textContent = wr!=null? (wr*100).toFixed(1)+'%':'0.0%';
+        document.getElementById('totalCount').textContent = resultsData.length;
+    }
+    renderCharts();
+    // 排序
+    const sorted = [...resultsData].sort((a,b)=>{
+        const av=a[resultsSortField], bv=b[resultsSortField];
+        if (av==bv) return 0; if (av==null) return resultsSortAsc?1:-1; if (bv==null) return resultsSortAsc?-1:1;
+        if (typeof av==='number' && typeof bv==='number') return resultsSortAsc? av-bv: bv-av;
+        return resultsSortAsc? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    });
+    const tbody = document.getElementById('resultsBody');
+    tbody.innerHTML = sorted.map(r=>`
+        <tr>
+            <td>${r.factor_id}</td>
+            <td>${r.symbol}</td>
+            <td>${r.timeframe}</td>
+            <td>${fmtNum(r.ic_pearson)}</td>
+            <td>${fmtNum(r.ic_spearman)}</td>
+            <td>${fmtPct(r.win_rate)}</td>
+            <td>${fmtNum(r.sharpe_ratio)}</td>
+            <td>${fmtPct(r.long_short_return)}</td>
+        </tr>
+    `).join('');
+}
+
+function sortResults(field){
+    if (resultsSortField===field) resultsSortAsc=!resultsSortAsc; else {resultsSortField=field; resultsSortAsc=true;}
+    renderResults();
+}
+
+function fmtNum(v){ return (typeof v==='number')? v.toFixed(4):''; }
+function fmtPct(v){ return (typeof v==='number')? (v*100).toFixed(2)+'%':''; }
+
+let icChartInstance=null, irChartInstance=null;
+function renderCharts(){
+    // 聚合到因子层面
+    const byFactor = {};
+    resultsData.forEach(r => {
+        if (!byFactor[r.factor_id]) byFactor[r.factor_id] = { ic: [], ir: [] };
+        if (typeof r.ic_pearson==='number') byFactor[r.factor_id].ic.push(r.ic_pearson);
+        if (typeof r.sharpe_ratio==='number') byFactor[r.factor_id].ir.push(r.sharpe_ratio);
+    });
+    const labels = Object.keys(byFactor);
+    const icMeans = labels.map(k => byFactor[k].ic.length? byFactor[k].ic.reduce((a,b)=>a+b,0)/byFactor[k].ic.length : 0);
+    const irMeans = labels.map(k => byFactor[k].ir.length? byFactor[k].ir.reduce((a,b)=>a+b,0)/byFactor[k].ir.length : 0);
+    const icCtx = document.getElementById('icBarChart').getContext('2d');
+    const irCtx = document.getElementById('irBarChart').getContext('2d');
+    if (icChartInstance) icChartInstance.destroy();
+    if (irChartInstance) irChartInstance.destroy();
+    icChartInstance = new Chart(icCtx, { type:'bar', data:{ labels, datasets:[{ label:'IC', data: icMeans, backgroundColor:'rgba(54,162,235,0.5)' }] }, options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } } });
+    irChartInstance = new Chart(irCtx, { type:'bar', data:{ labels, datasets:[{ label:'IR', data: irMeans, backgroundColor:'rgba(255,159,64,0.5)' }] }, options:{ responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } } });
+}
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+    if (!resultsData.length) { alert('暂无结果'); return; }
+    const cols = ['factor_id','symbol','timeframe','ic_pearson','ic_spearman','win_rate','sharpe_ratio','long_short_return'];
+    const lines = [cols.join(',')].concat(resultsData.map(r=> cols.map(c=> r[c]!=null? r[c]: '').join(',')));
+    const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download='batch_evaluation_results.csv'; a.click(); URL.revokeObjectURL(url);
+});
+</script>
+{% endblock %} 

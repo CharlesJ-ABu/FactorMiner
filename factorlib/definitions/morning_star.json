@@ -1,0 +1,22 @@
+{
+  "factor_id": "morning_star",
+  "name": "启明星形态",
+  "description": "Morning Star Pattern - 三根K线组成的看涨反转形态",
+  "category": "pattern",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/morning_star.py",
+    "function_code": "def calculate(data, **kwargs):\n    import pandas as pd\n    # TODO: 实现该因子计算逻辑\n    return pd.Series([float('nan')]*len(data), index=data.index)\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "gap_threshold": 0.01
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.306539"
+  }
+}

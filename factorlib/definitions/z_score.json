@@ -1,0 +1,25 @@
+{
+  "factor_id": "z_score",
+  "name": "Z分数",
+  "description": "Z-Score - 标准化价格偏离程度",
+  "category": "math",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/z_score.py",
+    "function_code": "def calculate(data, period=20, **kwargs):\n    mean = data['close'].rolling(window=period).mean()\n    std = data['close'].rolling(window=period).std()\n    return (data['close']-mean)/std\n",
+    "entry_point": "calculate",
+    "imports": [
+      "import pandas as pd",
+      "import numpy as np"
+    ]
+  },
+  "parameters": {
+    "period": 20
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.308296"
+  }
+}

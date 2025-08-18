@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}数据查看 - {{ config.title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>📁 数据查看</h2>
+        <p class="text-muted">查看本地存储的行情数据</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>📊 本地数据</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">筛选交易所</label>
+                        <select class="form-select" id="filterExchange">
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">筛选交易对</label>
+                        <select class="form-select" id="filterSymbol">
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">筛选时间框架</label>
+                        <select class="form-select" id="filterTimeframe">
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">筛选数据类型</label>
+                        <select class="form-select" id="filterDataType">
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">&nbsp;</label>
+                        <button class="btn btn-outline-primary w-100" onclick="refreshData()">
+                            🔄 刷新
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>交易所</th>
+                                <th>交易对</th>
+                                <th>时间框架</th>
+                                <th>数据类型</th>
+                                <th>数据范围</th>
+                                <th>数据点数</th>
+                                <th>文件大小</th>
+                                <th>最后修改</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTable">
+                            <!-- 数据将在这里动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('数据查看页面初始化');
+    loadLocalData();
+    
+    // 添加筛选器事件监听器
+    document.getElementById('filterExchange').addEventListener('change', function() {
+        displayData(window.currentData || []);
+    });
+    document.getElementById('filterSymbol').addEventListener('change', function() {
+        displayData(window.currentData || []);
+    });
+    document.getElementById('filterTimeframe').addEventListener('change', function() {
+        displayData(window.currentData || []);
+    });
+    document.getElementById('filterDataType').addEventListener('change', function() {
+        displayData(window.currentData || []);
+    });
+});
+
+async function loadLocalData() {
+    try {
+        const response = await fetch('/api/data/local-data');
+        const result = await response.json();
+        
+        if (result.success) {
+            window.currentData = result.data; // 保存到全局变量
+            displayData(result.data);
+            updateFilters(result.data);
+        } else {
+            console.error('加载数据失败:', result.error);
+        }
+    } catch (error) {
+        console.error('加载数据失败:', error);
+    }
+}
+
+function displayData(data) {
+    const tbody = document.getElementById('dataTable');
+    tbody.innerHTML = '';
+    
+    // 应用筛选
+    const filteredData = filterData(data);
+    
+    if (filteredData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">暂无数据</td></tr>';
+        return;
+    }
+    
+    filteredData.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${item.exchange.toUpperCase()}</td>
+            <td>${item.symbol}</td>
+            <td>${item.timeframe}</td>
+            <td>${item.data_type || 'unknown'}</td>
+            <td>${item.date_range.start} 到 ${item.date_range.end}</td>
+            <td>${item.data_points.toLocaleString()}</td>
+            <td>${item.file_size}</td>
+            <td>${item.last_modified}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="viewData('${item.file_path}')">
+                    👁️ 查看
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteData('${item.file_path}')">
+                    🗑️ 删除
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function filterData(data) {
+    const exchangeFilter = document.getElementById('filterExchange').value;
+    const symbolFilter = document.getElementById('filterSymbol').value;
+    const timeframeFilter = document.getElementById('filterTimeframe').value;
+    const dataTypeFilter = document.getElementById('filterDataType').value;
+    
+    return data.filter(item => {
+        const exchangeMatch = !exchangeFilter || item.exchange === exchangeFilter;
+        const symbolMatch = !symbolFilter || item.symbol === symbolFilter;
+        const timeframeMatch = !timeframeFilter || item.timeframe === timeframeFilter;
+        const dataTypeMatch = !dataTypeFilter || (item.data_type || 'unknown') === dataTypeFilter;
+        
+        return exchangeMatch && symbolMatch && timeframeMatch && dataTypeMatch;
+    });
+}
+
+function updateFilters(data) {
+    const exchanges = [...new Set(data.map(item => item.exchange))];
+    const symbols = [...new Set(data.map(item => item.symbol))];
+    const timeframes = [...new Set(data.map(item => item.timeframe))];
+    const dataTypes = [...new Set(data.map(item => item.data_type || 'unknown'))];
+    
+    // 更新交易所筛选
+    const exchangeFilter = document.getElementById('filterExchange');
+    exchangeFilter.innerHTML = '<option value="">全部</option>';
+    exchanges.forEach(exchange => {
+        const option = document.createElement('option');
+        option.value = exchange;
+        option.textContent = exchange.toUpperCase();
+        exchangeFilter.appendChild(option);
+    });
+    
+    // 更新交易对筛选
+    const symbolFilter = document.getElementById('filterSymbol');
+    symbolFilter.innerHTML = '<option value="">全部</option>';
+    symbols.forEach(symbol => {
+        const option = document.createElement('option');
+        option.value = symbol;
+        option.textContent = symbol;
+        symbolFilter.appendChild(option);
+    });
+    
+    // 更新时间框架筛选
+    const timeframeFilter = document.getElementById('filterTimeframe');
+    timeframeFilter.innerHTML = '<option value="">全部</option>';
+    timeframes.forEach(timeframe => {
+        const option = document.createElement('option');
+        option.value = timeframe;
+        option.textContent = timeframe;
+        timeframeFilter.appendChild(option);
+    });
+    
+    // 更新数据类型筛选
+    const dataTypeFilter = document.getElementById('filterDataType');
+    dataTypeFilter.innerHTML = '<option value="">全部</option>';
+    dataTypes.forEach(dataType => {
+        const option = document.createElement('option');
+        option.value = dataType;
+        option.textContent = dataType;
+        dataTypeFilter.appendChild(option);
+    });
+}
+
+function refreshData() {
+    loadLocalData();
+}
+
+function viewData(filePath) {
+    alert(`查看数据: ${filePath}\n\n数据查看功能开发中...`);
+}
+
+function deleteData(filePath) {
+    if (confirm(`确定要删除这个数据文件吗？\n${filePath}`)) {
+        fetch('/api/data/delete-data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ file_path: filePath })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert('数据删除成功');
+                loadLocalData();
+            } else {
+                alert('删除失败: ' + result.error);
+            }
+        })
+        .catch(error => {
+            console.error('删除失败:', error);
+            alert('删除失败: ' + error.message);
+        });
+    }
+}
+</script>
+{% endblock %} 

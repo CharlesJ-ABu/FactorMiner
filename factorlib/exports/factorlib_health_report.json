@@ -1,0 +1,901 @@
+{
+  "sample_file": "/Users/charles/FactorMiner/data/binance/futures/BTC_USDT_USDT-1h-futures.feather",
+  "results": [
+    {
+      "factor_id": "gap_up",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 54,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "williams_r",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 201,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "schaff_trend_cycle",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 160,
+      "elapsed_ms": 1,
+      "error": null
+    },
+    {
+      "factor_id": "macd_signal",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 213,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "morning_star",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 6,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "chande_momentum",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 194,
+      "elapsed_ms": 1,
+      "error": null
+    },
+    {
+      "factor_id": "tema",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 214,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "momentum_v2",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 203,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "adx",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 188,
+      "elapsed_ms": 1,
+      "error": null
+    },
+    {
+      "factor_id": "supertrend_direction",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 214,
+      "elapsed_ms": 14,
+      "error": null
+    },
+    {
+      "factor_id": "momentum",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 203,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "z_score",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 1,
+      "error": null
+    },
+    {
+      "factor_id": "bb_lower",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "open_interest_ratio",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 0,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "guppy_mma",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 213,
+      "elapsed_ms": 1,
+      "error": null
+    },
+    {
+      "factor_id": "macd_v3",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 213,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "ichimoku_senkou_b",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 137,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "linear_regression",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 214,
+      "elapsed_ms": 1,
+      "error": null
+    },
+    {
+      "factor_id": "coppock_curve",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 191,
+      "elapsed_ms": 1,
+      "error": null
+    },
+    {
+      "factor_id": "triangle_pattern",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 165,
+      "elapsed_ms": 8,
+      "error": null
+    },
+    {
+      "factor_id": "gap_fill",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 166,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "kama",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 204,
+      "elapsed_ms": 3,
+      "error": null
+    },
+    {
+      "factor_id": "elder_ray_bear",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 214,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "heikin_ashi_close",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 214,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "ichimoku_kijun",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 189,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "custom_momentum",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 202,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "funding_rate_ma",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 0,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "donchian_middle",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "volume_ratio",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "stoch_k",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 201,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "doji",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 0,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "macd_histogram",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 213,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "vwap",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 214,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "awesome_oscillator",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 181,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "keltner_lower",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 2,
+      "error": null
+    },
+    {
+      "factor_id": "engulfing_bullish",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 26,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "klinger_oscillator",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 212,
+      "elapsed_ms": 1,
+      "error": null
+    },
+    {
+      "factor_id": "support_level",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 165,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "force_index",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 213,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "aroon_down",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 158,
+      "elapsed_ms": 2,
+      "error": null
+    },
+    {
+      "factor_id": "hanging_man",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 3,
+      "elapsed_ms": 2,
+      "error": null
+    },
+    {
+      "factor_id": "aroon_up",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 164,
+      "elapsed_ms": 2,
+      "error": null
+    },
+    {
+      "factor_id": "volume_sma",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "donchian_upper",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "social_sentiment",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 0,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "evening_star",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 9,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "bb_bandwidth_v3",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "fractal_down",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 27,
+      "elapsed_ms": 9,
+      "error": null
+    },
+    {
+      "factor_id": "mfi",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 201,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "ppo",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 213,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "engulfing_bearish",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 27,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "dpo",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "trix",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 213,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "accumulation_distribution",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 214,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "vortex_oscillator",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 200,
+      "elapsed_ms": 2,
+      "error": null
+    },
+    {
+      "factor_id": "elder_ray_bull",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 214,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "balance_of_power",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 214,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "roc",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 202,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "sma_v3",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "supertrend",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 0,
+      "elapsed_ms": 12,
+      "error": null
+    },
+    {
+      "factor_id": "market_structure",
+      "status": "ok",
+      "length": 98,
+      "non_zero": 2,
+      "elapsed_ms": 2,
+      "error": null
+    },
+    {
+      "factor_id": "sma_v2",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "bb_width",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "chaikin_money_flow",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "resistance_level",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 165,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "donchian_lower",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "rsi",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 201,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "multi_timeframe_trend",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 213,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "long_short_ratio",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 0,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "stoch_d",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 199,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "chaikin_oscillator",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 213,
+      "elapsed_ms": 1,
+      "error": null
+    },
+    {
+      "factor_id": "fractal_up",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 37,
+      "elapsed_ms": 8,
+      "error": null
+    },
+    {
+      "factor_id": "adaptive_rsi",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 212,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "ichimoku_tenkan",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 206,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "keltner_upper",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 2,
+      "error": null
+    },
+    {
+      "factor_id": "shooting_star",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 1,
+      "elapsed_ms": 2,
+      "error": null
+    },
+    {
+      "factor_id": "wma",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "kst",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 170,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "bb_percent",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "stoch_rsi",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 177,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "correlation",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 176,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "volatility_adjusted_return",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 194,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "atr",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 201,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "rmi",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 184,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "bb_upper",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "obv",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 213,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "rvi",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 201,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "macd",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 213,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "active_addresses",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 0,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "sma",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "mayer_multiple",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 15,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "gap_down",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 0,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "perpetual_premium",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 0,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "hammer",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 3,
+      "elapsed_ms": 2,
+      "error": null
+    },
+    {
+      "factor_id": "cci",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 176,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "breakout_strength",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 170,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "ulcer_index",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 188,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "liquidation_level",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 0,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "ease_of_movement",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 200,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "percentile_rank",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 195,
+      "elapsed_ms": 6,
+      "error": null
+    },
+    {
+      "factor_id": "fear_greed_index",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 0,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "ultimate_oscillator",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 187,
+      "elapsed_ms": 2,
+      "error": null
+    },
+    {
+      "factor_id": "ema",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 214,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "ichimoku_senkou_a",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 163,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "ichimoku_chikou",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 214,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "dema",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 214,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "tsi",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 213,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "whale_activity",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 0,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "aroon_oscillator",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 190,
+      "elapsed_ms": 4,
+      "error": null
+    },
+    {
+      "factor_id": "parabolic_sar",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 214,
+      "elapsed_ms": 6,
+      "error": null
+    },
+    {
+      "factor_id": "network_value",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 0,
+      "elapsed_ms": 0,
+      "error": null
+    },
+    {
+      "factor_id": "rsi_v2",
+      "status": "ok",
+      "length": 214,
+      "non_zero": 201,
+      "elapsed_ms": 0,
+      "error": null
+    }
+  ]
+}

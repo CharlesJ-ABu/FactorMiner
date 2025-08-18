@@ -1,0 +1,33 @@
+# 核心数据处理
+pandas>=1.5.0
+numpy>=1.21.0
+scipy>=1.9.0
+
+# 机器学习
+scikit-learn>=1.1.0
+xgboost>=1.6.0
+lightgbm>=3.3.0
+
+# 数据可视化
+matplotlib>=3.5.0
+seaborn>=0.11.0
+plotly>=5.10.0
+
+# 数据存储
+pyarrow>=8.0.0
+feather-format>=0.4.1
+
+# Web框架
+flask>=2.2.0
+flask-cors>=3.0.10
+
+# 其他工具
+tqdm>=4.64.0
+joblib>=1.2.0
+psutil>=5.9.0
+
+# 交易所接口
+ccxt>=4.0.0
+
+# 数据存储
+sqlite3 

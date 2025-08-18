@@ -1,0 +1,20 @@
+{
+  "factor_id": "sma",
+  "name": "简单移动平均线",
+  "description": "Simple Moving Average - 最基础的趋势跟踪指标",
+  "category": "trend",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula": "close.rolling(window=period).mean()",
+    "language": "pandas"
+  },
+  "parameters": {
+    "period": 20
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.326051"
+  }
+}

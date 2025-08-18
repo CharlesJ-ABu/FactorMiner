@@ -1,0 +1,20 @@
+{
+  "factor_id": "momentum",
+  "name": "动量指标",
+  "description": "Momentum - 价格变化的绝对值",
+  "category": "momentum",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula": "close.pct_change(periods=period)",
+    "language": "pandas"
+  },
+  "parameters": {
+    "period": 10
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.308035"
+  }
+}

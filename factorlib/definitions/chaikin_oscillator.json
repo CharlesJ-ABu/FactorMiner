@@ -1,0 +1,18 @@
+{
+  "factor_id": "chaikin_oscillator",
+  "name": "柴金震荡",
+  "description": "Chaikin Oscillator - ADL快慢EMA差",
+  "category": "volume",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/chaikin_oscillator.py",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": { "fast": 3, "slow": 10 },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {}
+}
+

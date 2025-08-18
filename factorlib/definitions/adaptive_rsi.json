@@ -1,0 +1,24 @@
+{
+  "factor_id": "adaptive_rsi",
+  "name": "自适应RSI",
+  "description": "Adaptive RSI - 根据市场波动性自适应调整周期的RSI",
+  "category": "composite",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/adaptive_rsi.py",
+    "function_code": "def calculate(data, **kwargs):\n    import pandas as pd\n    # TODO: 实现该因子计算逻辑\n    return pd.Series([float('nan')]*len(data), index=data.index)\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "base_period": 14,
+    "min_period": 5,
+    "max_period": 50
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.322193"
+  }
+}

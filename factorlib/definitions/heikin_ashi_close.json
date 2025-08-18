@@ -1,0 +1,18 @@
+{
+  "factor_id": "heikin_ashi_close",
+  "name": "平均K线收盘",
+  "description": "Heikin-Ashi Close - (O+H+L+C)/4",
+  "category": "price",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/heikin_ashi_close.py",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {}
+}
+

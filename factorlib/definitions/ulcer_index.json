@@ -1,0 +1,18 @@
+{
+  "factor_id": "ulcer_index",
+  "name": "溃疡指数",
+  "description": "Ulcer Index - 基于回撤的风险度量",
+  "category": "risk",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/ulcer_index.py",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": { "period": 14 },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {}
+}
+

@@ -1,0 +1,26 @@
+{
+  "factor_id": "bb_width",
+  "name": "布林带宽度",
+  "description": "Bollinger Band Width - 衡量波动率的指标",
+  "category": "volatility",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/bb_width.py",
+    "function_code": "def calculate(data, period=20, std_dev=2, **kwargs):\n    sma = data['close'].rolling(window=period).mean()\n    std = data['close'].rolling(window=period).std()\n    upper = sma + std*std_dev\n    lower = sma - std*std_dev\n    return (upper - lower) / sma\n",
+    "entry_point": "calculate",
+    "imports": [
+      "import pandas as pd",
+      "import numpy as np"
+    ]
+  },
+  "parameters": {
+    "period": 20,
+    "std_dev": 2
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.320401"
+  }
+}

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - {{ config.title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-light p-5 rounded">
+            <h1 class="display-4">
+                📊 欢迎使用 {{ config.title }}
+            </h1>
+            <p class="lead">{{ config.description }}</p>
+            <hr class="my-4">
+            <p>专业的量化因子挖掘、评估和优化平台，帮助您构建高质量的量化交易策略。</p>
+            <a class="btn btn-primary btn-lg" href="{{ url_for('main.factor_mining') }}" role="button">
+                🚀 开始因子挖掘
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;">⚙️</div>
+                <h5 class="card-title">因子构建</h5>
+                <p class="card-text">构建技术因子、统计因子、机器学习因子等多种类型的量化因子。</p>
+                <a href="{{ url_for('main.factor_mining') }}" class="btn btn-outline-primary">
+                    开始挖掘
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div style="font-size: 3rem; color: var(--success-color); margin-bottom: 1rem;">📈</div>
+                <h5 class="card-title">因子评估</h5>
+                <p class="card-text">使用IC、IR、胜率等多种指标全面评估因子的有效性和稳定性。</p>
+                <a href="{{ url_for('main.factor_evaluation') }}" class="btn btn-outline-success">
+                    开始评估
+                </a>
+            </div>
+        </div>
+    </div>
+    
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <div style="font-size: 3rem; color: var(--info-color); margin-bottom: 1rem;">📚</div>
+                                <h5 class="card-title">因子库</h5>
+                                <p class="card-text">管理和查看所有已挖掘的因子，使用行情数据进行评估和分析。</p>
+                                <a href="{{ url_for('main.factor_library') }}" class="btn btn-outline-info">
+                                    进入因子库
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            <!-- 第二行：数据管理功能 -->
+            <div class="row mt-5">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <div style="font-size: 3rem; color: var(--warning-color); margin-bottom: 1rem;">📥</div>
+                            <h5 class="card-title">数据下载</h5>
+                            <p class="card-text">从交易所下载历史行情数据，支持现货、期货等多种交易类型。</p>
+                            <a href="{{ url_for('main.data_download') }}" class="btn btn-outline-warning">
+                                开始下载
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <div style="font-size: 3rem; color: var(--secondary-color); margin-bottom: 1rem;">📁</div>
+                            <h5 class="card-title">数据查看</h5>
+                            <p class="card-text">查看和管理本地数据文件，进行数据分析和可视化。</p>
+                            <a href="{{ url_for('main.data_viewer') }}" class="btn btn-outline-secondary">
+                                查看数据
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+{% endblock %} 

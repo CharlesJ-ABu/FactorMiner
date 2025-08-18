@@ -1,0 +1,25 @@
+{
+  "factor_id": "tema",
+  "name": "三重指数移动平均线",
+  "description": "Triple Exponential Moving Average - 进一步减少滞后",
+  "category": "trend",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/tema.py",
+    "function_code": "def calculate(data, period=21, **kwargs):\n    ema1 = data['close'].ewm(span=period).mean()\n    ema2 = ema1.ewm(span=period).mean()\n    ema3 = ema2.ewm(span=period).mean()\n    return 3*ema1 - 3*ema2 + ema3\n",
+    "entry_point": "calculate",
+    "imports": [
+      "import pandas as pd",
+      "import numpy as np"
+    ]
+  },
+  "parameters": {
+    "period": 21
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.307360"
+  }
+}

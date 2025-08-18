@@ -1,0 +1,18 @@
+{
+  "factor_id": "trix",
+  "name": "三重指数变动",
+  "description": "TRIX - 三重指数平滑变化率",
+  "category": "momentum",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/trix.py",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": { "period": 15 },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {}
+}
+

@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}关于 - {{ config.title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-light p-5 rounded">
+            <h1 class="display-4">
+                <i class="fas fa-info-circle text-primary me-3"></i>
+                关于 {{ config.title }}
+            </h1>
+            <p class="lead">{{ config.description }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-8">
+        <h3><i class="fas fa-book text-success me-2"></i>项目介绍</h3>
+        <p>FactorMiner 是一个专业的量化因子挖掘平台，旨在帮助量化交易者和研究人员构建、评估和优化高质量的量化因子。</p>
+        
+        <h4 class="mt-4">核心功能</h4>
+        <ul>
+            <li><strong>因子构建</strong>：支持技术因子、统计因子、机器学习因子等多种类型的因子构建</li>
+            <li><strong>因子评估</strong>：使用IC、IR、胜率等多种指标全面评估因子有效性</li>
+            <li><strong>因子优化</strong>：提供贪婪算法、遗传算法、Lasso回归等多种优化方法</li>
+            <li><strong>因子组合</strong>：支持等权重、IC加权、ML加权等多种组合方式</li>
+            <li><strong>可视化分析</strong>：提供丰富的图表和报告展示因子表现</li>
+        </ul>
+        
+        <h4 class="mt-4">技术特色</h4>
+        <ul>
+            <li><strong>模块化设计</strong>：清晰的代码结构，便于扩展和维护</li>
+            <li><strong>高性能计算</strong>：优化的算法实现，支持大规模因子计算</li>
+            <li><strong>Web界面</strong>：直观的用户界面，降低使用门槛</li>
+            <li><strong>API接口</strong>：提供完整的API接口，支持程序化调用</li>
+        </ul>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-cog me-2"></i>技术栈</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <i class="fab fa-python text-primary me-2"></i>
+                        Python 3.8+
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-database text-success me-2"></i>
+                        Pandas & NumPy
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-brain text-warning me-2"></i>
+                        Scikit-learn
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fab fa-js text-info me-2"></i>
+                        Flask & Bootstrap
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-chart-line text-danger me-2"></i>
+                        Matplotlib & Plotly
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-users me-2"></i>版本信息</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>版本：</strong>{{ config.version }}</p>
+                <p><strong>作者：</strong>{{ config.author }}</p>
+                <p><strong>许可证：</strong>MIT</p>
+                <p><strong>更新时间：</strong>2024年</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12">
+        <h3><i class="fas fa-question-circle text-info me-2"></i>使用指南</h3>
+        <div class="accordion" id="usageGuide">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                        如何开始使用？
+                    </button>
+                </h2>
+                <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#usageGuide">
+                    <div class="accordion-body">
+                        <ol>
+                            <li>选择交易对和时间框架</li>
+                            <li>选择要构建的因子类型</li>
+                            <li>点击"开始构建"按钮</li>
+                            <li>等待构建完成，查看结果</li>
+                            <li>进行因子评估和优化</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                        支持的因子类型
+                    </button>
+                </h2>
+                <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#usageGuide">
+                    <div class="accordion-body">
+                        <ul>
+                            <li><strong>技术因子</strong>：SMA、EMA、RSI、MACD、布林带等</li>
+                            <li><strong>统计因子</strong>：滚动统计、分布特征、波动率等</li>
+                            <li><strong>高级因子</strong>：交互因子、比率因子、滞后因子等</li>
+                            <li><strong>机器学习因子</strong>：随机森林、梯度提升、PCA等</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                        评估指标说明
+                    </button>
+                </h2>
+                <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#usageGuide">
+                    <div class="accordion-body">
+                        <ul>
+                            <li><strong>IC (信息系数)</strong>：因子与未来收益的相关性</li>
+                            <li><strong>IR (信息比率)</strong>：IC的稳定性指标</li>
+                            <li><strong>胜率</strong>：因子预测正确的比例</li>
+                            <li><strong>有效性得分</strong>：综合评估指标</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

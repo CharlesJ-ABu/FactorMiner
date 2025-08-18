@@ -1,0 +1,22 @@
+{
+  "factor_id": "momentum_v2",
+  "name": "动量代码",
+  "description": "基于代码的动量指标",
+  "category": "custom",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/custom_momentum.py",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "period": 10
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "413c8999",
+    "created_at": "2025-08-09T22:18:49.359112"
+  }
+}

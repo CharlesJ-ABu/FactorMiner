@@ -1,0 +1,23 @@
+{
+  "factor_id": "liquidation_level",
+  "name": "清算水平指标",
+  "description": "Liquidation Level - 估算的清算压力水平",
+  "category": "crypto",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/liquidation_level.py",
+    "function_code": "def calculate(data, **kwargs):\n    import pandas as pd\n    # TODO: 实现该因子计算逻辑\n    return pd.Series([float('nan')]*len(data), index=data.index)\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "period": 24,
+    "leverage": 10
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.327729"
+  }
+}

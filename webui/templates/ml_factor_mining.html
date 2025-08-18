@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+
+{% block title %}ML因子挖掘 - FactorMiner{% endblock %}
+
+{% block extra_css %}
+<!-- ML因子挖掘专用样式 -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/factor_mining.css') }}">
+<style>
+.ml-params {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 20px;
+    margin: 20px 0;
+    color: white;
+}
+
+.ml-param-group {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    margin: 10px 0;
+}
+
+.ml-param-group h5 {
+    color: #FFD700;
+    margin-bottom: 15px;
+}
+
+.algorithm-info {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 10px;
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+.algorithm-info .badge {
+    background: #FFD700;
+    color: #333;
+    margin-right: 8px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-2">🤖 ML因子挖掘</h2>
+            <p class="text-muted mb-4">使用先进的机器学习算法挖掘和优化量化因子</p>
+        </div>
+    </div>
+
+    <!-- ML挖掘配置 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-3">⚙️ ML挖掘配置</h3>
+                </div>
+                <div class="card-body">
+                    <form id="mlMiningForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="exchangeSelect" class="form-label">交易所</label>
+                                    <select class="form-select" id="exchangeSelect" required>
+                                        <option value="">请选择...</option>
+                                        <option value="binance">Binance</option>
+                                        <option value="okx">OKX</option>
+                                        <option value="bybit">Bybit</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="tradeTypeSelect" class="form-label">交易类型</label>
+                                    <select class="form-select" id="tradeTypeSelect" required>
+                                        <option value="">请选择...</option>
+                                        <option value="futures">期货</option>
+                                        <option value="spot">现货</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="refreshDataBtn" onclick="refreshLocalMeta()">
+                                        <i class="fas fa-sync-alt me-1"></i>刷新数据
+                                    </button>
+                                    <small class="form-text text-muted d-block mt-1">选择交易所和交易类型后，点击刷新获取可用数据</small>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="symbolsSelect" class="form-label">交易对</label>
+                                    <select class="form-select" id="symbolsSelect" multiple required>
+                                        <option value="">请选择...</option>
+                                    </select>
+                                    <div class="form-text">可多选，建议选择2-5个交易对</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="timeframesSelect" class="form-label">时间框架</label>
+                                    <select class="form-select" id="timeframesSelect" multiple required>
+                                        <option value="">请选择...</option>
+                                    </select>
+                                    <div class="form-text">可多选，建议选择1-3个时间框架</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="dataRange" class="form-label">数据时间范围</label>
+                                    <div id="rangeSlider"></div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">
+                                            选择范围: <span id="rangeInfo">请先选择交易对和时间框架</span>
+                                        </small>
+                                    </div>
+                                    <input type="hidden" id="startDate" name="startDate">
+                                    <input type="hidden" id="endDate" name="endDate">
+                                    <div class="form-text">选择数据时间范围，建议至少6个月数据用于ML训练</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <!-- ML算法参数 -->
+                                <div class="ml-params">
+                                    <h5><i class="fas fa-brain me-2"></i>ML算法参数</h5>
+                                    
+                                    <div class="ml-param-group">
+                                        <h6>滚动窗口参数</h6>
+                                        <div class="mb-3">
+                                            <label for="window" class="form-label">滚动窗口大小</label>
+                                            <input type="number" class="form-control" id="window" name="window" value="252" min="60" max="1000">
+                                            <div class="form-text">用于滚动ML训练的数据窗口大小（交易日）</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="rollingWindow" class="form-label">滚动步长</label>
+                                            <input type="number" class="form-control" id="rollingWindow" name="rollingWindow" value="21" min="5" max="100">
+                                            <div class="form-text">每次滚动的步长（交易日）</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="ml-param-group">
+                                        <h6>特征工程参数</h6>
+                                        <div class="mb-3">
+                                            <label for="nComponents" class="form-label">PCA组件数</label>
+                                            <input type="number" class="form-control" id="nComponents" name="nComponents" value="10" min="5" max="50">
+                                            <div class="form-text">PCA降维的组件数量</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="kBest" class="form-label">特征选择数量</label>
+                                            <input type="number" class="form-control" id="kBest" name="kBest" value="20" min="10" max="100">
+                                            <div class="form-text">特征选择算法保留的特征数量</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="ml-param-group">
+                                        <h6>模型参数</h6>
+                                        <div class="mb-3">
+                                            <label for="adaptiveThreshold" class="form-label">自适应阈值</label>
+                                            <input type="number" class="form-control" id="adaptiveThreshold" name="adaptiveThreshold" value="0.8" min="0.5" max="0.95" step="0.05">
+                                            <div class="form-text">市场状态检测的自适应阈值</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 优化参数 -->
+                                <div class="mb-3">
+                                    <label for="optimizationMethod" class="form-label">优化方法</label>
+                                    <select class="form-select" id="optimizationMethod" name="optimizationMethod">
+                                        <option value="greedy">贪心算法</option>
+                                        <option value="genetic">遗传算法</option>
+                                        <option value="correlation">相关性过滤</option>
+                                    </select>
+                                    <div class="form-text">选择因子组合的优化算法</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="maxFactors" class="form-label">最大因子数量</label>
+                                    <input type="number" class="form-control" id="maxFactors" name="maxFactors" value="20" min="10" max="50">
+                                    <div class="form-text">ML挖掘完成后选择的最优因子数量</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="minIC" class="form-label">最小IC值</label>
+                                    <input type="number" class="form-control" id="minIC" name="minIC" value="0.015" min="0.005" max="0.1" step="0.001">
+                                    <div class="form-text">ML因子选择的最小信息系数阈值</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="minIR" class="form-label">最小IR值</label>
+                                    <input type="number" class="form-control" id="minIR" name="minIR" value="0.08" min="0.01" max="0.5" step="0.01">
+                                    <div class="form-text">ML因子选择的最小信息比率阈值</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="minSampleSize" class="form-label">最小样本数</label>
+                                    <input type="number" class="form-control" id="minSampleSize" name="minSampleSize" value="50" min="30" max="200">
+                                    <div class="form-text">ML因子评估的最小样本数量</div>
+                                </div>
+                                
+                                <!-- 状态显示区域 -->
+                                <div id="statusDisplay" class="alert alert-info mb-3" style="display: none;">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <span id="statusMessage">准备就绪</span>
+                                </div>
+                                
+                                <div class="text-center">
+                                    <button type="submit" class="btn btn-primary btn-lg px-5" id="startMLMiningBtn">
+                                        <i class="fas fa-robot me-2"></i>开始ML因子挖掘
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 等待状态 -->
+    <div id="waitingState" class="row mt-4" style="display: none;">
+        <div class="col-12">
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+                <h4 class="mt-3">正在启动ML因子挖掘...</h4>
+                <p class="text-muted">请稍候，系统正在准备ML挖掘环境</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ML挖掘进度 -->
+    <div id="mlMiningProgress" class="row mt-4" style="display: none;">
+        <div class="col-12">
+            <div class="progress-container">
+                <h4 class="text-center mb-4">
+                    <i class="fas fa-robot me-2"></i>ML因子挖掘进度
+                </h4>
+                
+                <!-- 步骤1: 数据加载 -->
+                <div class="progress-step" id="step1">
+                    <div class="step-icon pending" id="step1Icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">数据加载</div>
+                        <div class="step-description">从本地数据源加载市场数据</div>
+                        <div class="step-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="step1Progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="step-details" id="step1Details">等待开始...</div>
+                        <div class="step-time" id="step1Time">预计: 5秒</div>
+                    </div>
+                </div>
+                
+                <!-- 步骤2: ML因子构建 -->
+                <div class="progress-step" id="step2">
+                    <div class="step-icon pending" id="step2Icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">ML因子构建</div>
+                        <div class="step-description">使用机器学习算法构建因子</div>
+                        <div class="step-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="step2Progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="step-details" id="step2Details">等待数据加载完成...</div>
+                        <div class="step-time" id="step2Time">预计: 60秒</div>
+                    </div>
+                </div>
+                
+                <!-- 步骤3: 因子评估 -->
+                <div class="progress-step" id="step3">
+                    <div class="step-icon pending" id="step3Icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">因子评估</div>
+                        <div class="step-description">计算因子的IC、IR、胜率等指标</div>
+                        <div class="step-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="step3Progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="step-details" id="step3Details">等待ML因子构建完成...</div>
+                        <div class="step-time" id="step3Time">预计: 30秒</div>
+                    </div>
+                </div>
+                
+                <!-- 步骤4: 因子优化 -->
+                <div class="progress-step" id="step4">
+                    <div class="step-icon pending" id="step4Icon">
+                        <i class="fas fa-filter"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">因子优化</div>
+                        <div class="step-description">选择最优ML因子组合</div>
+                        <div class="step-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="step4Progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="step-details" id="step4Details">等待因子评估完成...</div>
+                        <div class="step-time" id="step4Time">预计: 15秒</div>
+                    </div>
+                </div>
+                
+                <!-- 步骤5: 结果保存 -->
+                <div class="progress-step" id="step5">
+                    <div class="step-icon pending" id="step5Icon">
+                        <i class="fas fa-save"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">结果保存</div>
+                        <div class="step-description">保存ML挖掘结果和历史记录</div>
+                        <div class="step-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="step5Progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="step-details" id="step5Details">等待优化完成...</div>
+                        <div class="step-time" id="step5Time">预计: 5秒</div>
+                    </div>
+                </div>
+                
+                <!-- 总体进度 -->
+                <div class="text-center mt-4">
+                    <div class="h5 mb-2">总体进度</div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-success" id="overallProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="mt-2" id="overallDetails">准备开始...</div>
+                    
+                    <!-- 时间信息 -->
+                    <div class="mt-3">
+                        <div class="text-muted small" id="timeDisplay">预计总时间: 计算中...</div>
+                        <div class="text-muted small" id="systemDisplay">系统信息: 加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ML挖掘结果 -->
+    <div id="mlMiningResults" class="row mt-4" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-3">📊 ML因子挖掘结果</h3>
+                </div>
+                <div class="card-body">
+                    <!-- 结果概览 -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h4 id="totalMLFactors">0</h4>
+                                    <p class="mb-0">总ML因子数</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h4 id="selectedMLFactors">0</h4>
+                                    <p class="mb-0">选中ML因子数</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h4 id="avgMLIC">0.0000</h4>
+                                    <p class="mb-0">平均IC值</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <h4 id="mlExecutionTime">0s</h4>
+                                    <p class="mb-0">执行时间</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ML算法信息 -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="fas fa-cogs me-2"></i>ML算法详情</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="algorithm-info">
+                                        <span class="badge">集成学习</span>
+                                        <span>Random Forest, Gradient Boosting, Ridge, Lasso</span>
+                                    </div>
+                                    <div class="algorithm-info">
+                                        <span class="badge">PCA降维</span>
+                                        <span>主成分分析，提取主要特征</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="algorithm-info">
+                                        <span class="badge">特征选择</span>
+                                        <span>F检验和互信息选择最优特征</span>
+                                    </div>
+                                    <div class="algorithm-info">
+                                        <span class="badge">自适应训练</span>
+                                        <span>根据市场状态调整模型参数</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 结果表格 -->
+                    <div class="table-responsive">
+                        <h5><i class="fas fa-table me-2"></i>ML因子详情</h5>
+                        <div id="mlResultsTable">
+                            <!-- 结果表格将在这里动态生成 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 引入JavaScript -->
+<script src="{{ url_for('static', filename='js/ml_factor_mining.js') }}"></script>
+{% endblock %}

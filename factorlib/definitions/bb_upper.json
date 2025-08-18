@@ -1,0 +1,26 @@
+{
+  "factor_id": "bb_upper",
+  "name": "布林带上轨",
+  "description": "Bollinger Band Upper - 价格上方的动态阻力位",
+  "category": "volatility",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/bb_upper.py",
+    "function_code": "def calculate(data, period=20, std_dev=2, **kwargs):\n    sma = data['close'].rolling(window=period).mean()\n    std = data['close'].rolling(window=period).std()\n    return sma + std*std_dev\n",
+    "entry_point": "calculate",
+    "imports": [
+      "import pandas as pd",
+      "import numpy as np"
+    ]
+  },
+  "parameters": {
+    "period": 20,
+    "std_dev": 2
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.325031"
+  }
+}

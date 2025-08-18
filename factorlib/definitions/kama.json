@@ -1,0 +1,27 @@
+{
+  "factor_id": "kama",
+  "name": "考夫曼自适应移动平均",
+  "description": "Kaufman Adaptive Moving Average - 根据市场效率自适应调整",
+  "category": "trend",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/kama.py",
+    "function_code": "def calculate(data, period=10, fast_sc=2, slow_sc=30, **kwargs):\n    close = data['close']\n    change = (close - close.shift(period)).abs()\n    volatility = close.diff().abs().rolling(window=period).sum()\n    er = change / volatility\n    fast = 2/(fast_sc+1)\n    slow = 2/(slow_sc+1)\n    sc = (er*(fast - slow)+slow)**2\n    kama = pd.Series(index=close.index, dtype=float)\n    if len(close) > period: kama.iloc[period] = close.iloc[period]\n    for i in range(period+1, len(close)):\n        kama.iloc[i] = kama.iloc[i-1] + sc.iloc[i]*(close.iloc[i]-kama.iloc[i-1])\n    return kama\n",
+    "entry_point": "calculate",
+    "imports": [
+      "import pandas as pd",
+      "import numpy as np"
+    ]
+  },
+  "parameters": {
+    "period": 10,
+    "fast_sc": 2,
+    "slow_sc": 30
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.311356"
+  }
+}

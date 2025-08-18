@@ -1,0 +1,25 @@
+{
+  "factor_id": "williams_r",
+  "name": "威廉指标",
+  "description": "Williams %R - 类似随机指标的反向振荡器",
+  "category": "momentum",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/williams_r.py",
+    "function_code": "def calculate(data, period=14, **kwargs):\n    highest = data['high'].rolling(window=period).max()\n    lowest = data['low'].rolling(window=period).min()\n    return (highest - data['close'])/(highest - lowest) * -100\n",
+    "entry_point": "calculate",
+    "imports": [
+      "import pandas as pd",
+      "import numpy as np"
+    ]
+  },
+  "parameters": {
+    "period": 14
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.305548"
+  }
+}

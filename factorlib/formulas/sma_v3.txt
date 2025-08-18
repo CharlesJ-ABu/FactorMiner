@@ -1,0 +1,4 @@
+# 计算简单移动平均线
+# 参数:
+#   - period: 周期
+close.rolling(window=period).mean()

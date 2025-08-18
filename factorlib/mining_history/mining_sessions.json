@@ -1,0 +1,212 @@
+{
+  "mining_sessions": [
+    {
+      "session_id": "07bf9998-3466-4b7d-9b25-3cb0b3502fd3",
+      "timestamp": "2025-08-15T01:45:08.344578",
+      "status": "completed",
+      "config": {
+        "symbols": [
+          "ADA_USDT"
+        ],
+        "timeframes": [
+          "12h"
+        ],
+        "factor_types": [
+          "ml"
+        ],
+        "max_factors": 15,
+        "optimization_method": "greedy",
+        "start_date": "2022-06-25",
+        "end_date": "2025-07-30"
+      },
+      "results": {
+        "total_factors": 10,
+        "selected_factors": [
+          "pca_component_3",
+          "pca_component_1",
+          "ensemble_lasso",
+          "adaptive_ml_factor",
+          "pca_component_10",
+          "pca_component_7",
+          "feature_selection_f_regression_weighted",
+          "feature_selection_mutual_info_mean",
+          "feature_selection_f_regression_mean",
+          "feature_selection_mutual_info_weighted"
+        ],
+        "optimization_score": 0.2690032960161079,
+        "execution_time": 0,
+        "output_path": ""
+      }
+    },
+    {
+      "session_id": "537d7e06-726d-45ce-a67e-08d0d6ab7622",
+      "timestamp": "2025-08-15T01:48:20.882312",
+      "status": "completed",
+      "config": {
+        "symbols": [
+          "PEOPLE_USDT"
+        ],
+        "timeframes": [
+          "6h"
+        ],
+        "factor_types": [
+          "ml"
+        ],
+        "max_factors": 15,
+        "optimization_method": "greedy",
+        "start_date": "2022-06-25",
+        "end_date": "2024-10-29"
+      },
+      "results": {
+        "total_factors": 7,
+        "selected_factors": [
+          "ml_selected_feature_1",
+          "ml_selected_feature_2",
+          "ml_pca_component_2",
+          "ml_selected_feature_3",
+          "ml_selected_feature_5",
+          "ml_selected_feature_4",
+          "ml_pca_component_1"
+        ],
+        "optimization_score": 0.6400691482030506,
+        "execution_time": 0,
+        "output_path": ""
+      }
+    },
+    {
+      "session_id": "f1eef27b-cb62-4ef4-b511-96063b1d9168",
+      "timestamp": "2025-08-15T01:52:00.707147",
+      "status": "completed",
+      "config": {
+        "symbols": [
+          "PEOPLE_USDT"
+        ],
+        "timeframes": [
+          "12h"
+        ],
+        "factor_types": [
+          "ml"
+        ],
+        "max_factors": 15,
+        "optimization_method": "greedy",
+        "start_date": "2022-06-25",
+        "end_date": "2024-10-28"
+      },
+      "results": {
+        "total_factors": 13,
+        "selected_factors": [
+          "pca_component_1",
+          "pca_component_3",
+          "adaptive_ml_factor",
+          "ensemble_random_forest",
+          "ensemble_lasso",
+          "rolling_ml_factor",
+          "pca_component_7",
+          "pca_component_10",
+          "pca_component_8",
+          "feature_selection_f_regression_weighted",
+          "feature_selection_mutual_info_weighted",
+          "feature_selection_mutual_info_mean",
+          "feature_selection_f_regression_mean"
+        ],
+        "optimization_score": 0.3283268731583921,
+        "execution_time": 0,
+        "output_path": ""
+      }
+    },
+    {
+      "session_id": "1b202385-3de8-4f0d-8b01-c0b90e73d18e",
+      "timestamp": "2025-08-18T14:29:28.560408",
+      "status": "completed",
+      "config": {
+        "symbols": [
+          "ADA_USDT"
+        ],
+        "timeframes": [
+          "12h"
+        ],
+        "factor_types": [
+          "technical",
+          "statistical"
+        ],
+        "max_factors": 15,
+        "optimization_method": "greedy",
+        "start_date": "2022-06-25",
+        "end_date": "2025-07-30"
+      },
+      "results": {
+        "total_factors": 89,
+        "selected_factors": [
+          "returns_zscore_50",
+          "price_deviation_100",
+          "vol_change_20",
+          "returns_momentum_5",
+          "vol_change_50",
+          "atr_14",
+          "q75_50",
+          "macd_diff",
+          "returns_momentum_50",
+          "q75_20",
+          "returns_momentum_10",
+          "returns_momentum_20",
+          "q25_50",
+          "atr_21",
+          "q25_20"
+        ],
+        "optimization_score": 0.9244364024498437,
+        "execution_time": 0,
+        "output_path": ""
+      }
+    },
+    {
+      "session_id": "13ad97db-5e95-4d47-8db9-83e28ae09c00",
+      "timestamp": "2025-08-18T14:45:34.467071",
+      "status": "completed",
+      "config": {
+        "symbols": [
+          "PEOPLE_USDT"
+        ],
+        "timeframes": [
+          "6h"
+        ],
+        "factor_types": [
+          "technical",
+          "statistical",
+          "ml"
+        ],
+        "max_factors": 15,
+        "optimization_method": "greedy",
+        "start_date": "2022-06-25",
+        "end_date": "2024-10-29"
+      },
+      "results": {
+        "total_factors": 105,
+        "selected_factors": [
+          "returns_zscore_50",
+          "price_deviation_50",
+          "vol_change_20",
+          "returns_momentum_5",
+          "vol_change_50",
+          "q75_50",
+          "atr_21",
+          "returns_momentum_50",
+          "ensemble_lasso",
+          "macd_diff",
+          "atr_14",
+          "rolling_ml_factor",
+          "macd",
+          "macd_signal",
+          "adaptive_ml_factor"
+        ],
+        "optimization_score": 0.912159396442324,
+        "execution_time": 0,
+        "output_path": ""
+      }
+    }
+  ],
+  "metadata": {
+    "total_sessions": 5,
+    "last_updated": "2025-08-18T14:45:34.467101",
+    "version": "1.0"
+  }
+}

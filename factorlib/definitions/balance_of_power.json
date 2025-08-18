@@ -1,0 +1,18 @@
+{
+  "factor_id": "balance_of_power",
+  "name": "力量平衡",
+  "description": "Balance of Power - (收-开)/(高-低)",
+  "category": "momentum",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/balance_of_power.py",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {}
+}
+

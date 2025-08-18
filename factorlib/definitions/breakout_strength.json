@@ -1,0 +1,23 @@
+{
+  "factor_id": "breakout_strength",
+  "name": "突破强度",
+  "description": "Breakout Strength - 价格突破关键位的强度指标",
+  "category": "pattern",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/breakout_strength.py",
+    "function_code": "def calculate(data, **kwargs):\n    import pandas as pd\n    # TODO: 实现该因子计算逻辑\n    return pd.Series([float('nan')]*len(data), index=data.index)\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "period": 20,
+    "volume_factor": 1.5
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.327507"
+  }
+}

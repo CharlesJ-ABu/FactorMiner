@@ -1,0 +1,22 @@
+{
+  "factor_id": "fear_greed_index",
+  "name": "恐惧贪婪指数",
+  "description": "Fear & Greed Index - 综合市场情绪指标",
+  "category": "crypto",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/fear_greed_index.py",
+    "function_code": "def calculate(data, **kwargs):\n    import pandas as pd\n    # TODO: 实现该因子计算逻辑\n    return pd.Series([float('nan')]*len(data), index=data.index)\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "period": 7
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.328367"
+  }
+}

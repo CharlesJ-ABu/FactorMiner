@@ -1,0 +1,18 @@
+{
+  "factor_id": "guppy_mma",
+  "name": "Guppy 多均线",
+  "description": "Guppy Multiple Moving Averages - 快慢EMA组的扩散/聚拢",
+  "category": "trend",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/guppy_mma.py",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": { "fast_periods": [3,5,8,10,12,15], "slow_periods": [30,35,40,45,50,60], "mode": "spread" },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {}
+}
+

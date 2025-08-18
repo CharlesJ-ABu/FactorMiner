@@ -1,0 +1,25 @@
+{
+  "factor_id": "atr",
+  "name": "平均真实波幅",
+  "description": "Average True Range - 衡量价格波动性的指标",
+  "category": "volatility",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/atr.py",
+    "function_code": "def calculate(data, period=14, **kwargs):\n    tr1 = data['high'] - data['low']\n    tr2 = (data['high'] - data['close'].shift(1)).abs()\n    tr3 = (data['low'] - data['close'].shift(1)).abs()\n    tr = pd.concat([tr1,tr2,tr3], axis=1).max(axis=1)\n    return tr.rolling(window=period).mean()\n",
+    "entry_point": "calculate",
+    "imports": [
+      "import pandas as pd",
+      "import numpy as np"
+    ]
+  },
+  "parameters": {
+    "period": 14
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.324787"
+  }
+}

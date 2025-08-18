@@ -1,0 +1,1397 @@
+{% extends "base.html" %}
+
+{% block title %}因子库 - {{ config.title }}{% endblock %}
+
+{% block content %}
+<style>
+@media (max-width: 768px) {
+    .factor-library-card {
+        height: auto !important;
+        min-height: 400px;
+    }
+    .factor-library-card .card-body {
+        max-height: none !important;
+    }
+}
+/* 因子列表表格整体居中 */
+#factorList table th,
+#factorList table td {
+    text-align: center;
+    vertical-align: middle;
+}
+.sort-icon { margin-left: 4px; font-size: 0.85em; }
+</style>
+<!-- noUiSlider 样式与脚本 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.css">
+<script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<div class="row">
+    <div class="col-12">
+        <h2>📚 因子库</h2>
+        <p class="text-muted">管理和查看所有已挖掘的因子，使用行情数据进行评估和分析</p>
+    </div>
+</div>
+
+<div class="row" style="min-height: 500px;">
+    <!-- 左侧：因子分类和筛选 -->
+    <div class="col-lg-2 col-md-3 col-sm-12 mb-3">
+        <div class="card factor-library-card" style="height: 500px;">
+            <div class="card-header">
+                <h6 class="mb-0">🔍 筛选</h6>
+            </div>
+            <div class="card-body" style="overflow-y: auto; max-height: 400px;">
+                <form id="factorFilterForm">
+                    <!-- 因子类型筛选 -->
+                    <div class="mb-3">
+                        <label class="form-label small">因子类型</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="typeAlpha101" checked>
+                            <label class="form-check-label small" for="typeAlpha101">Alpha101</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="typeML" checked>
+                            <label class="form-check-label small" for="typeML">ML因子</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="typeTraditional" checked>
+                            <label class="form-check-label small" for="typeTraditional">传统因子</label>
+                        </div>
+                    </div>
+                    
+                    <!-- 评估状态筛选 -->
+                    <div class="mb-3">
+                        <label class="form-label small">评估状态</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="statusEvaluated" checked>
+                            <label class="form-check-label small" for="statusEvaluated">已评估</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="statusUnevaluated" checked>
+                            <label class="form-check-label small" for="statusUnevaluated">未评估</label>
+                        </div>
+                    </div>
+                    
+                    <!-- 性能筛选 -->
+                    <div class="mb-3">
+                        <label class="form-label small">性能筛选</label>
+                        <select class="form-select form-select-sm" id="performanceFilter">
+                            <option value="">全部</option>
+                            <option value="high">高绩效 (IC > 0.05)</option>
+                            <option value="medium">中等绩效 (0.02 < IC < 0.05)</option>
+                            <option value="low">低绩效 (IC < 0.02)</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 搜索框 -->
+                    <div class="mb-3">
+                        <label class="form-label small">搜索</label>
+                        <input type="text" class="form-control form-control-sm" id="factorSearch" placeholder="因子名称...">
+                    </div>
+                    
+                    <button type="button" class="btn btn-primary btn-sm w-100" onclick="applyFilters()">应用筛选</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 中间：因子列表 -->
+    <div class="col-lg-10 col-md-9 col-sm-12 mb-3">
+        <div class="card factor-library-card" style="height: 500px;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">📋 因子列表</h6>
+                <div>
+                    <span class="badge bg-primary" id="factorCount">0</span>
+                    <button class="btn btn-sm btn-outline-primary ms-2" onclick="refreshFactorList()">刷新</button>
+                </div>
+            </div>
+            <div class="card-body" style="overflow-y: auto; max-height: 400px;">
+                <div id="factorList">
+                    <div class="text-center text-muted">
+                        <p>正在加载因子列表...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 因子详情区域（选择即显示） -->
+<div class="row mb-3">
+    <!-- 因子详情和评估分区 -->
+    <div class="col-12" id="factorDetailsSection" style="display: none;">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">📊 因子详情与评估</h5>
+            </div>
+            <div class="card-body">
+                <!-- 直接展示所有详情分区，无标签切换 -->
+                <div class="mt-2" id="factorDetailsContent"></div>
+                <hr/>
+                <div class="mt-2" id="factorFormulaContent"></div>
+                <hr/>
+                <div class="mt-2" id="factorEvaluationContent"></div>
+                <hr/>
+                <div class="mt-2" id="factorPerformanceContent"></div>
+                <hr/>
+                <div class="mt-2" id="factorHistoryContent"></div>
+                        </div>
+                    </div>
+                        </div>
+                    </div>
+                    
+
+
+
+
+
+
+<script>
+let currentFactors = [];
+let selectedFactor = null;
+let sortField = 'name';
+let sortAsc = true;
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', async function() {
+    loadFactorList();
+    // 不自动加载交易对和时间框架，等用户选择交易所和交易类型后再加载
+});
+
+// 交易所变化处理
+function onExchangeChange() {
+    const tradeType = document.getElementById('evaluationTradeType').value;
+    if (tradeType) {
+        loadSymbols();
+        // 清空并禁用时间框架，待选择币对后再填充
+        const tfSelect = document.getElementById('evaluationTimeframe');
+        tfSelect.innerHTML = '<option value="">先选择交易对</option>';
+        tfSelect.disabled = true;
+        hideDateSlider();
+    }
+}
+
+// 交易类型变化处理
+function onTradeTypeChange() {
+    const exchange = document.getElementById('evaluationExchange').value;
+    if (exchange) {
+        loadSymbols();
+        // 清空并禁用时间框架，待选择币对后再填充
+        const tfSelect = document.getElementById('evaluationTimeframe');
+        tfSelect.innerHTML = '<option value="">先选择交易对</option>';
+        tfSelect.disabled = true;
+        hideDateSlider();
+    }
+}
+
+// 加载因子列表
+async function loadFactorList() {
+    try {
+        const response = await fetch('/api/factors/list');
+        const data = await response.json();
+        
+        if (data.success) {
+            currentFactors = data.factors;
+            displayFactorList(currentFactors);
+            updateFactorCount();
+        } else {
+            showError('加载因子列表失败: ' + data.message);
+        }
+    } catch (error) {
+        showError('加载因子列表失败: ' + error.message);
+    }
+}
+
+// 显示因子列表
+function displayFactorList(factors) {
+    const container = document.getElementById('factorList');
+    
+    if (!Array.isArray(factors) || factors.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted"><p>没有找到符合条件的因子</p></div>';
+        return;
+    }
+    
+    // 排序
+    const sorted = [...factors].sort((a, b) => {
+        const av = getSortValue(a, sortField);
+        const bv = getSortValue(b, sortField);
+        if (av === bv) return 0;
+        if (av === null || av === undefined) return sortAsc ? 1 : -1;
+        if (bv === null || bv === undefined) return sortAsc ? -1 : 1;
+        if (typeof av === 'number' && typeof bv === 'number') {
+            return sortAsc ? (av - bv) : (bv - av);
+        }
+        return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    });
+
+    const header = `
+        <table class="table table-sm align-middle text-center">
+            <thead>
+                <tr>
+                    <th style="width: 22%; cursor: pointer;" onclick="sortBy('name')">名称 ${getSortIcon('name')}</th>
+                    <th style="width: 10%; cursor: pointer;" onclick="sortBy('type')">类型 ${getSortIcon('type')}</th>
+                    <th style="width: 10%; cursor: pointer;" onclick="sortBy('ic')">IC均值 ${getSortIcon('ic')}</th>
+                    <th style="width: 10%; cursor: pointer;" onclick="sortBy('rank_ic')">Rank IC均值 ${getSortIcon('rank_ic')}</th>
+                    <th style="width: 10%; cursor: pointer;" onclick="sortBy('icir')">ICIR ${getSortIcon('icir')}</th>
+                    <th style="width: 10%; cursor: pointer;" onclick="sortBy('pos_ic_ratio')">正IC占比 ${getSortIcon('pos_ic_ratio')}</th>
+                    <th style="width: 10%; cursor: pointer;" onclick="sortBy('long_short_return')">多空收益 ${getSortIcon('long_short_return')}</th>
+                    <th style="width: 10%; cursor: pointer;" onclick="sortBy('ir')">IR均值 ${getSortIcon('ir')}</th>
+                    <th style="width: 10%; cursor: pointer;" onclick="sortBy('win_rate')">胜率均值 ${getSortIcon('win_rate')}</th>
+                    <th style="width: 10%; cursor: pointer;" onclick="sortBy('evaluations_count')">评估次数 ${getSortIcon('evaluations_count')}</th>
+                    <th style="width: 18%; cursor: pointer;" onclick="sortBy('last_evaluated_at')">最近评估时间 ${getSortIcon('last_evaluated_at')}</th>
+                    <th style="width: 10%;">状态</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    const rows = sorted.map(f => {
+        const ic = f.ic != null ? f.ic.toFixed(4) : '';
+        const rank_ic = f.rank_ic != null ? f.rank_ic.toFixed(4) : '';
+        const icir = f.icir != null ? f.icir.toFixed(4) : '';
+        const pos_ic_ratio = f.pos_ic_ratio != null ? (f.pos_ic_ratio * 100).toFixed(1) + '%' : '';
+        const lsr = f.long_short_return != null ? (f.long_short_return * 100).toFixed(2) + '%' : '';
+        const ir = f.ir != null ? f.ir.toFixed(4) : '';
+        const wr = f.avg_metrics && f.avg_metrics.win_rate != null ? (f.avg_metrics.win_rate * 100).toFixed(1) + '%' : '';
+        const cnt = f.evaluations_count != null ? f.evaluations_count : 0;
+        const last = f.last_evaluated_at ? f.last_evaluated_at : '';
+        return `
+            <tr class="factor-item" style="cursor: pointer;" onclick="selectFactor('${f.id}')">
+                <td><div class="fw-semibold">${f.name}</div><div class="text-muted small">${f.description || ''}</div></td>
+                <td><span class="badge bg-${getTypeBadgeColor(f.type)}">${f.type}</span></td>
+                <td class="text-${f.ic != null ? getICColor(f.ic) : 'muted'}">${ic}</td>
+                <td>${rank_ic}</td>
+                <td>${icir}</td>
+                <td>${pos_ic_ratio}</td>
+                <td>${lsr}</td>
+                <td>${ir}</td>
+                <td>${wr}</td>
+                <td>${cnt}</td>
+                <td class="small text-muted">${last}</td>
+                <td>${f.evaluated ? '<span class="badge bg-success">已评估</span>' : '<span class="badge bg-warning">未评估</span>'}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const footer = `</tbody></table>`;
+    container.innerHTML = header + rows + footer;
+}
+
+function sortBy(field) {
+    if (sortField === field) {
+        sortAsc = !sortAsc;
+    } else {
+        sortField = field;
+        sortAsc = true;
+    }
+    displayFactorList(currentFactors);
+    updateFactorCount();
+}
+
+function getSortValue(f, field) {
+    switch (field) {
+        case 'name': return f.name || '';
+        case 'type': return f.type || '';
+        case 'ic': return f.ic != null ? f.ic : -Infinity;
+        case 'rank_ic': return f.rank_ic != null ? f.rank_ic : -Infinity;
+        case 'icir': return f.icir != null ? f.icir : -Infinity;
+        case 'pos_ic_ratio': return f.pos_ic_ratio != null ? f.pos_ic_ratio : -Infinity;
+        case 'long_short_return': return f.long_short_return != null ? f.long_short_return : -Infinity;
+        case 'ir': return f.ir != null ? f.ir : -Infinity;
+        case 'win_rate': return f.avg_metrics && f.avg_metrics.win_rate != null ? f.avg_metrics.win_rate : -Infinity;
+        case 'evaluations_count': return f.evaluations_count || 0;
+        case 'last_evaluated_at': return f.last_evaluated_at || '';
+        default: return '';
+    }
+}
+
+function getSortIcon(field) {
+    if (sortField !== field) return '';
+    return `<span class="sort-icon">${sortAsc ? '▲' : '▼'}</span>`;
+}
+
+// 选择因子
+function selectFactor(factorId) {
+    selectedFactor = currentFactors.find(f => f.id === factorId);
+    // 更新选中状态
+    document.querySelectorAll('.factor-item').forEach(item => {
+        item.classList.remove('border-primary');
+    });
+    event.currentTarget.classList.add('border-primary');
+    
+    // 直接显示详情分区并加载内容
+    document.getElementById('factorDetailsSection').style.display = 'block';
+    loadFactorDetails();
+    loadFactorFormula();
+    loadFactorEvaluation().then(() => {
+        loadFactorPerformance();
+        loadFactorHistory();
+    });
+    document.getElementById('factorDetailsSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+// 显示因子详情
+function displayFactorDetails(factor) {
+    const container = document.getElementById('factorDetailsContent');
+    
+    const html = `
+        <div class="row">
+            <div class="col-md-8">
+                <div class="mb-3">
+                    <h5>${factor.name}</h5>
+                    <p class="text-muted">${factor.description}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>基本信息</h6>
+                    <table class="table table-sm">
+                        <tr><td>类型</td><td><span class="badge bg-${getTypeBadgeColor(factor.type)}">${factor.type}</span></td></tr>
+                        <tr><td>创建时间</td><td>${factor.created_at}</td></tr>
+                        <tr><td>状态</td><td>${factor.evaluated ? '<span class="badge bg-success">已评估</span>' : '<span class="badge bg-warning">未评估</span>'}</td></tr>
+                        <tr><td>文件路径</td><td><code class="small">${factor.file_path}</code></td></tr>
+                    </table>
+                </div>
+                
+                ${factor.evaluated ? `
+                <div class="mb-3">
+                    <h6>评估结果</h6>
+                    <table class="table table-sm">
+                        ${factor.ic ? `<tr><td>IC</td><td class="text-${getICColor(factor.ic)}">${factor.ic.toFixed(4)}</td></tr>` : ''}
+                        ${factor.ir ? `<tr><td>IR</td><td>${factor.ir.toFixed(4)}</td></tr>` : ''}
+                        ${factor.win_rate ? `<tr><td>胜率</td><td>${(factor.win_rate * 100).toFixed(2)}%</td></tr>` : ''}
+                        ${factor.sharpe ? `<tr><td>夏普比率</td><td>${factor.sharpe.toFixed(4)}</td></tr>` : ''}
+                    </table>
+                </div>
+                ` : ''}
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">📊 性能概览</h6>
+                    </div>
+                    <div class="card-body">
+                        ${factor.ic ? `
+                        <div class="mb-2">
+                            <small class="text-muted">信息系数 (IC)</small>
+                            <div class="h5 text-${getICColor(factor.ic)}">${factor.ic.toFixed(4)}</div>
+                        </div>
+                        ` : ''}
+                        ${factor.ir ? `
+                        <div class="mb-2">
+                            <small class="text-muted">信息比率 (IR)</small>
+                            <div class="h5">${factor.ir.toFixed(4)}</div>
+                        </div>
+                        ` : ''}
+                        ${factor.win_rate ? `
+                        <div class="mb-2">
+                            <small class="text-muted">胜率</small>
+                            <div class="h5">${(factor.win_rate * 100).toFixed(1)}%</div>
+                        </div>
+                        ` : ''}
+                        ${factor.sharpe ? `
+                        <div class="mb-2">
+                            <small class="text-muted">夏普比率</small>
+                            <div class="h5">${factor.sharpe.toFixed(4)}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+// 应用筛选
+function applyFilters() {
+    const typeAlpha101 = document.getElementById('typeAlpha101').checked;
+    const typeML = document.getElementById('typeML').checked;
+    const typeTraditional = document.getElementById('typeTraditional').checked;
+    const statusEvaluated = document.getElementById('statusEvaluated').checked;
+    const statusUnevaluated = document.getElementById('statusUnevaluated').checked;
+    const performanceFilter = document.getElementById('performanceFilter').value;
+    const searchTerm = document.getElementById('factorSearch').value.toLowerCase();
+    
+    let filteredFactors = currentFactors.filter(factor => {
+        // 类型筛选
+        const typeMatch = (factor.type === 'Alpha101' && typeAlpha101) ||
+                         (factor.type === 'ML' && typeML) ||
+                         (factor.type === 'Traditional' && typeTraditional);
+        
+        // 状态筛选
+        const statusMatch = (factor.evaluated && statusEvaluated) ||
+                           (!factor.evaluated && statusUnevaluated);
+        
+        // 搜索筛选
+        const searchMatch = !searchTerm || 
+                           factor.name.toLowerCase().includes(searchTerm) ||
+                           factor.description.toLowerCase().includes(searchTerm);
+        
+        // 性能筛选
+        let performanceMatch = true;
+        if (performanceFilter && factor.ic) {
+            if (performanceFilter === 'high') performanceMatch = factor.ic > 0.05;
+            else if (performanceFilter === 'medium') performanceMatch = factor.ic >= 0.02 && factor.ic <= 0.05;
+            else if (performanceFilter === 'low') performanceMatch = factor.ic < 0.02;
+        }
+        
+        return typeMatch && statusMatch && searchMatch && performanceMatch;
+    });
+    
+    displayFactorList(filteredFactors);
+    updateFactorCount();
+}
+
+// 更新因子数量
+function updateFactorCount() {
+    const count = document.querySelectorAll('#factorList tbody tr.factor-item').length;
+    document.getElementById('factorCount').textContent = count;
+}
+
+// 移除旧的基于静态端点的加载逻辑，改为基于本地数据过滤
+
+// 打开评估模态框
+function openEvaluationModal() {
+    if (!selectedFactor) {
+        showError('请先选择一个因子');
+        return;
+    }
+    
+    // 设置默认日期
+    const today = new Date();
+    const oneYearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+    
+    document.getElementById('evaluationStartDate').value = oneYearAgo.toISOString().split('T')[0];
+    document.getElementById('evaluationEndDate').value = today.toISOString().split('T')[0];
+    
+    const modal = new bootstrap.Modal(document.getElementById('evaluationModal'));
+    modal.show();
+}
+
+
+
+
+
+// 显示因子详情分区
+async function showFactorDetails() {
+    if (!selectedFactor) {
+        showError('请先选择一个因子');
+        return;
+    }
+    
+    // 显示详情分区
+    document.getElementById('factorDetailsSection').style.display = 'block';
+    
+    // 加载所有标签页内容
+    loadFactorDetails();
+    loadFactorFormula();
+    await loadFactorEvaluation();
+    loadFactorPerformance();
+    
+    // 滚动到详情分区
+    document.getElementById('factorDetailsSection').scrollIntoView({ 
+        behavior: 'smooth' 
+    });
+}
+
+
+
+// 加载因子详情
+function loadFactorDetails() {
+    const container = document.getElementById('factorDetailsContent');
+    
+    const html = `
+        <!-- 因子基本信息 -->
+        <div class="mb-4">
+            <h4 class="mb-2">${selectedFactor.name}</h4>
+            <p class="text-muted mb-3">${selectedFactor.description}</p>
+            
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="text-muted me-2">类型:</span>
+                        <span class="badge bg-${getTypeBadgeColor(selectedFactor.type)}">${selectedFactor.type}</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="text-muted me-2">状态:</span>
+                        ${selectedFactor.evaluated ? 
+                            '<span class="badge bg-success">已评估</span>' : 
+                            '<span class="badge bg-warning">未评估</span>'
+                        }
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="text-muted me-2">创建时间:</span>
+                        <span>${selectedFactor.created_at}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 评估结果 -->
+        ${selectedFactor.evaluated ? `
+        <div class="mb-4">
+            <h5 class="mb-3">📊 评估结果</h5>
+            <div class="row">
+                ${selectedFactor.ic ? `
+                <div class="col-md-3 mb-3">
+                    <div class="border rounded p-3 text-center">
+                        <div class="text-muted small mb-1">信息系数 (IC)</div>
+                        <div class="h4 text-${getICColor(selectedFactor.ic)}">${selectedFactor.ic.toFixed(4)}</div>
+                    </div>
+                </div>
+                ` : ''}
+                ${selectedFactor.ir ? `
+                <div class="col-md-3 mb-3">
+                    <div class="border rounded p-3 text-center">
+                        <div class="text-muted small mb-1">信息比率 (IR)</div>
+                        <div class="h4">${selectedFactor.ir.toFixed(4)}</div>
+                    </div>
+                </div>
+                ` : ''}
+                ${selectedFactor.win_rate ? `
+                <div class="col-md-3 mb-3">
+                    <div class="border rounded p-3 text-center">
+                        <div class="text-muted small mb-1">胜率</div>
+                        <div class="h4">${(selectedFactor.win_rate * 100).toFixed(1)}%</div>
+                    </div>
+                </div>
+                ` : ''}
+                ${selectedFactor.sharpe ? `
+                <div class="col-md-3 mb-3">
+                    <div class="border rounded p-3 text-center">
+                        <div class="text-muted small mb-1">夏普比率</div>
+                        <div class="h4">${selectedFactor.sharpe.toFixed(4)}</div>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+        ` : `
+        <div class="alert alert-info">
+            <p class="mb-0">该因子尚未评估，请先进行评估以查看详细结果。</p>
+        </div>
+        `}
+        
+        <!-- 文件信息 -->
+        <div class="mb-3">
+            <h6 class="text-muted">文件路径</h6>
+            <code class="bg-light p-2 rounded d-block">${selectedFactor.file_path}</code>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+// 加载因子公式
+function loadFactorFormula() {
+    const container = document.getElementById('factorFormulaContent');
+    
+    const html = `
+        <div class="mb-4">
+            <h4 class="mb-2">${selectedFactor.name}</h4>
+            <p class="text-muted mb-3">${selectedFactor.description}</p>
+        </div>
+        
+        <div class="mb-4">
+            <h5 class="mb-3">📝 因子公式</h5>
+            <div class="border rounded p-4 bg-light">
+                <pre class="mb-0"><code>${selectedFactor.formula || '暂无公式'}</code></pre>
+            </div>
+        </div>
+        
+        ${selectedFactor.formula ? `
+        <div class="mb-3">
+            <h6 class="text-muted">公式说明</h6>
+            <p class="text-muted">
+                这是一个${selectedFactor.type}类型的因子，使用数学公式计算得出。
+                公式中的变量包括价格、成交量等市场数据。
+            </p>
+        </div>
+        ` : ''}
+    `;
+    
+    container.innerHTML = html;
+}
+
+// 加载因子评估
+async function loadFactorEvaluation() {
+    const container = document.getElementById('factorEvaluationContent');
+    
+    const html = `
+        <div class="mb-3">
+            <h6>评估配置</h6>
+            <p class="text-muted small">配置因子评估的参数</p>
+        </div>
+        
+        <form id="evaluationForm">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">交易所</label>
+                        <select class="form-select" id="evaluationExchange" required onchange="onExchangeChange()">
+                            <option value="">选择交易所</option>
+                            <option value="binance">Binance</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">交易类型</label>
+                        <select class="form-select" id="evaluationTradeType" required onchange="onTradeTypeChange()">
+                            <option value="">选择类型</option>
+                            <option value="futures">期货</option>
+                            <option value="spot">现货</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">交易对</label>
+                        <select class="form-select" id="evaluationSymbol" required disabled onchange="onSymbolChange()">
+                            <option value="">先选择交易所和类型</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">时间框架</label>
+                        <select class="form-select" id="evaluationTimeframe" required disabled onchange="onTimeframeChange()">
+                            <option value="">先选择交易所和类型</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 由滑条控制的日期范围，移除手动输入框，仅保留隐藏字段用于提交 -->
+            <input type="hidden" id="evaluationStartDate">
+            <input type="hidden" id="evaluationEndDate">
+
+            <!-- 时间范围滑条（noUiSlider 双端范围） -->
+            <div class="mb-3" id="dateRangeSliderContainer" style="display: none;">
+                <label class="form-label">数据时间范围</label>
+                <div class="text-muted small mb-2" id="dateRangeInfo">—</div>
+                <div id="dateRangeSlider"></div>
+                <div class="d-flex justify-content-between small text-muted mt-2">
+                    <span id="dateSliderStartLabel">开始</span>
+                    <span id="dateSliderEndLabel">结束</span>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">评估指标</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="metricIC" checked>
+                    <label class="form-check-label" for="metricIC">信息系数 (IC)</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="metricIR" checked>
+                    <label class="form-check-label" for="metricIR">信息比率 (IR)</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="metricWinRate" checked>
+                    <label class="form-check-label" for="metricWinRate">胜率</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="metricSharpe" checked>
+                    <label class="form-check-label" for="metricSharpe">夏普比率</label>
+                </div>
+            </div>
+        </form>
+        
+        <!-- 开始评估按钮 -->
+        <div class="d-flex justify-content-center mt-4">
+            <button class="btn btn-success btn-lg" onclick="startEvaluation()">
+                🚀 开始评估
+            </button>
+        </div>
+        
+        <div id="evaluationProgress" style="display: none;">
+            <div class="progress mb-3">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" style="width: 0%"></div>
+            </div>
+            <p id="evaluationStatus" class="text-muted">准备评估...</p>
+        </div>
+        
+        <!-- 评估结果展示区域 -->
+        <div id="evaluationResults" style="display: none;" class="mt-4">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">📊 评估结果</h5>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="scrollToTop()">回到顶部 ⤴</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="evaluationResultsContent">
+                        <!-- 评估结果将在这里显示 -->
+                    </div>
+                    <div class="mt-3" id="evaluationChartsContainer" style="display:none;">
+                        <canvas id="evaluationBarChart" height="120"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    
+    // 加载交易对和时间框架
+    await loadSymbols();
+    await loadTimeframes();
+}
+
+// 加载性能分析
+function loadFactorPerformance() {
+    const container = document.getElementById('factorPerformanceContent');
+    
+    const html = `
+        <div class="mb-4">
+            <h4 class="mb-2">${selectedFactor.name}</h4>
+            <p class="text-muted mb-3">性能分析 - 分析因子的历史表现</p>
+        </div>
+        
+        ${selectedFactor.evaluated ? `
+        <div class="mb-4">
+            <h5 class="mb-3">📊 性能指标</h5>
+            <div class="row">
+                ${selectedFactor.ic ? `
+                <div class="col-md-3 mb-3">
+                    <div class="border rounded p-3 text-center">
+                        <div class="text-muted small mb-1">信息系数 (IC)</div>
+                        <div class="h4 text-${getICColor(selectedFactor.ic)}">${selectedFactor.ic.toFixed(4)}</div>
+                    </div>
+                </div>
+                ` : ''}
+                ${selectedFactor.ir ? `
+                <div class="col-md-3 mb-3">
+                    <div class="border rounded p-3 text-center">
+                        <div class="text-muted small mb-1">信息比率 (IR)</div>
+                        <div class="h4">${selectedFactor.ir.toFixed(4)}</div>
+                    </div>
+                </div>
+                ` : ''}
+                ${selectedFactor.win_rate ? `
+                <div class="col-md-3 mb-3">
+                    <div class="border rounded p-3 text-center">
+                        <div class="text-muted small mb-1">胜率</div>
+                        <div class="h4">${(selectedFactor.win_rate * 100).toFixed(1)}%</div>
+                    </div>
+                </div>
+                ` : ''}
+                ${selectedFactor.sharpe ? `
+                <div class="col-md-3 mb-3">
+                    <div class="border rounded p-3 text-center">
+                        <div class="text-muted small mb-1">夏普比率</div>
+                        <div class="h4">${selectedFactor.sharpe.toFixed(4)}</div>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+        ` : `
+        <div class="alert alert-info">
+            <p class="mb-0">该因子尚未评估，请先进行评估以查看性能分析。</p>
+        </div>
+        `}
+    `;
+    
+    container.innerHTML = html;
+}
+
+// 加载历史评估与对比
+async function loadFactorHistory() {
+    const container = document.getElementById('factorHistoryContent');
+    container.innerHTML = '<div class="text-muted">正在加载历史评估...</div>';
+    try {
+        const res = await fetch(`/api/factors/evaluations/${selectedFactor.id}`);
+        const data = await res.json();
+        if (!data.success) {
+            container.innerHTML = `<div class="text-danger">加载失败：${data.message || '未知错误'}</div>`;
+            return;
+        }
+        const evaluations = data.evaluations || [];
+        if (evaluations.length === 0) {
+            container.innerHTML = '<div class="text-muted">暂无历史评估记录</div>';
+            return;
+        }
+
+        // 表格与对比勾选
+        let html = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0">🕒 历史评估</h5>
+                <button class="btn btn-sm btn-outline-primary" onclick="renderHistoryComparison()">生成对比图</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>对比</th>
+                            <th>评估时间</th>
+                            <th>交易对</th>
+                            <th>时间框架</th>
+                            <th>区间</th>
+                            <th>IC</th>
+                            <th>等级IC</th>
+                            <th>胜率</th>
+                            <th>夏普</th>
+                            <th>多空收益</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${evaluations.map((ev, idx) => {
+                            const m = ev.metadata || {};
+                            const r = ev.results || {};
+                            return `
+                                <tr>
+                                    <td><input type="checkbox" class="form-check-input" name="historyCompare" value="${idx}"></td>
+                                    <td>${ev.evaluated_at || ''}</td>
+                                    <td>${m.symbol || ''}</td>
+                                    <td>${m.timeframe || ''}</td>
+                                    <td>${(m.start_date || '')} ~ ${(m.end_date || '')}</td>
+                                    <td>${numFmt(r.ic_pearson)}</td>
+                                    <td>${numFmt(r.ic_spearman)}</td>
+                                    <td>${pctFmt(r.win_rate)}</td>
+                                    <td>${numFmt(r.sharpe_ratio)}</td>
+                                    <td>${pctFmt(r.long_short_return)}</td>
+                                </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-3" id="historyChartsContainer" style="display:none;">
+                <canvas id="historyComparisonChart" height="140"></canvas>
+            </div>
+        `;
+        container.innerHTML = html;
+        // 暂存到全局以便对比渲染使用
+        window.__factorHistoryEvaluations = evaluations;
+    } catch (e) {
+        container.innerHTML = `<div class="text-danger">加载失败：${e.message}</div>`;
+    }
+}
+
+function numFmt(v) {
+    return (v === undefined || v === null) ? '' : Number(v).toFixed(4);
+}
+function pctFmt(v) {
+    return (v === undefined || v === null) ? '' : (Number(v) * 100).toFixed(2) + '%';
+}
+
+function renderHistoryComparison() {
+    const evaluations = window.__factorHistoryEvaluations || [];
+    const checked = Array.from(document.querySelectorAll('input[name="historyCompare"]:checked')).map(el => parseInt(el.value, 10));
+    if (checked.length === 0) {
+        showError('请至少勾选一条历史评估进行对比');
+        return;
+    }
+    const selected = checked.map(i => evaluations[i]);
+    const labels = selected.map(ev => {
+        const m = ev.metadata || {};
+        return `${m.symbol || ''}-${m.timeframe || ''}`;
+    });
+    const ic = selected.map(ev => (ev.results || {}).ic_pearson || 0);
+    const ic_s = selected.map(ev => (ev.results || {}).ic_spearman || 0);
+    const win = selected.map(ev => (ev.results || {}).win_rate || 0);
+    const sharp = selected.map(ev => (ev.results || {}).sharpe_ratio || 0);
+    const lsr = selected.map(ev => (ev.results || {}).long_short_return || 0);
+
+    const container = document.getElementById('historyChartsContainer');
+    const canvas = document.getElementById('historyComparisonChart');
+    container.style.display = 'block';
+    if (canvas._chartInstance) canvas._chartInstance.destroy();
+
+    const data = {
+        labels,
+        datasets: [
+            { label: 'IC', data: ic, backgroundColor: 'rgba(75, 192, 192, 0.5)' },
+            { label: '等级IC', data: ic_s, backgroundColor: 'rgba(153, 102, 255, 0.5)' },
+            { label: '胜率', data: win, backgroundColor: 'rgba(255, 205, 86, 0.5)' },
+            { label: '夏普', data: sharp, backgroundColor: 'rgba(255, 99, 132, 0.5)' },
+            { label: '多空收益', data: lsr, backgroundColor: 'rgba(54, 162, 235, 0.5)' },
+        ]
+    };
+    const options = { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } };
+    canvas._chartInstance = new Chart(canvas.getContext('2d'), { type: 'bar', data, options });
+}
+
+// 查看因子公式（滚动到公式区域）
+async function viewFactorFormula() {
+    if (!selectedFactor) {
+        showError('请先选择一个因子');
+        return;
+    }
+    
+    // 显示详情分区
+    document.getElementById('factorDetailsSection').style.display = 'block';
+    
+    // 加载所有内容
+    loadFactorDetails();
+    loadFactorFormula();
+    await loadFactorEvaluation();
+    loadFactorPerformance();
+    
+    // 滚动到公式分区
+    const el = document.getElementById('factorFormulaContent');
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        document.getElementById('factorDetailsSection').scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// 开始评估
+function startEvaluation() {
+    if (!selectedFactor) {
+        showError('请先选择一个因子');
+        return;
+    }
+    
+    // 获取评估参数
+    const exchange = document.getElementById('evaluationExchange').value;
+    const tradeType = document.getElementById('evaluationTradeType').value;
+    const symbol = document.getElementById('evaluationSymbol').value;
+    const timeframe = document.getElementById('evaluationTimeframe').value;
+    const startDate = document.getElementById('evaluationStartDate').value;
+    const endDate = document.getElementById('evaluationEndDate').value;
+    
+    if (!exchange || !tradeType || !symbol || !timeframe || !startDate || !endDate) {
+        showError('请填写完整的评估参数');
+        return;
+    }
+    
+
+    
+    // 获取选中的评估指标
+    const metrics = [];
+    if (document.getElementById('metricIC').checked) metrics.push('ic');
+    if (document.getElementById('metricIR').checked) metrics.push('ir');
+    if (document.getElementById('metricWinRate').checked) metrics.push('win_rate');
+    if (document.getElementById('metricSharpe').checked) metrics.push('sharpe');
+    
+    if (metrics.length === 0) {
+        showError('请至少选择一个评估指标');
+        return;
+    }
+    
+    // 显示评估进度
+    const progressDiv = document.getElementById('evaluationProgress');
+    const progressBar = progressDiv.querySelector('.progress-bar');
+    const statusText = document.getElementById('evaluationStatus');
+    
+    progressDiv.style.display = 'block';
+    progressBar.style.width = '0%';
+    statusText.textContent = '开始评估...';
+    
+    // 发送评估请求
+    fetch('/api/factors/evaluate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            factor_id: selectedFactor.id,
+            exchange: exchange,
+            trade_type: tradeType,
+            symbol: symbol,
+            timeframe: timeframe,
+            start_date: startDate,
+            end_date: endDate,
+            metrics: metrics
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            progressBar.style.width = '100%';
+            statusText.textContent = '评估完成！';
+            showSuccess('因子评估完成');
+            
+            // 显示评估结果
+            displayEvaluationResults(data.results);
+            
+            // 刷新因子列表以显示新的评估结果
+            setTimeout(() => {
+                loadFactorList();
+            }, 1000);
+        } else {
+            statusText.textContent = '评估失败: ' + (data.message || data.error);
+            showError('评估失败: ' + (data.message || data.error));
+        }
+    })
+    .catch(error => {
+        statusText.textContent = '评估失败: ' + error.message;
+        showError('评估失败: ' + error.message);
+    });
+}
+
+// 显示评估结果
+function displayEvaluationResults(results) {
+    const resultsDiv = document.getElementById('evaluationResults');
+    const contentDiv = document.getElementById('evaluationResultsContent');
+    const chartsContainer = document.getElementById('evaluationChartsContainer');
+    
+    if (!results) {
+        contentDiv.innerHTML = '<p class="text-muted">没有评估结果</p>';
+        resultsDiv.style.display = 'block';
+        chartsContainer.style.display = 'none';
+        return;
+    }
+    
+    // 调试：输出收到的结果数据结构
+    console.log('收到的评估结果:', results);
+    console.log('结果字段名:', Object.keys(results));
+    
+    // 格式化评估结果
+    let html = '<div class="row">';
+    
+    // 显示主要指标
+    if (results.ic_pearson !== undefined) {
+        html += `
+            <div class="col-md-3">
+                <div class="card border-primary">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">信息系数 (IC)</h6>
+                        <h4 class="text-primary">${results.ic_pearson.toFixed(4)}</h4>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (results.ic_spearman !== undefined) {
+        html += `
+            <div class="col-md-3">
+                <div class="card border-info">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">等级IC (Spearman)</h6>
+                        <h4 class="text-info">${results.ic_spearman.toFixed(4)}</h4>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (results.win_rate !== undefined) {
+        html += `
+            <div class="col-md-3">
+                <div class="card border-success">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">胜率</h6>
+                        <h4 class="text-success">${(results.win_rate * 100).toFixed(2)}%</h4>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (results.sharpe_ratio !== undefined) {
+        html += `
+            <div class="col-md-3">
+                <div class="card border-warning">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">夏普比率</h6>
+                        <h4 class="text-warning">${results.sharpe_ratio.toFixed(4)}</h4>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (results.long_short_return !== undefined) {
+        html += `
+            <div class="col-md-3">
+                <div class="card border-secondary">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">多空收益</h6>
+                        <h4 class="text-secondary">${(results.long_short_return * 100).toFixed(2)}%</h4>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    html += '</div>';
+    
+    // 添加详细统计信息
+    html += '<div class="mt-3"><h6>详细统计信息:</h6><div class="table-responsive"><table class="table table-sm">';
+    
+    for (const [key, value] of Object.entries(results)) {
+        if (typeof value === 'number') {
+            html += `<tr><td>${key}</td><td>${value.toFixed(6)}</td></tr>`;
+        } else {
+            html += `<tr><td>${key}</td><td>${value}</td></tr>`;
+        }
+    }
+    
+    html += '</table></div></div>';
+    
+    contentDiv.innerHTML = html;
+    resultsDiv.style.display = 'block';
+
+    // 渲染主要指标条形图（若存在）
+    const metrics = [];
+    if (results.ic_pearson !== undefined) metrics.push({ label: 'IC', value: results.ic_pearson });
+    if (results.ic_spearman !== undefined) metrics.push({ label: '等级IC', value: results.ic_spearman });
+    if (results.win_rate !== undefined) metrics.push({ label: '胜率', value: results.win_rate });
+    if (results.sharpe_ratio !== undefined) metrics.push({ label: '夏普', value: results.sharpe_ratio });
+    if (results.long_short_return !== undefined) metrics.push({ label: '多空收益', value: results.long_short_return });
+
+    const canvas = document.getElementById('evaluationBarChart');
+    if (metrics.length > 0 && canvas) {
+        chartsContainer.style.display = 'block';
+        if (canvas._chartInstance) {
+            canvas._chartInstance.destroy();
+        }
+        const data = {
+            labels: metrics.map(m => m.label),
+            datasets: [{
+                label: '关键指标',
+                data: metrics.map(m => m.value),
+                backgroundColor: 'rgba(54, 162, 235, 0.4)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        };
+        const options = {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        };
+        canvas._chartInstance = new Chart(canvas.getContext('2d'), { type: 'bar', data, options });
+    } else {
+        chartsContainer.style.display = 'none';
+    }
+}
+
+// 导出因子
+function exportFactor() {
+    if (!selectedFactor) {
+        showError('请先选择一个因子');
+        return;
+    }
+    
+    // 这里可以实现因子导出功能
+    alert(`导出因子: ${selectedFactor.name}`);
+}
+
+
+
+// 刷新因子列表
+function refreshFactorList() {
+    loadFactorList();
+}
+
+// 加载交易对列表
+async function loadSymbols() {
+    try {
+        const exchange = document.getElementById('evaluationExchange').value;
+        const tradeType = document.getElementById('evaluationTradeType').value;
+        
+        if (!exchange || !tradeType) {
+            console.log('交易所或交易类型未选择');
+            return;
+        }
+        
+        console.log('开始加载交易对...', { exchange, tradeType });
+        const url = `/api/data/local-data?exchange=${exchange}&trade_type=${tradeType}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success && data.data && data.data.length > 0) {
+            const select = document.getElementById('evaluationSymbol');
+            select.innerHTML = '<option value="">选择交易对</option>';
+            
+            // 获取唯一的交易对
+            const uniqueSymbols = [...new Set(data.data.map(item => item.symbol))];
+            
+            uniqueSymbols.forEach(symbol => {
+                select.innerHTML += `<option value="${symbol}">${symbol}</option>`;
+            });
+            
+            // 启用交易对选择
+            select.disabled = false;
+        } else {
+            const select = document.getElementById('evaluationSymbol');
+            select.innerHTML = '<option value="">无可用数据</option>';
+            select.disabled = true;
+        }
+    } catch (error) {
+        const select = document.getElementById('evaluationSymbol');
+        select.innerHTML = '<option value="">加载失败</option>';
+        select.disabled = true;
+    }
+}
+
+// 加载时间框架列表
+async function loadTimeframes() {
+    try {
+        const exchange = document.getElementById('evaluationExchange').value;
+        const tradeType = document.getElementById('evaluationTradeType').value;
+        const symbol = document.getElementById('evaluationSymbol').value;
+        
+        if (!exchange || !tradeType || !symbol) {
+            return;
+        }
+        
+        const url = `/api/data/local-data?exchange=${exchange}&trade_type=${tradeType}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success && data.data && data.data.length > 0) {
+            const select = document.getElementById('evaluationTimeframe');
+            select.innerHTML = '<option value="">选择时间框架</option>';
+            
+            // 仅取当前选中交易对的时间框架
+            let timeframesForSymbol = [...new Set(data.data.filter(item => item.symbol === symbol).map(item => item.timeframe))];
+            // 按时间从小到大排序
+            timeframesForSymbol.sort((a, b) => timeframeToMinutes(a) - timeframeToMinutes(b));
+            
+            timeframesForSymbol.forEach(tf => {
+                select.innerHTML += `<option value="${tf}">${tf}</option>`;
+            });
+            
+            select.disabled = timeframesForSymbol.length === 0;
+        } else {
+            const select = document.getElementById('evaluationTimeframe');
+            select.innerHTML = '<option value="">无可用数据</option>';
+            select.disabled = true;
+        }
+    } catch (error) {
+        const select = document.getElementById('evaluationTimeframe');
+        select.innerHTML = '<option value="">加载失败</option>';
+        select.disabled = true;
+    }
+}
+
+// 交易对变化：刷新时间框架，并隐藏日期滑条
+function onSymbolChange() {
+    loadTimeframes();
+    hideDateSlider();
+}
+
+// 时间框架变化：加载该币对在该时间框架的可用时间段，显示滑条
+async function onTimeframeChange() {
+    try {
+        const exchange = document.getElementById('evaluationExchange').value;
+        const tradeType = document.getElementById('evaluationTradeType').value;
+        const symbol = document.getElementById('evaluationSymbol').value;
+        const timeframe = document.getElementById('evaluationTimeframe').value;
+        if (!exchange || !tradeType || !symbol || !timeframe) {
+            hideDateSlider();
+            return;
+        }
+        const url = `/api/data/local-data?exchange=${exchange}&trade_type=${tradeType}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (!(data.success && data.data)) { hideDateSlider(); return; }
+        const rows = data.data.filter(item => item.symbol === symbol && item.timeframe === timeframe);
+        if (rows.length === 0) { hideDateSlider(); return; }
+        const dateRange = rows[0].date_range;
+        setupDateSlider(dateRange.start, dateRange.end);
+    } catch (e) {
+        hideDateSlider();
+    }
+}
+
+function hideDateSlider() {
+    const c = document.getElementById('dateRangeSliderContainer');
+    if (c) c.style.display = 'none';
+}
+
+function setupDateSlider(startStr, endStr) {
+    const container = document.getElementById('dateRangeSliderContainer');
+    const info = document.getElementById('dateRangeInfo');
+    const sLabel = document.getElementById('dateSliderStartLabel');
+    const eLabel = document.getElementById('dateSliderEndLabel');
+    // 统一按 ISO 字符串解析
+    const startDate = new Date(startStr);
+    const endDate = new Date(endStr);
+    if (isNaN(startDate) || isNaN(endDate) || startDate >= endDate) { hideDateSlider(); return; }
+    const totalMs = endDate - startDate;
+    info.textContent = `可用区间：${startStr} ~ ${endStr}`;
+    container.style.display = 'block';
+
+    const slider = document.getElementById('dateRangeSlider');
+    // 若已存在，先销毁
+    if (slider.noUiSlider) {
+        slider.noUiSlider.destroy();
+    }
+    noUiSlider.create(slider, {
+        start: [0, 100],
+        connect: true,
+        step: 1,
+        range: { min: 0, max: 100 },
+        behaviour: 'tap-drag',
+    });
+
+    const updateFromSlider = (values) => {
+        const sv = parseInt(values[0], 10);
+        const ev = parseInt(values[1], 10);
+        const startSel = new Date(startDate.getTime() + (sv / 100) * totalMs);
+        const endSel = new Date(startDate.getTime() + (ev / 100) * totalMs);
+        const toDateInput = (d) => d.toISOString().slice(0,10);
+        document.getElementById('evaluationStartDate').value = toDateInput(startSel);
+        document.getElementById('evaluationEndDate').value = toDateInput(endSel);
+        sLabel.textContent = toDateInput(startSel);
+        eLabel.textContent = toDateInput(endSel);
+    };
+
+    slider.noUiSlider.on('update', updateFromSlider);
+    updateFromSlider([0, 100]);
+}
+
+// 工具函数
+function getTypeBadgeColor(type) {
+    switch (type) {
+        case 'Alpha101': return 'primary';
+        case 'ML': return 'success';
+        case 'Traditional': return 'info';
+        default: return 'secondary';
+    }
+}
+
+function getICColor(ic) {
+    if (ic > 0.05) return 'success';
+    if (ic > 0.02) return 'warning';
+    return 'danger';
+}
+
+// 将时间框架字符串转换为分钟数，便于排序
+function timeframeToMinutes(tf) {
+    if (!tf) return Number.MAX_SAFE_INTEGER;
+    const match = tf.match(/^(\d+)([mhd])$/);
+    if (!match) return Number.MAX_SAFE_INTEGER;
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+    switch (unit) {
+        case 'm': return value;
+        case 'h': return value * 60;
+        case 'd': return value * 60 * 24;
+        default: return Number.MAX_SAFE_INTEGER;
+    }
+}
+
+function showError(message) {
+    // 这里可以实现错误提示
+    alert('错误: ' + message);
+}
+
+function showSuccess(message) {
+    // 这里可以实现成功提示
+    alert('成功: ' + message);
+}
+
+// 回到顶部
+function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+{% endblock %} 

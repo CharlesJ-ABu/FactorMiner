@@ -1,0 +1,720 @@
+{% extends "base.html" %}
+
+{% block title %}数据下载 - {{ config.title }}{% endblock %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-12">
+        <h2>📥 数据下载</h2>
+        <p class="text-muted">从交易所下载历史行情数据</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 左侧：交易所和产品选择 -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h6 class="mb-0">⚙️ 数据源配置</h6>
+            </div>
+            <div class="card-body" style="overflow-y: auto;">
+                <form id="dataConfigForm">
+                    <div class="mb-2">
+                        <label for="exchange" class="form-label small mb-1">交易所</label>
+                        <select class="form-select form-select-sm" id="exchange" name="exchange">
+                            <option value="binance">Binance (加密货币)</option>
+                            <option value="okx">OKX (加密货币)</option>
+                            <option value="bybit">Bybit (加密货币)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label for="tradeType" class="form-label small mb-1">交易类型</label>
+                        <select class="form-select form-select-sm" id="tradeType" name="tradeType">
+                            <option value="">请先选择交易所</option>
+                            <option value="spot">现货 (Spot)</option>
+                            <option value="perpetual">永续合约 (Perpetual)</option>
+                            <option value="delivery">交割合约 (Delivery)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label for="symbol" class="form-label small mb-1">交易对</label>
+                        <select class="form-select form-select-sm" id="symbol" name="symbol">
+                            <option value="">请先选择交易类型</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label for="timeframe" class="form-label small mb-1">时间框架</label>
+                        <select class="form-select form-select-sm" id="timeframe" name="timeframe">
+                            <option value="">请先选择交易所和交易类型</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <button type="button" class="btn btn-outline-info btn-sm w-100" onclick="getDownloadSuggestions()">
+                            🔍 查询现有数据
+                        </button>
+                    </div>
+                    
+                    <div class="row mb-2">
+                        <div class="col-6">
+                            <label for="startDate" class="form-label small mb-1">开始日期</label>
+                            <input type="date" class="form-control form-control-sm" id="startDate" name="startDate">
+                        </div>
+                        <div class="col-6">
+                            <label for="endDate" class="form-label small mb-1">结束日期</label>
+                            <input type="date" class="form-control form-control-sm" id="endDate" name="endDate">
+                        </div>
+                    </div>
+                    
+
+                    
+                    <div class="mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="mergeWithExisting" name="mergeWithExisting" checked>
+                            <label class="form-check-label small" for="mergeWithExisting">
+                                🔄 与现有数据合并
+                            </label>
+                        </div>
+                        <small class="form-text text-muted small">
+                            勾选后将自动与现有数据合并，避免重复数据
+                        </small>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <div class="alert alert-info alert-sm mb-0">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>智能合并：</strong>系统将自动与现有数据合并，处理重叠时间段，保留最新数据，确保数据连续性
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        🚀 开始下载
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 右侧：数据覆盖情况和下载建议 -->
+    <div class="col-md-8">
+        <div class="row h-100">
+            <!-- 上半部分：数据覆盖情况和下载建议 -->
+            <div class="col-12 mb-2">
+                <div class="row">
+                    <!-- 数据覆盖情况 -->
+                    <div class="col-6 h-100">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">📊 数据覆盖情况</h6>
+                            </div>
+                            <div class="card-body" style="overflow-y: auto;">
+                                <div id="dataCoverage">
+                                    <p class="text-muted">选择交易对和时间框架后，点击"查询现有数据"查看覆盖情况</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 下载建议 -->
+                    <div class="col-6 h-100">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">💡 智能下载建议</h6>
+                            </div>
+                            <div class="card-body" style="overflow-y: auto;">
+                                <div id="downloadSuggestions">
+                                    <p class="text-muted">基于现有数据生成智能下载建议</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 下半部分：下载进度和历史 -->
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">📈 下载进度</h6>
+                    </div>
+                    <div class="card-body" style="overflow-y: auto;">
+                        <div id="downloadProgress" style="display: none;">
+                            <div class="progress mb-3">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <p id="progressText" class="text-muted mb-3">准备中...</p>
+                        </div>
+                        
+                        <div id="downloadHistory">
+                            <h6 class="mb-3">📋 下载历史</h6>
+                            <div id="historyList" class="list-group list-group-flush" style="max-height: 150px; overflow-y: auto;">
+                                <!-- 下载历史将在这里动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加底部边距，确保footer不被挡住 -->
+<div style="margin-bottom: 50px;"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 数据管理页面的JavaScript代码
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('数据管理页面初始化');
+    
+    // 初始化表单
+    initDataConfigForm();
+});
+
+function initDataConfigForm() {
+    const form = document.getElementById('dataConfigForm');
+    const exchangeSelect = document.getElementById('exchange');
+    const tradeTypeSelect = document.getElementById('tradeType');
+    const symbolSelect = document.getElementById('symbol');
+    const timeframeSelect = document.getElementById('timeframe');
+    
+    // 设置默认日期
+    const today = new Date();
+    const oneMonthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    document.getElementById('startDate').value = oneMonthAgo.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+    
+    // 交易所变化时更新交易类型
+    exchangeSelect.addEventListener('change', function() {
+        updateTradeTypes(this.value);
+        clearDataCoverage();
+    });
+    
+    // 交易类型变化时更新交易对和时间框架
+    tradeTypeSelect.addEventListener('change', function() {
+        updateSymbols();
+        updateTimeframes();
+        clearDataCoverage();
+    });
+    
+    // 交易对或时间框架变化时清除覆盖情况
+    symbolSelect.addEventListener('change', function() {
+        clearDataCoverage();
+    });
+    
+    timeframeSelect.addEventListener('change', function() {
+        clearDataCoverage();
+    });
+    
+    // 合并选项交互 - 现在总是启用智能合并
+    const mergeCheckbox = document.getElementById('mergeWithExisting');
+    
+    // 总是启用智能合并
+    mergeCheckbox.checked = true;
+    mergeCheckbox.disabled = true;
+    
+    // 表单提交
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        startDownload();
+    });
+    
+    // 初始化时自动触发第一个交易所的选择
+    if (exchangeSelect.value) {
+        updateTradeTypes(exchangeSelect.value);
+    }
+}
+
+function updateTradeTypes(exchange) {
+    const tradeTypeSelect = document.getElementById('tradeType');
+    const symbolSelect = document.getElementById('symbol');
+    
+    // 重置选择框
+    tradeTypeSelect.innerHTML = '<option value="">请选择交易类型</option>';
+    symbolSelect.innerHTML = '<option value="">请先选择交易类型</option>';
+    
+    // 恢复为：现货 / 期货
+    const spotOption = document.createElement('option');
+    spotOption.value = 'spot';
+    spotOption.textContent = '现货 (Spot)';
+    tradeTypeSelect.appendChild(spotOption);
+    
+    const futuresOption = document.createElement('option');
+    futuresOption.value = 'futures';
+    futuresOption.textContent = '期货 (Futures)';
+    tradeTypeSelect.appendChild(futuresOption);
+}
+
+async function updateSymbols() {
+    const exchange = document.getElementById('exchange').value;
+    const tradeType = document.getElementById('tradeType').value;
+    const symbolSelect = document.getElementById('symbol');
+    
+    if (!tradeType) {
+        symbolSelect.innerHTML = '<option value="">请先选择交易类型</option>';
+        return;
+    }
+    
+    symbolSelect.innerHTML = '<option value="">加载中...</option>';
+    
+    try {
+        const response = await fetch(`/api/data/symbols/${exchange}`);
+        const result = await response.json();
+        
+        // futures 直接显示永续合约
+        if (result.success && result.data[tradeType]) {
+            symbolSelect.innerHTML = '<option value="">请选择交易对</option>';
+            
+            const markets = result.data[tradeType] || [];
+            if (markets && markets.length > 0) {
+                // 过滤：只显示 USDT 计价且状态为 active 的交易对
+                const filteredMarkets = markets.filter(item => 
+                    item.quote === 'USDT' && item.active === true
+                );
+                
+                if (filteredMarkets.length > 0) {
+                    filteredMarkets.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.symbol;
+                        
+                        // 期货只显示永续合约，不需要显示到期日
+                        option.textContent = `${item.symbol} (${item.name})`;
+                        
+                        symbolSelect.appendChild(option);
+                    });
+                    
+                    console.log(`显示 ${filteredMarkets.length} 个符合条件的交易对`);
+                } else {
+                    symbolSelect.innerHTML = '<option value="">暂无符合条件的交易对</option>';
+                }
+            } else {
+                symbolSelect.innerHTML = '<option value="">暂无可用交易对</option>';
+            }
+        } else {
+            symbolSelect.innerHTML = '<option value="">加载失败</option>';
+        }
+    } catch (error) {
+        console.error('加载交易对失败:', error);
+        symbolSelect.innerHTML = '<option value="">加载失败</option>';
+    }
+}
+
+async function updateTimeframes() {
+    const exchange = document.getElementById('exchange').value;
+    const tradeType = document.getElementById('tradeType').value;
+    const timeframeSelect = document.getElementById('timeframe');
+    
+    if (!exchange || !tradeType) {
+        timeframeSelect.innerHTML = '<option value="">请先选择交易所和交易类型</option>';
+        return;
+    }
+    
+    timeframeSelect.innerHTML = '<option value="">加载中...</option>';
+    
+    try {
+        const response = await fetch(`/api/data/timeframes?exchange=${exchange}&trade_type=${tradeType}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            timeframeSelect.innerHTML = '<option value="">请选择时间框架</option>';
+            
+            result.data.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.value;
+                option.textContent = `${item.name} (${item.value})`;
+                option.title = item.description;
+                timeframeSelect.appendChild(option);
+            });
+            
+            console.log(`加载了 ${result.data.length} 个时间框架选项`);
+        } else {
+            timeframeSelect.innerHTML = '<option value="">加载失败</option>';
+            console.error('加载时间框架失败:', result.error);
+        }
+    } catch (error) {
+        console.error('加载时间框架失败:', error);
+        timeframeSelect.innerHTML = '<option value="">加载失败</option>';
+    }
+}
+
+async function startDownload() {
+    const form = document.getElementById('dataConfigForm');
+    const formData = new FormData(form);
+    
+    const downloadData = {
+        exchange: formData.get('exchange'),
+        trade_type: formData.get('tradeType'),
+        symbol: formData.get('symbol'),
+        timeframe: formData.get('timeframe'),
+        start_date: formData.get('startDate'),
+        end_date: formData.get('endDate'),
+        merge_with_existing: document.getElementById('mergeWithExisting').checked,
+        merge_strategy: 'smart'  // 固定使用智能合并策略
+    };
+    
+    // 验证必填字段
+    if (!downloadData.exchange || !downloadData.trade_type || !downloadData.symbol || !downloadData.timeframe) {
+        alert('请填写所有必填字段：交易所、交易类型、交易对、时间框架');
+        return;
+    }
+    
+    if (!downloadData.start_date || !downloadData.end_date) {
+        alert('请选择开始和结束日期');
+        return;
+    }
+    
+    console.log('开始下载:', downloadData);
+    console.log('表单数据详情:');
+    console.log('  exchange:', formData.get('exchange'));
+    console.log('  tradeType:', formData.get('tradeType'));
+    console.log('  symbol:', formData.get('symbol'));
+    console.log('  timeframe:', formData.get('timeframe'));
+    console.log('  startDate:', formData.get('startDate'));
+    console.log('  endDate:', formData.get('endDate'));
+    
+    // 显示下载进度
+    document.getElementById('downloadProgress').style.display = 'block';
+    document.getElementById('progressText').textContent = '正在启动下载...';
+    
+    try {
+        const response = await fetch('/api/data/download', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(downloadData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            console.log('下载启动成功:', result.data);
+            
+            // 显示合并信息
+            if (result.data.merge_info) {
+                const mergeInfo = result.data.merge_info;
+                console.log('合并信息:', mergeInfo);
+                document.getElementById('progressText').textContent = 
+                    `检测到现有数据，将使用${mergeInfo.merge_strategy}模式合并`;
+            }
+            
+            // 开始监控下载进度
+            monitorDownloadProgress(result.data.id, downloadData);
+        } else {
+            console.error('下载启动失败:', result.error);
+            alert('下载失败: ' + result.error);
+            document.getElementById('downloadProgress').style.display = 'none';
+        }
+    } catch (error) {
+        console.error('下载失败:', error);
+        alert('下载失败: ' + error.message);
+        document.getElementById('downloadProgress').style.display = 'none';
+    }
+}
+
+async function monitorDownloadProgress(downloadId, downloadData) {
+    const progressBar = document.querySelector('.progress-bar');
+    const progressText = document.getElementById('progressText');
+    
+    const interval = setInterval(async () => {
+        try {
+            const response = await fetch(`/api/data/download-status/${downloadId}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                const status = result.data;
+                progressBar.style.width = status.progress + '%';
+                progressText.textContent = status.message;
+                
+                if (status.status === 'completed') {
+                    clearInterval(interval);
+                    
+                    // 添加到下载历史
+                    addToDownloadHistory(downloadData);
+                    
+                    setTimeout(() => {
+                        document.getElementById('downloadProgress').style.display = 'none';
+                    }, 1000);
+                }
+            } else {
+                clearInterval(interval);
+                alert('获取下载状态失败: ' + result.error);
+                document.getElementById('downloadProgress').style.display = 'none';
+            }
+        } catch (error) {
+            clearInterval(interval);
+            console.error('监控下载进度失败:', error);
+            document.getElementById('downloadProgress').style.display = 'none';
+        }
+    }, 1000);
+}
+
+function addToDownloadHistory(downloadData) {
+    const historyList = document.getElementById('historyList');
+    const historyItem = document.createElement('div');
+    historyItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+    
+    const tradeTypeText = downloadData.trade_type === 'futures' ? '期货' : '现货';
+    
+    historyItem.innerHTML = `
+        <div>
+            <strong>${downloadData.exchange.toUpperCase()}</strong> - ${downloadData.symbol} (${tradeTypeText}, ${downloadData.timeframe})
+            <br><small class="text-muted">${downloadData.start_date} 到 ${downloadData.end_date}</small>
+        </div>
+        <span class="badge bg-success">完成</span>
+    `;
+    
+    historyList.insertBefore(historyItem, historyList.firstChild);
+}
+
+function clearDataCoverage() {
+    document.getElementById('dataCoverage').innerHTML = '<p class="text-muted">选择交易对和时间框架后，点击"查询现有数据"查看覆盖情况</p>';
+    document.getElementById('downloadSuggestions').innerHTML = '<p class="text-muted">基于现有数据生成智能下载建议</p>';
+}
+
+// 将内部 trade_type 转换为中文展示文本
+function tradeTypeToText(t) {
+    if (t === 'spot') return '现货';
+    if (t === 'futures') return '期货';
+    if (t === 'perpetual') return '永续合约';
+    if (t === 'delivery') return '交割合约';
+    return t || '未知';
+}
+
+async function getDownloadSuggestions() {
+    const exchange = document.getElementById('exchange').value;
+    const tradeType = document.getElementById('tradeType').value;
+    const symbol = document.getElementById('symbol').value;
+    const timeframe = document.getElementById('timeframe').value;
+    
+    if (!symbol) {
+        alert('请先选择交易对');
+        return;
+    }
+    
+    if (!tradeType) {
+        alert('请先选择交易类型');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/data/download-suggestions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                exchange: exchange,
+                trade_type: tradeType,
+                symbol: symbol,
+                timeframe: timeframe
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 保存建议数据到全局变量，供applySuggestion使用
+            window.currentSuggestionsData = result.data;
+            displayDataCoverage(result.data);
+            displayDownloadSuggestions(result.data);
+        } else {
+            alert('获取数据建议失败: ' + result.error);
+        }
+    } catch (error) {
+        console.error('获取数据建议失败:', error);
+        alert('获取数据建议失败: ' + error.message);
+    }
+}
+
+function displayDataCoverage(data) {
+    const coverageDiv = document.getElementById('dataCoverage');
+    
+    const tradeTypeText = tradeTypeToText(data.trade_type);
+    
+    if (data.existing_data.length === 0) {
+        coverageDiv.innerHTML = `
+            <div class="alert alert-info">
+                <h6>📊 ${data.symbol} (${tradeTypeText}, ${data.timeframe}) 数据覆盖情况</h6>
+                <p>暂无现有数据</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let coverageHtml = `
+        <div class="alert alert-success">
+            <h6>📊 ${data.symbol} (${tradeTypeText}, ${data.timeframe}) 数据覆盖情况</h6>
+            <div class="row">
+    `;
+    
+    data.existing_data.forEach(item => {
+        coverageHtml += `
+            <div class="col-md-6 mb-2">
+                <div class="card">
+                    <div class="card-body p-2">
+                        <h6 class="card-title">${item.data_type}</h6>
+                        <p class="card-text small">
+                            <strong>时间范围:</strong> ${item.start_date} 到 ${item.end_date}<br>
+                            <strong>数据点数:</strong> ${item.data_points.toLocaleString()}<br>
+                            <strong>文件大小:</strong> ${item.file_size}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    coverageHtml += `
+            </div>
+        </div>
+    `;
+    
+    coverageDiv.innerHTML = coverageHtml;
+}
+
+function displayDownloadSuggestions(data) {
+    const suggestionsDiv = document.getElementById('downloadSuggestions');
+    let suggestionsHtml = '';
+    
+    if (data.recommended_downloads.length === 0) {
+        suggestionsHtml = `
+            <div class="alert alert-warning">
+                <h6>💡 下载建议</h6>
+                <p>暂无下载建议</p>
+            </div>
+        `;
+        suggestionsDiv.innerHTML = suggestionsHtml;
+        return;
+    }
+    
+    suggestionsHtml = `
+        <div class="alert alert-info">
+            <h6>💡 智能下载建议</h6>
+            <div class="row">
+    `;
+    
+    data.recommended_downloads.forEach((suggestion, index) => {
+        const dataTypeText = tradeTypeToText(suggestion.data_type);
+        suggestionsHtml += `
+            <div class="col-12 mb-2">
+                <div class="card">
+                    <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="card-title">${dataTypeText} (${suggestion.data_type})</h6>
+                                <p class="card-text small">
+                                    <strong>建议时间范围:</strong> ${suggestion.start_date} 到 ${suggestion.end_date}<br>
+                                    <strong>建议原因:</strong> ${suggestion.reason}
+                                </p>
+                            </div>
+                            <button class="btn btn-sm btn-primary" onclick="applySuggestion(${index})">
+                                应用建议
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    // 添加合并建议
+    if (data.existing_data && data.existing_data.length > 0) {
+        suggestionsHtml += `
+            <div class="col-12 mt-3">
+                <div class="alert alert-success">
+                    <h6>🔄 数据合并建议</h6>
+                    <p class="small">
+                        <strong>检测到现有数据:</strong> ${data.existing_data.length} 个文件<br>
+                        <strong>建议:</strong> 系统将自动与现有数据合并<br>
+                        <strong>好处:</strong> 避免重复数据，保持数据连续性，自动处理时间重叠
+                    </p>
+                </div>
+            </div>
+        `;
+    }
+    
+    suggestionsHtml += `
+            </div>
+        </div>
+    `;
+    
+    suggestionsDiv.innerHTML = suggestionsHtml;
+}
+
+function applySuggestion(index) {
+    // 获取建议数据
+    const suggestionsData = window.currentSuggestionsData;
+    if (!suggestionsData || !suggestionsData.recommended_downloads || !suggestionsData.recommended_downloads[index]) {
+        alert('建议数据不可用');
+        return;
+    }
+    
+    const suggestion = suggestionsData.recommended_downloads[index];
+    
+    // 自动填充表单
+    document.getElementById('exchange').value = 'binance'; // 默认binance
+    document.getElementById('tradeType').value = suggestion.data_type;
+    
+    // 获取当前选择的symbol和timeframe（从全局变量或表单中获取）
+    const currentSymbol = document.getElementById('symbol').value || 'BTC/USDT';
+    const currentTimeframe = document.getElementById('timeframe').value || '1h';
+    
+    // 更新交易对列表和时间框架列表
+    Promise.all([
+        updateSymbols(),
+        updateTimeframes()
+    ]).then(() => {
+        // 等待列表更新完成后设置值
+        setTimeout(() => {
+            // 设置symbol（使用当前选择的或默认值）
+            document.getElementById('symbol').value = currentSymbol;
+            
+            // 设置时间框架（使用当前选择的或默认值）
+            document.getElementById('timeframe').value = currentTimeframe;
+            
+            // 设置日期范围
+            if (suggestion.start_date) {
+                document.getElementById('startDate').value = suggestion.start_date.split(' ')[0];
+            }
+            if (suggestion.end_date) {
+                document.getElementById('endDate').value = suggestion.end_date.split(' ')[0];
+            }
+            
+            // 如果有现有数据，智能合并总是启用的
+            if (suggestionsData.existing_data && suggestionsData.existing_data.length > 0) {
+                document.getElementById('mergeWithExisting').checked = true;
+            }
+            
+            // 显示成功消息
+            const successDiv = document.createElement('div');
+            successDiv.className = 'alert alert-success alert-dismissible fade show';
+            successDiv.innerHTML = `
+                <strong>✅ 建议已应用!</strong> 
+                已自动填充下载参数：${suggestion.data_type} ${currentSymbol} ${currentTimeframe}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // 插入到表单前面
+            const form = document.getElementById('dataConfigForm');
+            form.parentNode.insertBefore(successDiv, form);
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                if (successDiv.parentNode) {
+                    successDiv.remove();
+                }
+            }, 3000);
+            
+        }, 500);
+    });
+}
+</script>
+{% endblock %} 

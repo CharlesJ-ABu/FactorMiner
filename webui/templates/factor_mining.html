@@ -1,0 +1,533 @@
+{% extends "base.html" %}
+
+{% block title %}因子挖掘 - FactorMiner{% endblock %}
+
+{% block extra_css %}
+<!-- 因子挖掘专用样式 -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/factor_mining.css') }}">
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-2">🚀 因子挖掘</h2>
+            <p class="text-muted mb-4">使用先进的算法挖掘和优化量化因子</p>
+        </div>
+    </div>
+
+    <!-- 挖掘配置 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-3">⚙️ 挖掘配置</h3>
+                </div>
+                <div class="card-body">
+                    <form id="miningForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="exchangeSelect" class="form-label">交易所</label>
+                                    <select class="form-select" id="exchangeSelect" required>
+                                        <option value="">请选择...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="tradeTypeSelect" class="form-label">交易类型</label>
+                                    <select class="form-select" id="tradeTypeSelect" required>
+                                        <option value="">请选择...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="refreshDataBtn" onclick="refreshLocalMeta()">
+                                        <i class="fas fa-sync-alt me-1"></i>刷新数据
+                                    </button>
+                                    <small class="form-text text-muted d-block mt-1">选择交易所和交易类型后，点击刷新获取可用数据</small>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="symbolsSelect" class="form-label">交易对</label>
+                                    <select class="form-select" id="symbolsSelect" multiple required>
+                                        <option value="">请选择...</option>
+                                    </select>
+                                    <div class="form-text">可多选，建议选择2-5个交易对</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="timeframesSelect" class="form-label">时间框架</label>
+                                    <select class="form-select" id="timeframesSelect" multiple required>
+                                        <option value="">请选择...</option>
+                                    </select>
+                                    <div class="form-text">可多选，建议选择1-3个时间框架</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="factorTypes" class="form-label">因子类型</label>
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="factorType" value="technical" id="techCheck" checked>
+                                                <label class="form-check-label" for="techCheck">技术因子</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="factorType" value="statistical" id="statCheck" checked>
+                                                <label class="form-check-label" for="statCheck">统计因子</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="factorType" value="advanced" id="advCheck">
+                                                <label class="form-check-label" for="advCheck">高级因子</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="factorType" value="ml" id="mlCheck">
+                                                <label class="form-check-label" for="mlCheck">ML因子</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="factorType" value="crypto" id="cryptoCheck">
+                                                <label class="form-check-label" for="cryptoCheck">加密因子</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="factorType" value="pattern" id="patternCheck">
+                                                <label class="form-check-label" for="patternCheck">形态因子</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="factorType" value="composite" id="compositeCheck">
+                                                <label class="form-check-label" for="compositeCheck">复合因子</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="factorType" value="sentiment" id="sentimentCheck">
+                                                <label class="form-check-label" for="sentimentCheck">情感因子</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="dataRange" class="form-label">数据时间范围</label>
+                                    <div id="rangeSlider"></div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">
+                                            选择范围: <span id="rangeInfo">请先选择交易对和时间框架</span>
+                                        </small>
+                                    </div>
+                                    <input type="hidden" id="startDate" name="startDate">
+                                    <input type="hidden" id="endDate" name="endDate">
+                                    <div class="form-text">选择数据时间范围，建议至少3个月数据</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="maxFactors" class="form-label">最大因子数量</label>
+                                    <input type="number" class="form-control" id="maxFactors" name="maxFactors" value="15" min="5" max="50">
+                                    <div class="form-text">挖掘完成后选择的最优因子数量</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="minIC" class="form-label">最小IC值</label>
+                                    <input type="number" class="form-control" id="minIC" name="minIC" value="0.02" min="0" max="1" step="0.01">
+                                    <div class="form-text">因子选择的最小信息系数阈值</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="minIR" class="form-label">最小IR值</label>
+                                    <input type="number" class="form-control" id="minIR" name="minIR" value="0.1" min="0" max="1" step="0.01">
+                                    <div class="form-text">因子选择的最小信息比率阈值</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="minSampleSize" class="form-label">最小样本数</label>
+                                    <input type="number" class="form-control" id="minSampleSize" name="minSampleSize" value="30" min="10" max="1000">
+                                    <div class="form-text">因子评估的最小样本数量</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="optimizationMethod" class="form-label">优化方法</label>
+                                    <select class="form-select" id="optimizationMethod" name="optimizationMethod">
+                                        <option value="greedy">贪心算法</option>
+                                        <option value="genetic">遗传算法</option>
+                                        <option value="correlation">相关性过滤</option>
+                                    </select>
+                                    <div class="form-text">选择因子组合的优化算法</div>
+                                </div>
+                                
+                                <!-- 状态显示区域 -->
+                                <div id="statusDisplay" class="alert alert-info mb-3" style="display: none;">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <span id="statusMessage">准备就绪</span>
+                                </div>
+                                
+                                <div class="text-center">
+                                    <button type="submit" class="btn btn-primary btn-lg px-5" id="startMiningBtn">
+                                        <i class="fas fa-rocket me-2"></i>开始因子挖掘
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 等待状态 -->
+    <div id="waitingState" class="row mt-4" style="display: none;">
+        <div class="col-12">
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+                <h4 class="mt-3">正在启动因子挖掘...</h4>
+                <p class="text-muted">请稍候，系统正在准备挖掘环境</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 挖掘进度 -->
+    <div id="miningProgress" class="row mt-4" style="display: none;">
+        <div class="col-12">
+            <div class="progress-container">
+                <h4 class="text-center mb-4">
+                    <i class="fas fa-cogs me-2"></i>挖掘进度
+                </h4>
+                
+                <!-- 步骤1: 数据加载 -->
+                <div class="progress-step" id="step1">
+                    <div class="step-icon pending" id="step1Icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">数据加载</div>
+                        <div class="step-description">从本地数据源加载市场数据</div>
+                        <div class="step-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="step1Progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="step-details" id="step1Details">等待开始...</div>
+                        <div class="step-time" id="step1Time">预计: 5秒</div>
+                    </div>
+                </div>
+                
+                <!-- 步骤2: 因子构建 -->
+                <div class="progress-step" id="step2">
+                    <div class="step-icon pending" id="step2Icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">因子构建</div>
+                        <div class="step-description">根据选择的类型构建量化因子</div>
+                        <div class="step-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="step2Progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="step-details" id="step2Details">等待数据加载完成...</div>
+                        <div class="step-time" id="step2Time">预计: 15秒</div>
+                        
+                        <!-- 子进度条区域 -->
+                        <div id="subProgressContainer" class="sub-progress-container" style="display: none;">
+                            <div class="sub-progress-title">算法执行进度</div>
+                            
+                            <!-- ML因子子进度 -->
+                            <div id="mlSubProgress" class="sub-progress-item" style="display: none;">
+                                <div class="sub-progress-header">
+                                    <span class="sub-progress-name">机器学习因子</span>
+                                    <span class="sub-progress-status" id="mlStatus">准备中...</span>
+                                </div>
+                                <div class="sub-progress-bar">
+                                    <div class="sub-progress-fill" id="mlProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="sub-progress-details" id="mlDetails">初始化...</div>
+                            </div>
+                            
+                            <!-- 技术因子子进度 -->
+                            <div id="technicalSubProgress" class="sub-progress-item" style="display: none;">
+                                <div class="sub-progress-header">
+                                    <span class="sub-progress-name">技术因子</span>
+                                    <span class="sub-progress-status" id="technicalStatus">准备中...</span>
+                                </div>
+                                <div class="sub-progress-bar">
+                                    <div class="sub-progress-fill" id="technicalProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="sub-progress-details" id="technicalDetails">初始化...</div>
+                            </div>
+                            
+                            <!-- 统计因子子进度 -->
+                            <div id="statisticalSubProgress" class="sub-progress-item" style="display: none;">
+                                <div class="sub-progress-header">
+                                    <span class="sub-progress-name">统计因子</span>
+                                    <span class="sub-progress-status" id="statisticalStatus">准备中...</span>
+                                </div>
+                                <div class="sub-progress-bar">
+                                    <div class="sub-progress-fill" id="statisticalProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="sub-progress-details" id="statisticalDetails">初始化...</div>
+                            </div>
+                            
+                            <!-- 高级因子子进度 -->
+                            <div id="advancedSubProgress" class="sub-progress-item" style="display: none;">
+                                <div class="sub-progress-header">
+                                    <span class="sub-progress-name">高级因子</span>
+                                    <span class="sub-progress-status" id="advancedStatus">准备中...</span>
+                                </div>
+                                <div class="sub-progress-bar">
+                                    <div class="sub-progress-fill" id="advancedProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="sub-progress-details" id="advancedDetails">初始化...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 步骤3: 因子评估 -->
+                <div class="progress-step" id="step3">
+                    <div class="step-icon pending" id="step3Icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">因子评估</div>
+                        <div class="step-description">计算因子的IC、IR、胜率等指标</div>
+                        <div class="step-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="step3Progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="step-details" id="step3Details">等待因子构建完成...</div>
+                        <div class="step-time" id="step3Time">预计: 20秒</div>
+                    </div>
+                </div>
+                
+                <!-- 步骤4: 因子优化 -->
+                <div class="progress-step" id="step4">
+                    <div class="step-icon pending" id="step4Icon">
+                        <i class="fas fa-filter"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">因子优化</div>
+                        <div class="step-description">选择最优因子组合</div>
+                        <div class="step-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="step4Progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="step-details" id="step4Details">等待因子评估完成...</div>
+                        <div class="step-time" id="step4Time">预计: 10秒</div>
+                    </div>
+                </div>
+                
+                <!-- 步骤5: 结果保存 -->
+                <div class="progress-step" id="step5">
+                    <div class="step-icon pending" id="step5Icon">
+                        <i class="fas fa-save"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-title">结果保存</div>
+                        <div class="step-description">保存挖掘结果和历史记录</div>
+                        <div class="step-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="step5Progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="step-details" id="step5Details">等待优化完成...</div>
+                        <div class="step-time" id="step5Time">预计: 3秒</div>
+                    </div>
+                </div>
+                
+                <!-- 总体进度 -->
+                <div class="text-center mt-4">
+                    <div class="h5 mb-2">总体进度</div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-success" id="overallProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="mt-2" id="overallDetails">准备开始...</div>
+                    
+                    <!-- 时间信息 -->
+                    <div class="mt-3">
+                        <div class="text-muted small" id="timeDisplay">预计总时间: 计算中...</div>
+                        <div class="text-muted small" id="systemDisplay">系统信息: 加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 状态提示 -->
+    <div id="statusAlerts" class="row mt-4" style="display: none;">
+        <div class="col-12">
+            <div class="alert alert-custom info" id="infoAlert" style="display: none;">
+                <i class="fas fa-info-circle me-2"></i>
+                <span id="infoMessage"></span>
+            </div>
+            <div class="alert alert-custom success" id="successAlert" style="display: none;">
+                <i class="fas fa-check-circle me-2"></i>
+                <span id="successMessage"></span>
+            </div>
+            <div class="alert alert-custom warning" id="warningAlert" style="display: none;">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <span id="warningMessage"></span>
+            </div>
+            <div class="alert alert-custom error" id="errorAlert" style="display: none;">
+                <i class="fas fa-times-circle me-2"></i>
+                <span id="errorMessage"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 挖掘结果 -->
+    <div id="miningResults" class="row mt-4" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-3">📊 挖掘结果</h3>
+                </div>
+                <div class="card-body">
+                    <!-- 结果概览 -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h4 id="totalFactors">0</h4>
+                                    <p class="mb-0">总因子数</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h4 id="selectedFactors">0</h4>
+                                    <p class="mb-0">选中因子</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h4 id="avgIC">0.00</h4>
+                                    <p class="mb-0">平均IC</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <h4 id="executionTime">0s</h4>
+                                    <p class="mb-0">执行时间</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 结果图表 -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <span class="small text-muted">按类型</span> 分布图
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="typeChart" height="160"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <span class="small text-muted">按性能</span> 分布图
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="performanceChart" height="160"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 结果表格 -->
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle text-center" id="resultsTable">
+                            <thead>
+                                <tr>
+                                    <th style="cursor:pointer;" onclick="sortResults('factor_id')">因子ID</th>
+                                    <th style="cursor:pointer;" onclick="sortResults('name')">因子名称</th>
+                                    <th style="cursor:pointer;" onclick="sortResults('type')">类型</th>
+                                    <th style="cursor:pointer;" onclick="sortResults('ic')">IC值</th>
+                                    <th style="cursor:pointer;" onclick="sortResults('ir')">IR值</th>
+                                    <th style="cursor:pointer;" onclick="sortResults('win_rate')">胜率</th>
+                                    <th style="cursor:pointer;" onclick="sortResults('sharpe')">夏普比率</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTableBody">
+                                <!-- 结果将在这里动态生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 等待开始状态 -->
+    <div id="waitingState" class="text-center text-muted mt-5">
+        <i class="fas fa-rocket fa-3x mb-3"></i>
+        <p>配置挖掘参数后点击"开始因子挖掘"按钮</p>
+    </div>
+ 
+
+<!-- 挖掘历史 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-history me-2"></i>挖掘历史</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>交易对</th>
+                                <th>时间框架</th>
+                                <th>因子类型</th>
+                                <th>生成因子数</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <!-- 历史记录将在这里动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- noUiSlider 样式与脚本 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.css">
+<script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- 自定义因子挖掘JavaScript -->
+<script src="{{ url_for('static', filename='js/factor_mining.js') }}"></script>
+{% endblock %}

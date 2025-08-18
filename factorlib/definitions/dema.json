@@ -1,0 +1,25 @@
+{
+  "factor_id": "dema",
+  "name": "双指数移动平均线",
+  "description": "Double Exponential Moving Average - 减少滞后的EMA改进版",
+  "category": "trend",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/dema.py",
+    "function_code": "def calculate(data, period=21, **kwargs):\n    ema1 = data['close'].ewm(span=period).mean()\n    ema2 = ema1.ewm(span=period).mean()\n    return 2*ema1 - ema2\n",
+    "entry_point": "calculate",
+    "imports": [
+      "import pandas as pd",
+      "import numpy as np"
+    ]
+  },
+  "parameters": {
+    "period": 21
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.329502"
+  }
+}

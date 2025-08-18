@@ -1,0 +1,22 @@
+{
+  "factor_id": "ease_of_movement",
+  "name": "简易波动指标",
+  "description": "Ease of Movement - 价格变动与成交量的关系指标",
+  "category": "volume",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/ease_of_movement.py",
+    "function_code": "def calculate(data, **kwargs):\n    import pandas as pd\n    # TODO: 实现该因子计算逻辑\n    return pd.Series([float('nan')]*len(data), index=data.index)\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "period": 14
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.327957"
+  }
+}

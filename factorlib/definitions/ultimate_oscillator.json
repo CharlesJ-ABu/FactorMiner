@@ -1,0 +1,24 @@
+{
+  "factor_id": "ultimate_oscillator",
+  "name": "终极振荡器",
+  "description": "Ultimate Oscillator - 多时间框架的动量指标",
+  "category": "momentum",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/ultimate_oscillator.py",
+    "function_code": "def calculate(data, **kwargs):\n    import pandas as pd\n    # TODO: 实现该因子计算逻辑\n    return pd.Series([float('nan')]*len(data), index=data.index)\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "period1": 7,
+    "period2": 14,
+    "period3": 28
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.328581"
+  }
+}

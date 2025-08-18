@@ -1,0 +1,22 @@
+{
+  "factor_id": "ichimoku_tenkan",
+  "name": "一目均衡表转换线",
+  "description": "Ichimoku Tenkan-sen - 9期最高价和最低价的中点",
+  "category": "composite",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/ichimoku_tenkan.py",
+    "function_code": "def calculate(data, **kwargs):\n    import pandas as pd\n    # TODO: 实现该因子计算逻辑\n    return pd.Series([float('nan')]*len(data), index=data.index)\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "period": 9
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "created_at": "2025-08-09T23:35:39.322471"
+  }
+}
