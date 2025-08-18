@@ -10,6 +10,7 @@ from pathlib import Path
 import pickle
 import threading
 import time
+from datetime import datetime
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import Ridge, Lasso
 from sklearn.preprocessing import StandardScaler
@@ -143,27 +144,35 @@ class MLFactorBuilder:
         # 模型持久化目录：factorlib/models
         self.models_dir = (Path(__file__).parent.parent.parent / "factorlib" / "models")
         self.models_dir.mkdir(parents=True, exist_ok=True)
+        print(f"✅ ML因子模型目录: {self.models_dir}")
 
     def _artifact_path(self, factor_id: str) -> Path:
-        return self.models_dir / f"{factor_id}.pkl"
+        artifact_path = self.models_dir / f"{factor_id}.pkl"
+        print(f"💾 保存ML模型artifact: {artifact_path}")
+        return artifact_path
 
     def _save_model_artifact(
         self,
         factor_id: str,
         model,
         feature_columns: List[str],
-        scaler: Optional[StandardScaler] = None
+        scaler: Optional[StandardScaler] = None,
+        extra_info: Optional[Dict] = None
     ) -> None:
         try:
             artifact = {
                 "model": model,
                 "feature_columns": list(feature_columns),
                 "scaler": scaler,
+                "extra_info": extra_info or {},
+                "saved_at": datetime.now().isoformat(),
+                "factor_id": factor_id
             }
             with open(self._artifact_path(factor_id), "wb") as f:
                 pickle.dump(artifact, f)
-        except Exception as _:
-            print(f"❌ 保存模型文件失败 {factor_id}")
+            print(f"✅ 成功保存模型文件: {factor_id}")
+        except Exception as e:
+            print(f"❌ 保存模型文件失败 {factor_id}: {e}")
         
     def build_ensemble_factors(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
         """
@@ -285,6 +294,14 @@ class MLFactorBuilder:
         if progress_callback:
             progress_callback(stage='ml', progress=85, message='集成模型训练: 保存模型完成')
         
+        # 验证模型文件是否成功保存
+        for factor_id in factors.keys():
+            artifact_path = self._artifact_path(factor_id)
+            if artifact_path.exists():
+                print(f"✅ 验证: {factor_id} 模型文件存在 ({artifact_path.stat().st_size} bytes)")
+            else:
+                print(f"❌ 验证失败: {factor_id} 模型文件不存在")
+        
         return pd.DataFrame(factors, index=data.index)
 
     def build_pca_factors(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
@@ -366,12 +383,47 @@ class MLFactorBuilder:
                 
                 factor_series = pd.Series(index=data.index, dtype=float)
                 factor_series.loc[valid_idx] = pca_components[:, i]
-                factors[f'pca_component_{i+1}'] = factor_series
+                factor_id = f'pca_component_{i+1}'
+                factors[factor_id] = factor_series
+                
+                # 设置因子元数据（类别、描述等）
+                if hasattr(factor_series, 'metadata'):
+                    factor_series.metadata = {
+                        'category': 'ml',
+                        'subcategory': 'pca',
+                        'component_index': i
+                    }
             
             # 保存解释方差比例
             explained_variance_ratio = pca.explained_variance_ratio_
             tqdm.write(f"PCA解释方差比例: {explained_variance_ratio[:5]}")
             print(f"前5个组件累计解释方差: {explained_variance_ratio[:5].sum():.3f}")
+            
+            # 保存PCA模型和特征信息
+            if progress_callback:
+                progress_callback(stage='ml', progress=90, message='PCA 降维: 保存模型...')
+            
+            # 为每个PCA组件保存模型
+            for i in range(n_components):
+                factor_id = f'pca_component_{i+1}'
+                try:
+                    # 保存PCA模型和特征信息
+                    self._save_model_artifact(
+                        factor_id=factor_id,
+                        model=pca,
+                        feature_columns=list(features_clean.columns),
+                        scaler=self.scaler,
+                        extra_info={
+                            'component_index': i,
+                            'explained_variance_ratio': float(explained_variance_ratio[i]),
+                            'cumulative_variance_ratio': float(explained_variance_ratio[:i+1].sum()),
+                            'n_components': n_components,
+                            'n_features': len(features_clean.columns)
+                        }
+                    )
+                    print(f"✅ 已保存PCA组件 {i+1} 模型")
+                except Exception as e:
+                    print(f"❌ 保存PCA组件 {i+1} 模型失败: {e}")
                 
         except Exception as e:
             print(f"❌ PCA计算失败: {e}")
@@ -379,6 +431,16 @@ class MLFactorBuilder:
             traceback.print_exc()
         
         print(f"✅ PCA因子构建完成，共 {len(factors)} 个因子")
+        
+        # 验证模型文件是否成功保存
+        for i in range(n_components):
+            factor_id = f'pca_component_{i+1}'
+            artifact_path = self._artifact_path(factor_id)
+            if artifact_path.exists():
+                print(f"✅ 验证: {factor_id} 模型文件存在 ({artifact_path.stat().st_size} bytes)")
+            else:
+                print(f"❌ 验证失败: {factor_id} 模型文件不存在")
+        
         return pd.DataFrame(factors, index=data.index)
     
     def build_feature_selection_factors(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
@@ -460,9 +522,57 @@ class MLFactorBuilder:
                     completion_progress = 10 + ((method_idx + 1) / len(selection_methods)) * 70
                     progress_callback(stage='ml', progress=int(completion_progress), message=f'特征选择: {method_name} 完成, 选择了 {len(selected_features.columns)} 个特征')
                 
+                # 保存特征选择模型
+                try:
+                    # 保存平均组合因子模型
+                    mean_factor_id = f'feature_selection_{method_name}_mean'
+                    self._save_model_artifact(
+                        factor_id=mean_factor_id,
+                        model=selector,
+                        feature_columns=list(features_clean.columns),
+                        scaler=self.scaler,
+                        extra_info={
+                            'selection_method': method_name,
+                            'k_best': k_best,
+                            'selected_features': list(selected_features.columns),
+                            'feature_scores': selector.scores_.tolist(),
+                            'combination_method': 'mean'
+                        }
+                    )
+                    print(f"✅ 已保存特征选择平均因子模型: {mean_factor_id}")
+                    
+                    # 保存加权组合因子模型
+                    weighted_factor_id = f'feature_selection_{method_name}_weighted'
+                    self._save_model_artifact(
+                        factor_id=weighted_factor_id,
+                        model=selector,
+                        feature_columns=list(features_clean.columns),
+                        scaler=self.scaler,
+                        extra_info={
+                            'selection_method': method_name,
+                            'k_best': k_best,
+                            'selected_features': list(selected_features.columns),
+                            'feature_scores': selector.scores_.tolist(),
+                            'combination_method': 'weighted',
+                            'weights': weights.tolist()
+                        }
+                    )
+                    print(f"✅ 已保存特征选择加权因子模型: {weighted_factor_id}")
+                    
+                except Exception as e:
+                    print(f"❌ 保存特征选择模型失败: {e}")
+                
             except Exception:
                 tqdm.write(f"✗ 特征选择 {method_name} 失败")
                 continue
+        
+        # 验证模型文件是否成功保存
+        for factor_id in factors.keys():
+            artifact_path = self._artifact_path(factor_id)
+            if artifact_path.exists():
+                print(f"✅ 验证: {factor_id} 模型文件存在 ({artifact_path.stat().st_size} bytes)")
+            else:
+                print(f"❌ 验证失败: {factor_id} 模型文件不存在")
         
         return pd.DataFrame(factors, index=data.index)
     
@@ -534,6 +644,10 @@ class MLFactorBuilder:
             try:
                 model.fit(features_scaled, train_target_clean)
                 
+                # 保存最后一个训练好的模型和特征
+                last_model = model
+                last_features = train_features_clean
+                
                 # 预测下一个时间点
                 if i < len(data):
                     next_features = features.iloc[i:i+1]
@@ -546,6 +660,35 @@ class MLFactorBuilder:
                 continue
         
         factors['rolling_ml_factor'] = factor_series
+        
+        # 保存滚动ML模型
+        try:
+            # 保存最后一个训练好的模型作为代表性模型
+            if 'last_model' in locals() and 'last_features' in locals():
+                self._save_model_artifact(
+                    factor_id='rolling_ml_factor',
+                    model=last_model,
+                    feature_columns=list(last_features.columns),
+                    scaler=self.scaler,
+                    extra_info={
+                        'window_size': window,
+                        'step_size': step,
+                        'total_steps': total_steps,
+                        'model_type': 'RandomForestRegressor',
+                        'training_samples': len(last_features)
+                    }
+                )
+                print(f"✅ 已保存滚动ML因子模型")
+        except Exception as e:
+            print(f"❌ 保存滚动ML因子模型失败: {e}")
+        
+        # 验证模型文件是否成功保存
+        for factor_id in factors.keys():
+            artifact_path = self._artifact_path(factor_id)
+            if artifact_path.exists():
+                print(f"✅ 验证: {factor_id} 模型文件存在 ({artifact_path.stat().st_size} bytes)")
+            else:
+                print(f"❌ 验证失败: {factor_id} 模型文件不存在")
         
         return pd.DataFrame(factors, index=data.index)
     
@@ -638,6 +781,10 @@ class MLFactorBuilder:
             try:
                 model.fit(features_scaled, train_target_clean)
                 
+                # 保存最后一个训练好的模型和特征
+                last_adaptive_model = model
+                last_adaptive_features = train_features_clean
+                
                 # 预测下一个时间点
                 if i < len(data):
                     next_features = features.iloc[i:i+1]
@@ -650,6 +797,33 @@ class MLFactorBuilder:
                 continue
         
         factors['adaptive_ml_factor'] = factor_series
+        
+        # 保存自适应ML模型
+        try:
+            if 'last_adaptive_model' in locals() and 'last_adaptive_features' in locals():
+                self._save_model_artifact(
+                    factor_id='adaptive_ml_factor',
+                    model=last_adaptive_model,
+                    feature_columns=list(last_adaptive_features.columns),
+                    scaler=self.scaler,
+                    extra_info={
+                        'window_size': window,
+                        'model_type': 'RandomForestRegressor',
+                        'training_samples': len(last_adaptive_features),
+                        'adaptation_method': 'volatility_based'
+                    }
+                )
+                print(f"✅ 已保存自适应ML因子模型")
+        except Exception as e:
+            print(f"❌ 保存自适应ML因子模型失败: {e}")
+        
+        # 验证模型文件是否成功保存
+        for factor_id in factors.keys():
+            artifact_path = self._artifact_path(factor_id)
+            if artifact_path.exists():
+                print(f"✅ 验证: {factor_id} 模型文件存在 ({artifact_path.stat().st_size} bytes)")
+            else:
+                print(f"❌ 验证失败: {factor_id} 模型文件不存在")
         
         return pd.DataFrame(factors, index=data.index)
     

@@ -442,11 +442,11 @@ def start_download():
         with DOWNLOADS_LOCK:
             DOWNLOADS[download_id] = {
                 'id': download_id,
-                'exchange': exchange,
-                'symbol': symbol,
-                'timeframe': timeframe,
-                'start_date': start_date,
-                'end_date': end_date,
+            'exchange': exchange,
+            'symbol': symbol,
+            'timeframe': timeframe,
+            'start_date': start_date,
+            'end_date': end_date,
                 'trade_type': trade_type,
                 'status': 'starting',
                 'progress': 0,
@@ -457,25 +457,32 @@ def start_download():
         # 启动后台下载任务
         def download_task():
             try:
-                from factor_miner.core.data_downloader import DataDownloader
+                from factor_miner.core.batch_downloader import batch_downloader
                 
                 # 更新状态
                 with DOWNLOADS_LOCK:
                     if download_id in DOWNLOADS:
                         DOWNLOADS[download_id]['status'] = 'downloading'
-                        DOWNLOADS[download_id]['message'] = '正在下载数据...'
-                
-                # 创建下载器实例
-                downloader = DataDownloader()
+                        DOWNLOADS[download_id]['message'] = '正在初始化分批下载...'
                 
                 # 设置交易类型
-                downloader.trade_type = trade_type
+                batch_downloader.trade_type = trade_type
                 
-                # 开始下载 - 使用默认的 Binance 配置
+                # 开始分批下载 - 使用智能分批下载器
                 # 修复交易对格式：BTC_USDT -> BTC/USDT
                 formatted_symbol = symbol.replace('_', '/')
                 
-                result = downloader.download_ohlcv(
+                # 计算分批信息
+                from datetime import datetime
+                start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+                total_days = (end_dt - start_dt).days
+                
+                with DOWNLOADS_LOCK:
+                    if download_id in DOWNLOADS:
+                        DOWNLOADS[download_id]['message'] = f'开始分批下载，总天数: {total_days} 天'
+                
+                result = batch_downloader.download_ohlcv_batch(
                     config_id=None,  # 不使用配置文件，直接创建实例
                     symbol=formatted_symbol,
                     timeframe=timeframe,
@@ -512,6 +519,191 @@ def start_download():
         
         with DOWNLOADS_LOCK:
             return jsonify({'success': True, 'data': DOWNLOADS[download_id]})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@bp.route('/downloads', methods=['GET'])
+def get_all_downloads():
+    """获取所有下载任务的状态"""
+    try:
+        with DOWNLOADS_LOCK:
+            # 返回所有下载任务的状态
+            downloads = list(DOWNLOADS.values())
+            return jsonify({'success': True, 'data': downloads})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@bp.route('/batch-download', methods=['POST'])
+def start_batch_download():
+    """开始批量下载数据"""
+    try:
+        data = request.get_json()
+        exchange = data.get('exchange')
+        symbols = data.get('symbols', [])  # 交易对列表
+        timeframes = data.get('timeframes', [])  # 时间框架列表
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        trade_type = data.get('trade_type', 'spot')  # 默认为现货
+        
+        if not symbols or not timeframes:
+            return jsonify({'success': False, 'error': '请选择交易对和时间框架'})
+        
+        # 计算总任务数
+        total_tasks = len(symbols) * len(timeframes)
+        print(f"开始批量下载: {len(symbols)} 个交易对 × {len(timeframes)} 个时间框架 = {total_tasks} 个任务")
+        
+        # 创建批量下载任务ID
+        batch_id = f"batch_{exchange}_{trade_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        # 初始化批量下载状态
+        with DOWNLOADS_LOCK:
+            DOWNLOADS[batch_id] = {
+                'id': batch_id,
+                'type': 'batch',
+                'exchange': exchange,
+                'symbols': symbols,
+                'timeframes': timeframes,
+                'start_date': start_date,
+                'end_date': end_date,
+                'trade_type': trade_type,
+                'status': 'starting',
+            'progress': 0,
+                'message': f'正在初始化批量下载，共 {total_tasks} 个任务...',
+                'start_time': datetime.now().isoformat(),
+                'total_tasks': total_tasks,
+                'completed_tasks': 0,
+                'failed_tasks': 0,
+                'task_results': []
+            }
+        
+        # 启动后台批量下载任务
+        def batch_download_task():
+            try:
+                from factor_miner.core.batch_downloader import batch_downloader
+                
+                # 更新状态为下载中
+                with DOWNLOADS_LOCK:
+                    if batch_id in DOWNLOADS:
+                        DOWNLOADS[batch_id]['status'] = 'downloading'
+                        DOWNLOADS[batch_id]['message'] = f'开始批量下载，共 {total_tasks} 个任务'
+                        print(f"批量下载状态更新: {batch_id} -> downloading")
+                
+                # 设置交易类型
+                batch_downloader.trade_type = trade_type
+                
+                completed_count = 0
+                failed_count = 0
+                
+                # 遍历所有交易对和时间框架组合
+                for symbol in symbols:
+                    for timeframe in timeframes:
+                        task_id = f"{symbol}_{timeframe}"
+                        
+                        try:
+                            # 更新当前任务状态
+                            with DOWNLOADS_LOCK:
+                                if batch_id in DOWNLOADS:
+                                    current_task = completed_count + failed_count + 1
+                                    progress = int((current_task - 1) / total_tasks * 100)
+                                    DOWNLOADS[batch_id]['progress'] = progress
+                                    DOWNLOADS[batch_id]['message'] = f'正在下载 {symbol} {timeframe} ({current_task}/{total_tasks})'
+                                    print(f"批量下载进度更新: {batch_id} -> {progress}% - {symbol} {timeframe}")
+                            
+                            # 修复交易对格式：BTC_USDT -> BTC/USDT
+                            formatted_symbol = symbol.replace('_', '/')
+                            
+                            # 使用现有的下载逻辑
+                            result = batch_downloader.download_ohlcv_batch(
+                                config_id=None,
+                                symbol=formatted_symbol,
+                                timeframe=timeframe,
+                                start_date=start_date,
+                                end_date=end_date,
+                                trade_type=trade_type,
+                                progress_callback=None  # 批量下载时不使用进度回调
+                            )
+                            
+                            # 记录任务结果
+                            task_result = {
+                                'task_id': task_id,
+                                'symbol': symbol,
+                                'timeframe': timeframe,
+                                'success': result.get('success', False),
+                                'message': result.get('message', '未知状态'),
+                                'records': result.get('total_records', 0),
+                                'file_path': result.get('file_path', '')
+                            }
+                            
+                            if result.get('success'):
+                                completed_count += 1
+                                task_result['status'] = 'completed'
+                                print(f"✅ 任务完成: {symbol} {timeframe}")
+                            else:
+                                failed_count += 1
+                                task_result['status'] = 'failed'
+                                print(f"❌ 任务失败: {symbol} {timeframe} - {result.get('error', '未知错误')}")
+                            
+                            # 更新批量下载状态
+                            with DOWNLOADS_LOCK:
+                                if batch_id in DOWNLOADS:
+                                    DOWNLOADS[batch_id]['task_results'].append(task_result)
+                                    DOWNLOADS[batch_id]['completed_tasks'] = completed_count
+                                    DOWNLOADS[batch_id]['failed_tasks'] = failed_count
+                                    progress = int((completed_count + failed_count) / total_tasks * 100)
+                                    DOWNLOADS[batch_id]['progress'] = progress
+                                    print(f"批量下载任务完成: {batch_id} -> 进度 {progress}% - 完成 {completed_count}, 失败 {failed_count}")
+                            
+                        except Exception as e:
+                            failed_count += 1
+                            print(f"❌ 任务异常: {symbol} {timeframe} - {str(e)}")
+                            
+                            # 记录失败的任务
+                            task_result = {
+                                'task_id': task_id,
+                                'symbol': symbol,
+                                'timeframe': timeframe,
+                                'success': False,
+                                'message': f'任务异常: {str(e)}',
+                                'records': 0,
+                                'file_path': '',
+                                'status': 'failed'
+                            }
+                            
+                            with DOWNLOADS_LOCK:
+                                if batch_id in DOWNLOADS:
+                                    DOWNLOADS[batch_id]['task_results'].append(task_result)
+                                    DOWNLOADS[batch_id]['failed_tasks'] = failed_count
+                                    progress = int((completed_count + failed_count) / total_tasks * 100)
+                                    DOWNLOADS[batch_id]['progress'] = progress
+                                    print(f"批量下载任务异常: {batch_id} -> 进度 {progress}% - 完成 {completed_count}, 失败 {failed_count}")
+                
+                # 批量下载完成
+                with DOWNLOADS_LOCK:
+                    if batch_id in DOWNLOADS:
+                        DOWNLOADS[batch_id]['status'] = 'completed'
+                        DOWNLOADS[batch_id]['progress'] = 100
+                        DOWNLOADS[batch_id]['message'] = f'批量下载完成！成功: {completed_count}, 失败: {failed_count}'
+                        print(f"批量下载最终完成: {batch_id} -> completed - 成功 {completed_count}, 失败 {failed_count}")
+                
+                print(f"批量下载完成: 成功 {completed_count}, 失败 {failed_count}")
+                
+            except Exception as e:
+                with DOWNLOADS_LOCK:
+                    if batch_id in DOWNLOADS:
+                        DOWNLOADS[batch_id]['status'] = 'failed'
+                        DOWNLOADS[batch_id]['message'] = f'批量下载异常: {str(e)}'
+                print(f"批量下载任务异常: {e}")
+        
+        # 启动后台线程
+        thread = threading.Thread(target=batch_download_task)
+        thread.daemon = True
+        thread.start()
+        
+        with DOWNLOADS_LOCK:
+            return jsonify({'success': True, 'data': DOWNLOADS[batch_id]})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})

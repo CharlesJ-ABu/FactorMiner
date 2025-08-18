@@ -1,0 +1,21 @@
+{
+  "factor_id": "Hazel-raw_close",
+  "name": "Hazel 原始收盘价",
+  "description": "直接返回K线的收盘价列。",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/Hazel-raw_close.py",
+    "function_code": "import pandas as pd\nimport numpy as np\n\ndef calculate(data: pd.DataFrame, **kwargs) -> pd.Series:\n    # 返回 收盘价 列。若列缺失则返回 NaN 序列。\n    if data is None or len(data) == 0:\n        return pd.Series(dtype=float)\n    if \"close\" not in data.columns:\n        return pd.Series(np.nan, index=data.index)\n    series = pd.to_numeric(data[\"close\"], errors=\"coerce\")\n    return series\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "a71da98d",
+    "created_at": "2025-08-18T22:51:16.959814"
+  }
+}

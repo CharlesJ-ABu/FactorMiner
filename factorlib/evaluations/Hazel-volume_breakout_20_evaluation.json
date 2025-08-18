@@ -1,0 +1,885 @@
+{
+  "factor_id": "Hazel-volume_breakout_20",
+  "evaluations": [
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "1m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 20999,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.012636637166423758,
+        "ic_spearman": -0.020195946973447117,
+        "ic_kendall": -0.01650088443683998,
+        "mutual_information": 0.0006500185817618225,
+        "long_short_return": 0.0,
+        "long_return": 3.866442176436675e-05,
+        "short_return": 3.866442176436675e-05,
+        "returns_std": 0.003423985783309737,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 3.866442176436675e-05
+        },
+        "skewness": 3.9488277215119574,
+        "kurtosis": 13.594535144404542,
+        "turnover": 0.094663711330378,
+        "win_rate": 0.0620981951521501,
+        "autocorr_lag_1": 0.07357833958211671,
+        "autocorr_lag_2": 0.03159285435755683,
+        "autocorr_lag_3": 0.01852882003418003,
+        "autocorr_lag_4": 0.01945911342544197,
+        "autocorr_lag_5": 0.0026631247807745563,
+        "autocorr_lag_6": -0.014132955400957574,
+        "autocorr_lag_7": -0.009470873808629722,
+        "autocorr_lag_8": -0.012272527709313205,
+        "autocorr_lag_9": -0.0010796079879346826,
+        "autocorr_lag_10": -0.011345055982953729
+      },
+      "evaluated_at": "2025-08-18T23:14:59.913798"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "3m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.01861920274560232,
+        "ic_spearman": -0.027114482098165138,
+        "ic_kendall": -0.02214071930450808,
+        "mutual_information": 0.0007516130703208419,
+        "long_short_return": 0.0,
+        "long_return": 6.913071194043069e-05,
+        "short_return": 6.913071194043069e-05,
+        "returns_std": 0.005111607216892625,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 6.913071194043069e-05
+        },
+        "skewness": 3.9361001001341034,
+        "kurtosis": 13.4951333468614,
+        "turnover": 0.08931880791384925,
+        "win_rate": 0.03650304192016001,
+        "autocorr_lag_1": 0.13103837781953614,
+        "autocorr_lag_2": 0.05956787791795758,
+        "autocorr_lag_3": 0.018957308111262172,
+        "autocorr_lag_4": 0.0010858579293222227,
+        "autocorr_lag_5": -0.0005431799632005608,
+        "autocorr_lag_6": -0.011917831335809552,
+        "autocorr_lag_7": -0.020044044480076104,
+        "autocorr_lag_8": -0.011927518916766394,
+        "autocorr_lag_9": -0.02330239055045552,
+        "autocorr_lag_10": -0.023307290925747896
+      },
+      "evaluated_at": "2025-08-18T23:15:00.067621"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "5m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 12903,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.01292477881153843,
+        "ic_spearman": -0.0279573677205316,
+        "ic_kendall": -0.022828109110833085,
+        "mutual_information": 0.0006197891382065727,
+        "long_short_return": 0.0,
+        "long_return": 6.555117362863959e-05,
+        "short_return": 6.555117362863959e-05,
+        "returns_std": 0.005155257251506646,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 6.555117362863959e-05
+        },
+        "skewness": 3.7774370516559457,
+        "kurtosis": 12.27093268306968,
+        "turnover": 0.09505161841186059,
+        "win_rate": 0.03239556692242114,
+        "autocorr_lag_1": 0.132222295369763,
+        "autocorr_lag_2": 0.05577406523468575,
+        "autocorr_lag_3": 0.024625514403291793,
+        "autocorr_lag_4": 0.004801821823469661,
+        "autocorr_lag_5": 0.004797058500713494,
+        "autocorr_lag_6": -0.009287774494987184,
+        "autocorr_lag_7": -0.013542257501149691,
+        "autocorr_lag_8": -0.010713991209367236,
+        "autocorr_lag_9": -0.013551958327593289,
+        "autocorr_lag_10": -0.009307094799578254
+      },
+      "evaluated_at": "2025-08-18T23:15:00.230826"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "15m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.029635666136920848,
+        "ic_spearman": -0.02738294169490196,
+        "ic_kendall": -0.02235901317378415,
+        "mutual_information": 0.006288443526866162,
+        "long_short_return": 0.0,
+        "long_return": 6.686627027389519e-05,
+        "short_return": 6.686627027389519e-05,
+        "returns_std": 0.004969785999351548,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 6.686627027389519e-05
+        },
+        "skewness": 3.708859180942286,
+        "kurtosis": 11.757596158975769,
+        "turnover": 0.09249937390433258,
+        "win_rate": 0.029585798816568046,
+        "autocorr_lag_1": 0.17909339939035035,
+        "autocorr_lag_2": 0.0769377780822069,
+        "autocorr_lag_3": 0.032519047809482234,
+        "autocorr_lag_4": 0.025111565018276747,
+        "autocorr_lag_5": 0.020664956009466558,
+        "autocorr_lag_6": -0.004508484638915225,
+        "autocorr_lag_7": -0.008955300039644077,
+        "autocorr_lag_8": -0.008960662779512235,
+        "autocorr_lag_9": -0.011927042759885152,
+        "autocorr_lag_10": -0.01637397119564844
+      },
+      "evaluated_at": "2025-08-18T23:15:00.399972"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "1h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 8424,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.04568962785815951,
+        "ic_spearman": -0.027075001611250957,
+        "ic_kendall": -0.022107958328139117,
+        "mutual_information": 0.027081143815675248,
+        "long_short_return": 0.0,
+        "long_return": 9.483751348164575e-05,
+        "short_return": 9.483751348164575e-05,
+        "returns_std": 0.005031752167284472,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 9.483751348164575e-05
+        },
+        "skewness": 3.613336878604895,
+        "kurtosis": 11.058828894905707,
+        "turnover": 0.09381247025226083,
+        "win_rate": 0.032288698955365625,
+        "autocorr_lag_1": 0.19872758471398722,
+        "autocorr_lag_2": 0.06297987273151219,
+        "autocorr_lag_3": 0.00624426739584866,
+        "autocorr_lag_4": -0.0159371944713834,
+        "autocorr_lag_5": -0.0058060407174484,
+        "autocorr_lag_6": -0.017981133007584884,
+        "autocorr_lag_7": -0.01190558086342186,
+        "autocorr_lag_8": -0.02408091809185855,
+        "autocorr_lag_9": -0.02003322499349067,
+        "autocorr_lag_10": -0.020041308099528865
+      },
+      "evaluated_at": "2025-08-18T23:15:00.560143"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "2h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 4212,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.010549205979588938,
+        "ic_spearman": -0.02185420991991651,
+        "ic_kendall": -0.01784600577306294,
+        "mutual_information": 0.030538023266527284,
+        "long_short_return": 0.0,
+        "long_return": 0.00018897721028568546,
+        "short_return": 0.00018897721028568546,
+        "returns_std": 0.007030686705194497,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00018897721028568546
+        },
+        "skewness": 3.722111114658692,
+        "kurtosis": 11.859742331595257,
+        "turnover": 0.10209923664122138,
+        "win_rate": 0.030864197530864196,
+        "autocorr_lag_1": 0.09336995452533424,
+        "autocorr_lag_2": -0.012560015054709502,
+        "autocorr_lag_3": 0.025555182000648435,
+        "autocorr_lag_4": 0.03825083794214009,
+        "autocorr_lag_5": 0.004341582104343294,
+        "autocorr_lag_6": 0.00432656227177235,
+        "autocorr_lag_7": -0.01263635392673128,
+        "autocorr_lag_8": -0.004177572533040409,
+        "autocorr_lag_9": -0.029615344290852913,
+        "autocorr_lag_10": -0.012682249992689031
+      },
+      "evaluated_at": "2025-08-18T23:15:00.723218"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "4h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 2106,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.013812719782699299,
+        "ic_spearman": -0.013772503836405737,
+        "ic_kendall": -0.01124787177750079,
+        "mutual_information": 0.04074835339572714,
+        "long_short_return": 0.0,
+        "long_return": 0.00037864146973802217,
+        "short_return": 0.00037864146973802217,
+        "returns_std": 0.010016779349305777,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00037864146973802217
+        },
+        "skewness": 3.9233565842367564,
+        "kurtosis": 13.40545671864782,
+        "turnover": 0.09103547459252159,
+        "win_rate": 0.02801519468186135,
+        "autocorr_lag_1": 0.12617435001092556,
+        "autocorr_lag_2": 0.06176142697881836,
+        "autocorr_lag_3": -0.0026550607995801203,
+        "autocorr_lag_4": -0.030279424957878404,
+        "autocorr_lag_5": -0.011909453128420434,
+        "autocorr_lag_6": 0.01566093527543535,
+        "autocorr_lag_7": 0.006434081346423719,
+        "autocorr_lag_8": -0.02119318555548243,
+        "autocorr_lag_9": -0.0028210415478434436,
+        "autocorr_lag_10": -0.03045014595175884
+      },
+      "evaluated_at": "2025-08-18T23:15:00.885226"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "6h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 1403,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.02394043859368735,
+        "ic_spearman": 0.024481441383236085,
+        "ic_kendall": 0.01999613558496054,
+        "mutual_information": 0.04842529682610403,
+        "long_short_return": 0.0,
+        "long_return": 0.0005660336571006821,
+        "short_return": 0.0005660336571006821,
+        "returns_std": 0.01204028022040971,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0005660336571006821
+        },
+        "skewness": 4.440429894874251,
+        "kurtosis": 17.742708171145416,
+        "turnover": 0.07465654374548084,
+        "win_rate": 0.024233784746970778,
+        "autocorr_lag_1": 0.12248435243139046,
+        "autocorr_lag_2": 0.05495193813389872,
+        "autocorr_lag_3": 0.021167848015816133,
+        "autocorr_lag_4": 0.02113542596569115,
+        "autocorr_lag_5": -0.012652115124589502,
+        "autocorr_lag_6": -0.01268575570858989,
+        "autocorr_lag_7": -0.02959810417371965,
+        "autocorr_lag_8": -0.0127531882970743,
+        "autocorr_lag_9": -0.046546546546545976,
+        "autocorr_lag_10": -0.029701170596932162
+      },
+      "evaluated_at": "2025-08-18T23:15:01.059902"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "8h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 1053,
+        "missing_ratio": 0.0,
+        "ic_pearson": -6.624077028354286e-05,
+        "ic_spearman": -0.013957868242823936,
+        "ic_kendall": -0.011401961881183538,
+        "mutual_information": 0.05235990632154657,
+        "long_short_return": 0.0,
+        "long_return": 0.0007458384610736111,
+        "short_return": 0.0007458384610736111,
+        "returns_std": 0.013577599887665584,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0007458384610736111
+        },
+        "skewness": 4.165497146915234,
+        "kurtosis": 15.380575792292515,
+        "turnover": 0.08039690222652468,
+        "win_rate": 0.03513770180436847,
+        "autocorr_lag_1": 0.15030769230769053,
+        "autocorr_lag_2": 0.008643258643258815,
+        "autocorr_lag_3": 0.028826884538307385,
+        "autocorr_lag_4": 0.008544865365326625,
+        "autocorr_lag_5": -0.011739264751312775,
+        "autocorr_lag_6": -0.03202551217626581,
+        "autocorr_lag_7": -0.011840272403652905,
+        "autocorr_lag_8": 0.02858470834301619,
+        "autocorr_lag_9": 0.028535980148883047,
+        "autocorr_lag_10": -0.011992548319490528
+      },
+      "evaluated_at": "2025-08-18T23:15:01.219513"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "12h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 701,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.050138997722602066,
+        "ic_spearman": 0.027382448102464804,
+        "ic_kendall": 0.022373616556547005,
+        "mutual_information": 0.06501921686102087,
+        "long_short_return": 0.0,
+        "long_return": 0.0011516553978615667,
+        "short_return": 0.0011516553978615667,
+        "returns_std": 0.017430860730535198,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0011516553978615667
+        },
+        "skewness": 4.141799541818166,
+        "kurtosis": 15.19785597174089,
+        "turnover": 0.08223201174743025,
+        "win_rate": 0.034236804564907276,
+        "autocorr_lag_1": 0.12781954887218003,
+        "autocorr_lag_2": 0.06759896729776271,
+        "autocorr_lag_3": 0.03744882568411902,
+        "autocorr_lag_4": -0.022788088044885465,
+        "autocorr_lag_5": -0.022865787767452014,
+        "autocorr_lag_6": -0.02294372294372319,
+        "autocorr_lag_7": 0.008703161338188452,
+        "autocorr_lag_8": -0.05238631217247182,
+        "autocorr_lag_9": -0.0219563543147655,
+        "autocorr_lag_10": 0.008477994754767453
+      },
+      "evaluated_at": "2025-08-18T23:15:01.379979"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "1d",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 350,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.017635977058131965,
+        "ic_spearman": -0.04263470775607263,
+        "ic_kendall": -0.034860787773833814,
+        "mutual_information": 0.014862761375359326,
+        "long_short_return": 0.0,
+        "long_return": 0.0023244923373097054,
+        "short_return": 0.0023244923373097054,
+        "returns_std": 0.023495708681011016,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0023244923373097054
+        },
+        "skewness": 4.0793582365080265,
+        "kurtosis": 14.725276690584266,
+        "turnover": 0.09696969696969697,
+        "win_rate": 0.03428571428571429,
+        "autocorr_lag_1": 0.06277274253105035,
+        "autocorr_lag_2": -0.054545454545454605,
+        "autocorr_lag_3": 0.003883823032759358,
+        "autocorr_lag_4": -0.054878048780488346,
+        "autocorr_lag_5": 0.00356778797145782,
+        "autocorr_lag_6": 0.0034083162917519826,
+        "autocorr_lag_7": 0.0032478632478632873,
+        "autocorr_lag_8": 0.003086419753086082,
+        "autocorr_lag_9": 0.002923976608187085,
+        "autocorr_lag_10": 0.0027605244996547476
+      },
+      "evaluated_at": "2025-08-18T23:15:01.542763"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "1m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.0475282917345958,
+        "ic_spearman": -0.014584904105539998,
+        "ic_kendall": -0.011910420726960715,
+        "mutual_information": 0.000722276729198241,
+        "long_short_return": 0.0,
+        "long_return": 0.00021264319416064426,
+        "short_return": 0.00021264319416064426,
+        "returns_std": 0.014950136557185257,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00021264319416064426
+        },
+        "skewness": 3.9468921312414387,
+        "kurtosis": 13.580221026703322,
+        "turnover": 0.0957383754904416,
+        "win_rate": 0.04267022251854321,
+        "autocorr_lag_1": 0.06362484363952772,
+        "autocorr_lag_2": 0.019574656602147834,
+        "autocorr_lag_3": 0.04730261926831113,
+        "autocorr_lag_4": 0.011408628157548534,
+        "autocorr_lag_5": -0.01632897219447519,
+        "autocorr_lag_6": -0.006545685541572209,
+        "autocorr_lag_7": -0.009813204130317582,
+        "autocorr_lag_8": -0.017974864576293013,
+        "autocorr_lag_9": -0.014639446869376911,
+        "autocorr_lag_10": -0.014644278143817208
+      },
+      "evaluated_at": "2025-08-18T23:15:01.719767"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "3m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.006890511528750165,
+        "ic_spearman": -0.013971078466683743,
+        "ic_kendall": -0.01140805460659635,
+        "mutual_information": 0.003113246671152948,
+        "long_short_return": 0.0,
+        "long_return": 0.00021543148866262624,
+        "short_return": 0.00021543148866262624,
+        "returns_std": 0.016006150212653163,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00021543148866262624
+        },
+        "skewness": 4.035851342624292,
+        "kurtosis": 14.29047797683553,
+        "turnover": 0.08898906419567576,
+        "win_rate": 0.03341945162096841,
+        "autocorr_lag_1": 0.0989720708047601,
+        "autocorr_lag_2": 0.03303877604853546,
+        "autocorr_lag_3": 0.005986363267404231,
+        "autocorr_lag_4": -0.004161226602085174,
+        "autocorr_lag_5": -0.03121405858872849,
+        "autocorr_lag_6": 0.004282196751851046,
+        "autocorr_lag_7": -0.002484481856403078,
+        "autocorr_lag_8": -0.019394451550033723,
+        "autocorr_lag_9": -0.01601802722469613,
+        "autocorr_lag_10": -0.004188805035703408
+      },
+      "evaluated_at": "2025-08-18T23:15:01.869824"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "5m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.015658813611414284,
+        "ic_spearman": -0.006585662549202223,
+        "ic_kendall": -0.005377520078095066,
+        "mutual_information": 0.0009708933516963377,
+        "long_short_return": 0.0,
+        "long_return": 0.00022187299852203577,
+        "short_return": 0.00022187299852203577,
+        "returns_std": 0.016421580491196765,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00022187299852203577
+        },
+        "skewness": 3.8936250132382093,
+        "kurtosis": 13.162509650396272,
+        "turnover": 0.0933633859253694,
+        "win_rate": 0.03325277106425535,
+        "autocorr_lag_1": 0.10594995013376256,
+        "autocorr_lag_2": 0.030908881857096254,
+        "autocorr_lag_3": 0.02132495512577627,
+        "autocorr_lag_4": 0.002251531346986968,
+        "autocorr_lag_5": 0.007133111438567455,
+        "autocorr_lag_6": 0.0071282751051328875,
+        "autocorr_lag_7": -0.004068421794662935,
+        "autocorr_lag_8": 0.007118599876871393,
+        "autocorr_lag_9": -0.005677060495798469,
+        "autocorr_lag_10": 0.005510060753742935
+      },
+      "evaluated_at": "2025-08-18T23:15:02.042512"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "15m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.019378046566381795,
+        "ic_spearman": 0.013565361883142753,
+        "ic_kendall": 0.011076600059736515,
+        "mutual_information": 0.004813765258097248,
+        "long_short_return": 0.0,
+        "long_return": 0.00020403737233866902,
+        "short_return": 0.00020403737233866902,
+        "returns_std": 0.01489478369222359,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00020403737233866902
+        },
+        "skewness": 3.708859180942286,
+        "kurtosis": 11.757596158975769,
+        "turnover": 0.09803405960430756,
+        "win_rate": 0.033502791899324945,
+        "autocorr_lag_1": 0.1300652152923433,
+        "autocorr_lag_2": 0.06200410858118196,
+        "autocorr_lag_3": 0.029450197288831477,
+        "autocorr_lag_4": 0.019088506809297582,
+        "autocorr_lag_5": 0.005767680536837959,
+        "autocorr_lag_6": 0.008721434452429337,
+        "autocorr_lag_7": -0.011916284849686102,
+        "autocorr_lag_8": -0.005999662231413593,
+        "autocorr_lag_9": -0.013407550904359064,
+        "autocorr_lag_10": -0.02673758330971418
+      },
+      "evaluated_at": "2025-08-18T23:15:02.205842"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "1h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 8424,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.005735419037400038,
+        "ic_spearman": -0.005216088205897568,
+        "ic_kendall": -0.004259175817499609,
+        "mutual_information": 0.024394749775180122,
+        "long_short_return": 0.0,
+        "long_return": 0.00026647847703418354,
+        "short_return": 0.00026647847703418354,
+        "returns_std": 0.012714512894681843,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00026647847703418354
+        },
+        "skewness": 3.734929245750703,
+        "kurtosis": 11.952534148123817,
+        "turnover": 0.09668015230842457,
+        "win_rate": 0.030626780626780627,
+        "autocorr_lag_1": 0.1308755825634111,
+        "autocorr_lag_2": 0.035168310547909296,
+        "autocorr_lag_3": 0.007441957261526564,
+        "autocorr_lag_4": 0.009702297570822601,
+        "autocorr_lag_5": 0.0075606200501832695,
+        "autocorr_lag_6": -0.009521184741501576,
+        "autocorr_lag_7": -0.003125781304478651,
+        "autocorr_lag_8": -0.011670600854044004,
+        "autocorr_lag_9": -0.01594685607656594,
+        "autocorr_lag_10": -0.0010139111499702347
+      },
+      "evaluated_at": "2025-08-18T23:15:02.381023"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "2h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 4212,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.02888977311062262,
+        "ic_spearman": 0.003910201947242364,
+        "ic_kendall": 0.0031930458544610902,
+        "mutual_information": 0.02543211441891856,
+        "long_short_return": 0.0,
+        "long_return": 0.0005332404423675684,
+        "short_return": 0.0005332404423675684,
+        "returns_std": 0.01780234621320989,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0005332404423675684
+        },
+        "skewness": 3.7491925738453475,
+        "kurtosis": 12.062172258090301,
+        "turnover": 0.09446564885496184,
+        "win_rate": 0.03513770180436847,
+        "autocorr_lag_1": 0.1516507533393578,
+        "autocorr_lag_2": 0.0230984677012264,
+        "autocorr_lag_3": 0.01879921981252699,
+        "autocorr_lag_4": 0.01878462039752335,
+        "autocorr_lag_5": -0.0026542219035434102,
+        "autocorr_lag_6": -0.011238977000440017,
+        "autocorr_lag_7": 0.001600878801959827,
+        "autocorr_lag_8": -0.015554160279200072,
+        "autocorr_lag_9": -0.02842461563557781,
+        "autocorr_lag_10": -0.02415479628632525
+      },
+      "evaluated_at": "2025-08-18T23:15:02.543655"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "4h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 2106,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.05956546216322567,
+        "ic_spearman": 0.014529549455732977,
+        "ic_kendall": 0.01186614367323284,
+        "mutual_information": 0.02753102351542834,
+        "long_short_return": 0.0,
+        "long_return": 0.0010596003175140564,
+        "short_return": 0.0010596003175140564,
+        "returns_std": 0.025458902144886254,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0010596003175140564
+        },
+        "skewness": 3.9032246855308905,
+        "kurtosis": 13.247743001634333,
+        "turnover": 0.09103547459252156,
+        "win_rate": 0.033713200379867046,
+        "autocorr_lag_1": 0.1332717879371008,
+        "autocorr_lag_2": 0.014639561506972678,
+        "autocorr_lag_3": 0.014612220814604854,
+        "autocorr_lag_4": 0.023709066916692664,
+        "autocorr_lag_5": 0.01455745678797911,
+        "autocorr_lag_6": 0.04190419911012199,
+        "autocorr_lag_7": -0.049372250334742185,
+        "autocorr_lag_8": 0.005349872994885306,
+        "autocorr_lag_9": -0.031179829065779863,
+        "autocorr_lag_10": -0.022082897944966956
+      },
+      "evaluated_at": "2025-08-18T23:15:02.705659"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "6h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 1403,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.14887876295902958,
+        "ic_spearman": 0.0814170045234577,
+        "ic_kendall": 0.06650039251721561,
+        "mutual_information": 0.03595310747514245,
+        "long_short_return": 0.0,
+        "long_return": 0.001601162233526502,
+        "short_return": 0.001601162233526502,
+        "returns_std": 0.031231310709644577,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.001601162233526502
+        },
+        "skewness": 3.71423710139016,
+        "kurtosis": 11.812393994409446,
+        "turnover": 0.09898770788141721,
+        "win_rate": 0.037776193870277974,
+        "autocorr_lag_1": 0.12621938001300578,
+        "autocorr_lag_2": 0.06285931228983586,
+        "autocorr_lag_3": 0.0628166160081059,
+        "autocorr_lag_4": 0.10076950932464163,
+        "autocorr_lag_5": -0.025929549902152436,
+        "autocorr_lag_6": 0.012022630834512158,
+        "autocorr_lag_7": -0.0006896051103370673,
+        "autocorr_lag_8": 0.04993461915658672,
+        "autocorr_lag_9": -0.051454016721191896,
+        "autocorr_lag_10": -0.02616501145912937
+      },
+      "evaluated_at": "2025-08-18T23:15:02.872462"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "8h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 1053,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.11690502926103177,
+        "ic_spearman": 0.06643069259340298,
+        "ic_kendall": 0.054266182450892535,
+        "mutual_information": 0.02832834070182835,
+        "long_short_return": 0.0,
+        "long_return": 0.00206792352345386,
+        "short_return": 0.00206792352345386,
+        "returns_std": 0.03474343257586987,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00206792352345386
+        },
+        "skewness": 4.030736581005193,
+        "kurtosis": 14.273944829815576,
+        "turnover": 0.0952565343659245,
+        "win_rate": 0.03323836657169991,
+        "autocorr_lag_1": 0.04075863955502895,
+        "autocorr_lag_2": 0.07907995618839009,
+        "autocorr_lag_3": 0.07903152124257672,
+        "autocorr_lag_4": 0.021419425644777952,
+        "autocorr_lag_5": -0.01700997894351388,
+        "autocorr_lag_6": 0.002126099706744813,
+        "autocorr_lag_7": -0.03630859554169313,
+        "autocorr_lag_8": -0.017171717171717386,
+        "autocorr_lag_9": 0.0019670925636546253,
+        "autocorr_lag_10": -0.01728008833272002
+      },
+      "evaluated_at": "2025-08-18T23:15:03.046661"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "12h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 701,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.2535879708959272,
+        "ic_spearman": 0.12599494629216224,
+        "ic_kendall": 0.102947793632441,
+        "mutual_information": 0.054395616601781833,
+        "long_short_return": 0.0,
+        "long_return": 0.003242095887053691,
+        "short_return": 0.003242095887053691,
+        "returns_std": 0.04565941832338394,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.003242095887053691
+        },
+        "skewness": 3.6131193262613683,
+        "kurtosis": 11.086253066366918,
+        "turnover": 0.10528634361233481,
+        "win_rate": 0.034236804564907276,
+        "autocorr_lag_1": 0.1026884700665183,
+        "autocorr_lag_2": 0.02984038861901482,
+        "autocorr_lag_3": -0.018765638031692802,
+        "autocorr_lag_4": 0.05391201447863042,
+        "autocorr_lag_5": 0.005298382598995929,
+        "autocorr_lag_6": -0.04332495461527751,
+        "autocorr_lag_7": -0.0423398270243388,
+        "autocorr_lag_8": -0.017910632549282015,
+        "autocorr_lag_9": -0.018009153298459757,
+        "autocorr_lag_10": -0.0426425137435408
+      },
+      "evaluated_at": "2025-08-18T23:15:03.208058"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "1d",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "Hazel-volume_breakout_20",
+        "data_length": 350,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.11475783460175182,
+        "ic_spearman": 0.09587979921655529,
+        "ic_kendall": 0.07839728493999244,
+        "mutual_information": 0.025809977910073056,
+        "long_short_return": 0.0,
+        "long_return": 0.0062401859653650445,
+        "short_return": 0.0062401859653650445,
+        "returns_std": 0.058418513025335954,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0062401859653650445
+        },
+        "skewness": 3.8322798685821593,
+        "kurtosis": 12.759247423052942,
+        "turnover": 0.10909090909090909,
+        "win_rate": 0.025714285714285714,
+        "autocorr_lag_1": 0.04528875379939223,
+        "autocorr_lag_2": 0.09817073170731705,
+        "autocorr_lag_3": -0.00810397553516813,
+        "autocorr_lag_4": 0.0978527607361972,
+        "autocorr_lag_5": -0.06153846153846196,
+        "autocorr_lag_6": -0.008641975308641787,
+        "autocorr_lag_7": -0.008823529411764735,
+        "autocorr_lag_8": -0.06211180124223628,
+        "autocorr_lag_9": -0.06230529595015575,
+        "autocorr_lag_10": -0.062499999999999355
+      },
+      "evaluated_at": "2025-08-18T23:15:03.374187"
+    }
+  ]
+}

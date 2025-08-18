@@ -193,6 +193,69 @@
         "autocorr_lag_10": 0.8908218560845242
       },
       "evaluated_at": "2025-08-18T14:45:33.097002"
+    },
+    {
+      "metadata": {
+        "mining_session": true,
+        "mining_config": {
+          "factor_types": [
+            "ml"
+          ],
+          "optimization": {
+            "method": "greedy",
+            "max_factors": 15,
+            "min_ic": 0.02,
+            "min_ir": 0.1
+          },
+          "evaluation": {
+            "min_sample_size": 30,
+            "metrics": [
+              "ic_pearson",
+              "ic_spearman",
+              "sharpe_ratio",
+              "win_rate",
+              "factor_decay"
+            ]
+          }
+        },
+        "factor_type": [
+          "ml"
+        ],
+        "symbols": [],
+        "timeframes": []
+      },
+      "results": {
+        "factor_name": "ensemble_lasso",
+        "data_length": 2000,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.012740741282160765,
+        "ic_spearman": -0.02812696447896277,
+        "ic_kendall": -0.02297185632298932,
+        "mutual_information": 0.00010260302929071324,
+        "long_short_return": 0.0,
+        "long_return": -4.9764890390560876e-05,
+        "short_return": -4.9764890390560876e-05,
+        "returns_std": 0.0020946525629347104,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": -4.9764890390560876e-05
+        },
+        "skewness": 6.156157876181505,
+        "kurtosis": 35.93421302697383,
+        "turnover": 2.30759181918055e-08,
+        "win_rate": 0.484,
+        "autocorr_lag_1": 0.989489635838806,
+        "autocorr_lag_2": 0.9788771115853682,
+        "autocorr_lag_3": 0.968159067746661,
+        "autocorr_lag_4": 0.9573319602181942,
+        "autocorr_lag_5": 0.9463920458094355,
+        "autocorr_lag_6": 0.935335366276924,
+        "autocorr_lag_7": 0.9241577306750623,
+        "autocorr_lag_8": 0.9128546958006492,
+        "autocorr_lag_9": 0.901421544475809,
+        "autocorr_lag_10": 0.8898532613672719
+      },
+      "evaluated_at": "2025-08-18T23:43:49.186685"
     }
   ]
 }

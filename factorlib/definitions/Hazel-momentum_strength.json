@@ -1,0 +1,23 @@
+{
+  "factor_id": "Hazel-momentum_strength",
+  "name": "Hazel 动量强度",
+  "description": "abs(price_mom) * volume_mom (window=5)",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/Hazel-momentum_strength.py",
+    "function_code": "import pandas as pd\nimport numpy as np\n\ndef calculate(data: pd.DataFrame, window: int = 5, **kwargs) -> pd.Series:\n    required = {\"close\", \"volume\"}\n    if data is None or len(data) == 0 or not required.issubset(set(data.columns)):\n        return pd.Series(dtype=float)\n    c = pd.to_numeric(data[\"close\"], errors=\"coerce\")\n    v = pd.to_numeric(data[\"volume\"], errors=\"coerce\")\n    pm = (c - c.shift(window)) / c.shift(window)\n    vm = (v - v.shift(window)) / v.shift(window)\n    return pm.abs() * vm\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "window": 5
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "c20db0d4",
+    "created_at": "2025-08-18T22:51:16.965983"
+  }
+}

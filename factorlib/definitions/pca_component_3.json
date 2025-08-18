@@ -4,18 +4,16 @@
   "description": "机器学习生成的pca_component_3因子",
   "category": "ml",
   "subcategory": "",
-  "computation_type": "function",
+  "computation_type": "ml_model",
   "computation_data": {
-    "function_file": "functions/pca_component_3.py",
-    "function_code": "\ndef calculate(data, **kwargs):\n    \"\"\"\n    计算pca_component_3因子\n    \n    Args:\n        data: 市场数据DataFrame\n        **kwargs: 其他参数\n        \n        Returns:\n        因子值Series\n    \"\"\"\n    # 这里应该包含实际的ML模型代码\n    # 由于ML因子需要训练，这里返回一个占位符\n    return pd.Series(index=data.index, dtype=float)\n",
-    "entry_point": "calculate",
-    "imports": []
+    "artifact_path": "models/pca_component_3.pkl",
+    "feature_set": "basic_v1"
   },
   "parameters": {},
   "dependencies": [],
   "output_type": "series",
   "metadata": {
-    "checksum": "8ac637f8",
-    "created_at": "2025-08-15T01:52:00.698479"
+    "checksum": "22f974ca",
+    "created_at": "2025-08-18T23:43:49.298459"
   }
 }

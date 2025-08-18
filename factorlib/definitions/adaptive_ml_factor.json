@@ -4,18 +4,16 @@
   "description": "机器学习生成的adaptive_ml_factor因子",
   "category": "ml",
   "subcategory": "",
-  "computation_type": "function",
+  "computation_type": "ml_model",
   "computation_data": {
-    "function_file": "functions/adaptive_ml_factor.py",
-    "function_code": "\ndef calculate(data, **kwargs):\n    \"\"\"\n    计算adaptive_ml_factor因子\n    \n    Args:\n        data: 市场数据DataFrame\n        **kwargs: 其他参数\n        \n        Returns:\n        因子值Series\n    \"\"\"\n    # 这里应该包含实际的ML模型代码\n    # 由于ML因子需要训练，这里返回一个占位符\n    return pd.Series(index=data.index, dtype=float)\n",
-    "entry_point": "calculate",
-    "imports": []
+    "artifact_path": "models/adaptive_ml_factor.pkl",
+    "feature_set": "basic_v1"
   },
   "parameters": {},
   "dependencies": [],
   "output_type": "series",
   "metadata": {
-    "checksum": "a2772b42",
-    "created_at": "2025-08-15T01:52:00.703910"
+    "checksum": "ab040808",
+    "created_at": "2025-08-18T23:43:49.301868"
   }
 }

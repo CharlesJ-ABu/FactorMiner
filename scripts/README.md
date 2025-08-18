@@ -48,16 +48,16 @@
   - 性能分析结果保存为CSV
   - 因子库报告保存为JSON
 
-### 因子挖掘脚本
+### 因子注册脚本
 
-#### 5. **factor_mining.py** - 因子挖掘脚本
-- **用途**: 批量进行因子挖掘和评估
+#### 5. **register_hazel_factors.py** - Hazel因子注册脚本
+- **用途**: 批量注册Hazel技术因子到因子库
 - **功能**:
-  - 自动化因子构建流程
-  - 批量因子评估
-  - 结果保存和管理
-- **适用场景**: 大规模因子挖掘任务
-- **运行方式**: `python factor_mining.py`
+  - 自动生成因子定义文件
+  - 自动生成因子函数文件
+  - 批量注册到factorlib
+- **适用场景**: 批量添加技术因子
+- **运行方式**: `python register_hazel_factors.py`
 
 ## 🚀 使用方法
 
@@ -79,6 +79,7 @@ cd scripts
 python repair_empty_evaluations.py
 python factorlib_health_check.py
 python factor_analysis_tool.py
+python register_hazel_factors.py
 ```
 
 ### 批量运行

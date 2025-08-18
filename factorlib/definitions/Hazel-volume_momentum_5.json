@@ -1,0 +1,23 @@
+{
+  "factor_id": "Hazel-volume_momentum_5",
+  "name": "Hazel 成交量动量(5)",
+  "description": "(volume - volume.shift(5)) / volume.shift(5)",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/Hazel-volume_momentum_5.py",
+    "function_code": "import pandas as pd\nimport numpy as np\n\ndef calculate(data: pd.DataFrame, window: int = 5, **kwargs) -> pd.Series:\n    if data is None or len(data) == 0 or \"volume\" not in data.columns:\n        return pd.Series(dtype=float)\n    volume = pd.to_numeric(data[\"volume\"], errors=\"coerce\")\n    base = volume.shift(window)\n    return (volume - base) / base\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "window": 5
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "bb958090",
+    "created_at": "2025-08-18T22:51:16.961180"
+  }
+}

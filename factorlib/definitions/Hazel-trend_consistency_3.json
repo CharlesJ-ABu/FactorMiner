@@ -1,0 +1,23 @@
+{
+  "factor_id": "Hazel-trend_consistency_3",
+  "name": "Hazel 趋势一致性(3)",
+  "description": "close 连续三根递增",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/Hazel-trend_consistency_3.py",
+    "function_code": "import pandas as pd\nimport numpy as np\n\ndef calculate(data: pd.DataFrame, length: int = 3, **kwargs) -> pd.Series:\n    if data is None or len(data) == 0 or \"close\" not in data.columns:\n        return pd.Series(dtype=float)\n    c = pd.to_numeric(data[\"close\"], errors=\"coerce\")\n    cond = (c > c.shift(1)) & (c.shift(1) > c.shift(2)) & (c.shift(2) > c.shift(3))\n    return cond.astype(int)\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "length": 3
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "93dc36ce",
+    "created_at": "2025-08-18T22:51:16.964722"
+  }
+}

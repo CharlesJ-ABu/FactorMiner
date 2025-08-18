@@ -1,0 +1,23 @@
+{
+  "factor_id": "Hazel-volume_breakout_20",
+  "name": "Hazel 成交量突破(20)",
+  "description": "成交量突破：volume 大于其 20 滚动最大（前一根）",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/Hazel-volume_breakout_20.py",
+    "function_code": "import pandas as pd\nimport numpy as np\n\ndef calculate(data: pd.DataFrame, window: int = 20, **kwargs) -> pd.Series:\n    if data is None or len(data) == 0 or \"volume\" not in data.columns:\n        return pd.Series(dtype=float)\n    s = pd.to_numeric(data[\"volume\"], errors=\"coerce\")\n    thresh = s.rolling(window).max().shift(1)\n    return (s > thresh).astype(int)\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "window": 20
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "9799ca2a",
+    "created_at": "2025-08-18T22:51:16.963881"
+  }
+}

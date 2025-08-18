@@ -1,0 +1,23 @@
+{
+  "factor_id": "Hazel-price_position_20",
+  "name": "Hazel 价格位置(20)",
+  "description": "(close - low_min) / (high_max - low_min) over 20",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/Hazel-price_position_20.py",
+    "function_code": "import pandas as pd\nimport numpy as np\n\ndef calculate(data: pd.DataFrame, window: int = 20, **kwargs) -> pd.Series:\n    required = {\"close\", \"high\", \"low\"}\n    if data is None or len(data) == 0 or not required.issubset(set(data.columns)):\n        return pd.Series(dtype=float)\n    close = pd.to_numeric(data[\"close\"], errors=\"coerce\")\n    high = pd.to_numeric(data[\"high\"], errors=\"coerce\")\n    low = pd.to_numeric(data[\"low\"], errors=\"coerce\")\n    high_max = high.rolling(window).max()\n    low_min = low.rolling(window).min()\n    denom = (high_max - low_min).replace(0, np.nan)\n    return (close - low_min) / denom\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "window": 20
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "e57b823c",
+    "created_at": "2025-08-18T22:51:16.961822"
+  }
+}

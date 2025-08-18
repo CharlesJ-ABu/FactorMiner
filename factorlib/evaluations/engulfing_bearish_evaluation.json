@@ -1,0 +1,885 @@
+{
+  "factor_id": "engulfing_bearish",
+  "evaluations": [
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "1m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 20999,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.04733878663222759,
+        "ic_spearman": -0.3394853991366163,
+        "ic_kendall": -0.2773729474786624,
+        "mutual_information": 4.532216122382399e-05,
+        "long_short_return": 0.0,
+        "long_return": 3.866442176436675e-05,
+        "short_return": 3.866442176436675e-05,
+        "returns_std": 0.003423985783309737,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 3.866442176436675e-05
+        },
+        "skewness": 3.0265569207127245,
+        "kurtosis": 7.160728791892757,
+        "turnover": 0.1657490824157491,
+        "win_rate": 0.07305109767131768,
+        "autocorr_lag_1": -0.09035206148094306,
+        "autocorr_lag_2": -0.01327981047644102,
+        "autocorr_lag_3": 0.004261875086553403,
+        "autocorr_lag_4": -0.00576876583780304,
+        "autocorr_lag_5": 0.014279701844310343,
+        "autocorr_lag_6": 0.006755627276477677,
+        "autocorr_lag_7": 0.0030968938262745382,
+        "autocorr_lag_8": 0.007481504651182598,
+        "autocorr_lag_9": 0.004342291024276165,
+        "autocorr_lag_10": -0.0006779235715404569
+      },
+      "evaluated_at": "2025-08-18T23:12:49.185210"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "3m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.0706050308232887,
+        "ic_spearman": -0.34628114549227956,
+        "ic_kendall": -0.28276083662711426,
+        "mutual_information": 7.691766720123114e-05,
+        "long_short_return": 0.0,
+        "long_return": 6.913071194043069e-05,
+        "short_return": 6.913071194043069e-05,
+        "returns_std": 0.005111607216892625,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 6.913071194043069e-05
+        },
+        "skewness": 2.9217197309573923,
+        "kurtosis": 6.53753583860926,
+        "turnover": 0.17475999666082312,
+        "win_rate": 0.04983748645720477,
+        "autocorr_lag_1": -0.09580783633208531,
+        "autocorr_lag_2": -0.012246209048546581,
+        "autocorr_lag_3": 0.00863846718607701,
+        "autocorr_lag_4": -0.010086078757504155,
+        "autocorr_lag_5": 0.004537328972026882,
+        "autocorr_lag_6": 0.00044043953284798377,
+        "autocorr_lag_7": 0.003569176599258927,
+        "autocorr_lag_8": -0.011076916262130379,
+        "autocorr_lag_9": 0.017244755557169755,
+        "autocorr_lag_10": -0.002638026333882576
+      },
+      "evaluated_at": "2025-08-18T23:12:49.288992"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "5m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 12903,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.08222138459359851,
+        "ic_spearman": -0.3551485306559332,
+        "ic_kendall": -0.2899904414968124,
+        "mutual_information": 9.043010142782953e-05,
+        "long_short_return": 0.0,
+        "long_return": 6.555117362863959e-05,
+        "short_return": 6.555117362863959e-05,
+        "returns_std": 0.005155257251506646,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 6.555117362863959e-05
+        },
+        "skewness": 2.810941756991545,
+        "kurtosis": 5.902308410995996,
+        "turnover": 0.1852596444927424,
+        "win_rate": 0.04479578392621871,
+        "autocorr_lag_1": -0.10207568121636762,
+        "autocorr_lag_2": -0.023693460493384996,
+        "autocorr_lag_3": 0.0031304045178149986,
+        "autocorr_lag_4": 0.0058903410742228495,
+        "autocorr_lag_5": 0.00034678534496160036,
+        "autocorr_lag_6": 0.003106741106038015,
+        "autocorr_lag_7": -0.004282185994318965,
+        "autocorr_lag_8": 0.011394690666855074,
+        "autocorr_lag_9": -0.00706602046573141,
+        "autocorr_lag_10": -0.0015380864409845097
+      },
+      "evaluated_at": "2025-08-18T23:12:49.388006"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "15m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.1520501162048543,
+        "ic_spearman": -0.3525432266763466,
+        "ic_kendall": -0.2878623756866976,
+        "mutual_information": 0.0034781057642133796,
+        "long_short_return": 0.0,
+        "long_return": 6.686627027389519e-05,
+        "short_return": 6.686627027389519e-05,
+        "returns_std": 0.004969785999351548,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 6.686627027389519e-05
+        },
+        "skewness": 2.8148667597279156,
+        "kurtosis": 5.924462339931177,
+        "turnover": 0.18478587528174306,
+        "win_rate": 0.04608717393116093,
+        "autocorr_lag_1": -0.10184589953163856,
+        "autocorr_lag_2": -0.002499504753374096,
+        "autocorr_lag_3": 0.0024598128011144305,
+        "autocorr_lag_4": -0.010377467615144598,
+        "autocorr_lag_5": 0.0035297504221909618,
+        "autocorr_lag_6": 0.0035212893098305136,
+        "autocorr_lag_7": 0.003512826642618822,
+        "autocorr_lag_8": -0.0003799852119239681,
+        "autocorr_lag_9": -0.005360589507264397,
+        "autocorr_lag_10": 0.008648307307380828
+      },
+      "evaluated_at": "2025-08-18T23:12:49.491654"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "1h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 8424,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.31814949425499744,
+        "ic_spearman": -0.3780399363175361,
+        "ic_kendall": -0.3086866356826895,
+        "mutual_information": 0.06179163282925021,
+        "long_short_return": 0.0,
+        "long_return": 9.483751348164575e-05,
+        "short_return": 9.483751348164575e-05,
+        "returns_std": 0.005031752167284472,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 9.483751348164575e-05
+        },
+        "skewness": 2.6946762750479047,
+        "kurtosis": 5.262529584449371,
+        "turnover": 0.19689433603046172,
+        "win_rate": 0.050213675213675216,
+        "autocorr_lag_1": -0.10931120769129443,
+        "autocorr_lag_2": 0.004414115419274302,
+        "autocorr_lag_3": -0.00884462217228186,
+        "autocorr_lag_4": -0.0008296600364315764,
+        "autocorr_lag_5": -0.002180667534419751,
+        "autocorr_lag_6": -0.004740533713562807,
+        "autocorr_lag_7": -0.0020760064281406298,
+        "autocorr_lag_8": -0.004766599373702929,
+        "autocorr_lag_9": 0.0045920602173139214,
+        "autocorr_lag_10": -0.018180991941227236
+      },
+      "evaluated_at": "2025-08-18T23:12:49.607488"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "2h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 4212,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.33076862364136156,
+        "ic_spearman": -0.39191456950937015,
+        "ic_kendall": -0.3200348901031521,
+        "mutual_information": 0.09355854773988029,
+        "long_short_return": 0.0,
+        "long_return": 0.00018897721028568546,
+        "short_return": 0.00018897721028568546,
+        "returns_std": 0.007030686705194497,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00018897721028568546
+        },
+        "skewness": 2.5749097942122616,
+        "kurtosis": 4.632359824113625,
+        "turnover": 0.21016221374045801,
+        "win_rate": 0.05745489078822412,
+        "autocorr_lag_1": -0.1174206504998918,
+        "autocorr_lag_2": 0.0015046930090018857,
+        "autocorr_lag_3": -0.0010510422134585216,
+        "autocorr_lag_4": -0.011190864678727938,
+        "autocorr_lag_5": 0.016589449141593337,
+        "autocorr_lag_6": 0.008977644846870301,
+        "autocorr_lag_7": -0.02138829734146363,
+        "autocorr_lag_8": 0.02662009473154988,
+        "autocorr_lag_9": 0.001309582389395177,
+        "autocorr_lag_10": -0.018945556946182853
+      },
+      "evaluated_at": "2025-08-18T23:12:49.702331"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "4h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 2106,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.3141578434555949,
+        "ic_spearman": -0.38615192477667537,
+        "ic_kendall": -0.31536657300047527,
+        "mutual_information": 0.0771399820805947,
+        "long_short_return": 0.0,
+        "long_return": 0.00037864146973802217,
+        "short_return": 0.00037864146973802217,
+        "returns_std": 0.010016779349305777,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00037864146973802217
+        },
+        "skewness": 2.5473239193835853,
+        "kurtosis": 4.493125225414072,
+        "turnover": 0.21311121764141897,
+        "win_rate": 0.0584045584045584,
+        "autocorr_lag_1": -0.11968085106382922,
+        "autocorr_lag_2": -0.009745306957806022,
+        "autocorr_lag_3": 0.0051574236691577496,
+        "autocorr_lag_4": 0.01008783702538133,
+        "autocorr_lag_5": -0.03984113014917179,
+        "autocorr_lag_6": -0.009975093361076303,
+        "autocorr_lag_7": 0.030464593625841672,
+        "autocorr_lag_8": -0.03956197556408126,
+        "autocorr_lag_9": -0.019134222419368168,
+        "autocorr_lag_10": 0.0008410937617490694
+      },
+      "evaluated_at": "2025-08-18T23:12:49.812709"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "6h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 1403,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.31959239184554233,
+        "ic_spearman": -0.3684856780016626,
+        "ic_kendall": -0.30097449995255865,
+        "mutual_information": 0.07624366037297371,
+        "long_short_return": 0.0,
+        "long_return": 0.0005660336571006821,
+        "short_return": 0.0005660336571006821,
+        "returns_std": 0.01204028022040971,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0005660336571006821
+        },
+        "skewness": 2.7837401301798717,
+        "kurtosis": 5.757414377800538,
+        "turnover": 0.18893709327548808,
+        "win_rate": 0.04775481111903065,
+        "autocorr_lag_1": -0.10393700787401601,
+        "autocorr_lag_2": -0.062200014327674046,
+        "autocorr_lag_3": 0.038093872478730466,
+        "autocorr_lag_4": -0.02053287412403443,
+        "autocorr_lag_5": 0.054681889989947705,
+        "autocorr_lag_6": -0.012318840579709648,
+        "autocorr_lag_7": 0.02107307249712349,
+        "autocorr_lag_8": -0.004102785575469732,
+        "autocorr_lag_9": -0.01179393476608806,
+        "autocorr_lag_10": 0.08156809136110114
+      },
+      "evaluated_at": "2025-08-18T23:12:49.916048"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "8h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 1053,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.3159909385749301,
+        "ic_spearman": -0.3745265389253089,
+        "ic_kendall": -0.3059448080485682,
+        "mutual_information": 0.06207886778426683,
+        "long_short_return": 0.0,
+        "long_return": 0.0007458384610736111,
+        "short_return": 0.0007458384610736111,
+        "returns_std": 0.013577599887665584,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0007458384610736111
+        },
+        "skewness": 2.7483354419996906,
+        "kurtosis": 5.563911843717436,
+        "turnover": 0.19177153920619558,
+        "win_rate": 0.05413105413105413,
+        "autocorr_lag_1": -0.1062039957939015,
+        "autocorr_lag_2": 0.003220427305888341,
+        "autocorr_lag_3": -0.007835240847583264,
+        "autocorr_lag_4": -0.006913332624745894,
+        "autocorr_lag_5": 0.003990651028252571,
+        "autocorr_lag_6": -0.007117171386850803,
+        "autocorr_lag_7": 0.02580466982068811,
+        "autocorr_lag_8": 0.037949008691357554,
+        "autocorr_lag_9": -0.08380720358697938,
+        "autocorr_lag_10": 0.01563175540147766
+      },
+      "evaluated_at": "2025-08-18T23:12:50.025712"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "12h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 701,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.33529330958282944,
+        "ic_spearman": -0.38676649781714456,
+        "ic_kendall": -0.3160186878360392,
+        "mutual_information": 0.09111438525689425,
+        "long_short_return": 0.0,
+        "long_return": 0.0011516553978615667,
+        "short_return": 0.0011516553978615667,
+        "returns_std": 0.017430860730535198,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0011516553978615667
+        },
+        "skewness": 2.6750383642814812,
+        "kurtosis": 5.170574153583008,
+        "turnover": 0.20271659324522762,
+        "win_rate": 0.06276747503566334,
+        "autocorr_lag_1": -0.11111111111111122,
+        "autocorr_lag_2": -0.01603452191687487,
+        "autocorr_lag_3": -0.03207461328480471,
+        "autocorr_lag_4": -0.00047846889952154515,
+        "autocorr_lag_5": 0.04891984823458428,
+        "autocorr_lag_6": -0.04715775484619833,
+        "autocorr_lag_7": -0.047325430186159534,
+        "autocorr_lag_8": -0.0315008859142952,
+        "autocorr_lag_9": 0.03231427304910954,
+        "autocorr_lag_10": -0.047831693705108744
+      },
+      "evaluated_at": "2025-08-18T23:12:50.128165"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "1d",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 350,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.3613328873454971,
+        "ic_spearman": -0.40485330088721405,
+        "ic_kendall": -0.3310332296051686,
+        "mutual_information": 0.1001600096741178,
+        "long_short_return": 0.0,
+        "long_return": 0.0023244923373097054,
+        "short_return": 0.0023244923373097054,
+        "returns_std": 0.023495708681011016,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0023244923373097054
+        },
+        "skewness": 2.6260090182150213,
+        "kurtosis": 4.924028382337768,
+        "turnover": 0.20590909090909087,
+        "win_rate": 0.05142857142857143,
+        "autocorr_lag_1": -0.1150159744408943,
+        "autocorr_lag_2": -0.022435897435897408,
+        "autocorr_lag_3": 0.03921043229724904,
+        "autocorr_lag_4": -0.08075333027101518,
+        "autocorr_lag_5": 0.014285714285714079,
+        "autocorr_lag_6": -0.017845584835875984,
+        "autocorr_lag_7": -0.0500000000000008,
+        "autocorr_lag_8": -0.018520241973010453,
+        "autocorr_lag_9": 0.012978524743230715,
+        "autocorr_lag_10": -0.08290398126463622
+      },
+      "evaluated_at": "2025-08-18T23:12:50.231206"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "1m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.03175871369962365,
+        "ic_spearman": -0.3230072843544841,
+        "ic_kendall": -0.26377634207917905,
+        "mutual_information": 5.904496802113142e-05,
+        "long_short_return": 0.0,
+        "long_return": 0.00021264319416064426,
+        "short_return": 0.00021264319416064426,
+        "returns_std": 0.014950136557185257,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00021264319416064426
+        },
+        "skewness": 3.209236799289262,
+        "kurtosis": 8.300584352167743,
+        "turnover": 0.1514108022372485,
+        "win_rate": 0.05117093091090924,
+        "autocorr_lag_1": -0.08187556357078464,
+        "autocorr_lag_2": 0.003905128032979661,
+        "autocorr_lag_3": 0.012335319131434732,
+        "autocorr_lag_4": 0.007560099421833,
+        "autocorr_lag_5": -0.0043679566817215265,
+        "autocorr_lag_6": -0.0055669483671230945,
+        "autocorr_lag_7": 0.008731922549996045,
+        "autocorr_lag_8": 0.00157223782915636,
+        "autocorr_lag_9": -0.002011063091477376,
+        "autocorr_lag_10": -0.018708273623328192
+      },
+      "evaluated_at": "2025-08-18T23:12:50.342805"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "3m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.05190081152031645,
+        "ic_spearman": -0.3193733928990918,
+        "ic_kendall": -0.26078366926183444,
+        "mutual_information": 0.0013071551137206047,
+        "long_short_return": 0.0,
+        "long_return": 0.00021543148866262624,
+        "short_return": 0.00021543148866262624,
+        "returns_std": 0.016006150212653163,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00021543148866262624
+        },
+        "skewness": 3.1626665981641353,
+        "kurtosis": 8.003794060226689,
+        "turnover": 0.15496702562818265,
+        "win_rate": 0.04500375031252604,
+        "autocorr_lag_1": -0.08392808745144059,
+        "autocorr_lag_2": 0.0035725914719186326,
+        "autocorr_lag_3": 0.0023988344599970243,
+        "autocorr_lag_4": -0.011524982071956309,
+        "autocorr_lag_5": 0.018819745676342932,
+        "autocorr_lag_6": 0.009473798891152864,
+        "autocorr_lag_7": -0.018550574298860024,
+        "autocorr_lag_8": -0.003381482685116974,
+        "autocorr_lag_9": -0.00805814557324194,
+        "autocorr_lag_10": 0.005943811597808979
+      },
+      "evaluated_at": "2025-08-18T23:12:50.452857"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "5m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.06428221058008568,
+        "ic_spearman": -0.3294450007188015,
+        "ic_kendall": -0.2690081814483506,
+        "mutual_information": 0.04062142130759551,
+        "long_short_return": 0.0,
+        "long_return": 0.00022187299852203577,
+        "short_return": 0.00022187299852203577,
+        "returns_std": 0.016421580491196765,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00022187299852203577
+        },
+        "skewness": 3.0432248001877182,
+        "kurtosis": 7.26242766219549,
+        "turnover": 0.16458385507972287,
+        "win_rate": 0.04333694474539545,
+        "autocorr_lag_1": -0.08953868507083151,
+        "autocorr_lag_2": 0.0010645817394847794,
+        "autocorr_lag_3": -0.0033629763095692584,
+        "autocorr_lag_4": -0.002265433942393037,
+        "autocorr_lag_5": 0.015407750660408592,
+        "autocorr_lag_6": 0.010980196817404322,
+        "autocorr_lag_7": -0.008918240797293269,
+        "autocorr_lag_8": 0.002124886991253173,
+        "autocorr_lag_9": 0.0021174302835111148,
+        "autocorr_lag_10": 0.007635387656584271
+      },
+      "evaluated_at": "2025-08-18T23:12:50.555824"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "15m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.12162887996124747,
+        "ic_spearman": -0.32229705319924834,
+        "ic_kendall": -0.26316699764242696,
+        "mutual_information": 0.00046495849861623566,
+        "long_short_return": 0.0,
+        "long_return": 0.00020403737233866902,
+        "short_return": 0.00020403737233866902,
+        "returns_std": 0.01489478369222359,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00020403737233866902
+        },
+        "skewness": 3.1048729605735454,
+        "kurtosis": 7.641509764635405,
+        "turnover": 0.15955421988479843,
+        "win_rate": 0.04075339611634303,
+        "autocorr_lag_1": -0.08657851838435096,
+        "autocorr_lag_2": 0.006614562154980195,
+        "autocorr_lag_3": 0.008880601540234397,
+        "autocorr_lag_4": 0.00887344640777208,
+        "autocorr_lag_5": -0.01954924069835606,
+        "autocorr_lag_6": 0.0054492439466642655,
+        "autocorr_lag_7": -0.01956396790420388,
+        "autocorr_lag_8": 0.011118104623364721,
+        "autocorr_lag_9": -0.0002555812653624228,
+        "autocorr_lag_10": -0.00026280989666962014
+      },
+      "evaluated_at": "2025-08-18T23:12:50.660285"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "1h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 8424,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.28098915222934134,
+        "ic_spearman": -0.33297805451538215,
+        "ic_kendall": -0.27189188939452386,
+        "mutual_information": 0.04764171693231257,
+        "long_short_return": 0.0,
+        "long_return": 0.00026647847703418354,
+        "short_return": 0.00026647847703418354,
+        "returns_std": 0.012714512894681843,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00026647847703418354
+        },
+        "skewness": 3.001659346314341,
+        "kurtosis": 7.011623452922473,
+        "turnover": 0.16740242741551642,
+        "win_rate": 0.0454653371320038,
+        "autocorr_lag_1": -0.09155703033170343,
+        "autocorr_lag_2": 0.011948634651674273,
+        "autocorr_lag_3": -0.014328037375335806,
+        "autocorr_lag_4": 0.012064448510158818,
+        "autocorr_lag_5": 0.001361663562239976,
+        "autocorr_lag_6": 0.009086285463993973,
+        "autocorr_lag_7": 0.012169738811655412,
+        "autocorr_lag_8": -0.006406536913432736,
+        "autocorr_lag_9": 0.006093219637387,
+        "autocorr_lag_10": 0.010726892855269834
+      },
+      "evaluated_at": "2025-08-18T23:12:50.763034"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "2h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 4212,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.3057358326323794,
+        "ic_spearman": -0.3515818337488631,
+        "ic_kendall": -0.2870994725853869,
+        "mutual_information": 0.0719767712258333,
+        "long_short_return": 0.0,
+        "long_return": 0.0005332404423675684,
+        "short_return": 0.0005332404423675684,
+        "returns_std": 0.01780234621320989,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0005332404423675684
+        },
+        "skewness": 2.8923064306497857,
+        "kurtosis": 6.3684602238186105,
+        "turnover": 0.17727814885496185,
+        "win_rate": 0.04748338081671415,
+        "autocorr_lag_1": -0.09732890384316767,
+        "autocorr_lag_2": 0.0025388513806417707,
+        "autocorr_lag_3": 0.026020587782093377,
+        "autocorr_lag_4": -0.015136318462000345,
+        "autocorr_lag_5": 0.017160785030088777,
+        "autocorr_lag_6": 0.005652199153813979,
+        "autocorr_lag_7": -0.012022365629914851,
+        "autocorr_lag_8": 0.005606163350625537,
+        "autocorr_lag_9": -0.012069243099839966,
+        "autocorr_lag_10": 0.01144433934059036
+      },
+      "evaluated_at": "2025-08-18T23:12:50.874308"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "4h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 2106,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.3142345048681882,
+        "ic_spearman": -0.35422126101763074,
+        "ic_kendall": -0.28928910618700776,
+        "mutual_information": 0.052703505725058594,
+        "long_short_return": 0.0,
+        "long_return": 0.0010596003175140564,
+        "short_return": 0.0010596003175140564,
+        "returns_std": 0.025458902144886254,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0010596003175140564
+        },
+        "skewness": 2.883051332982639,
+        "kurtosis": 6.317984073897925,
+        "turnover": 0.17787631831255993,
+        "win_rate": 0.04510921177587844,
+        "autocorr_lag_1": -0.09778322800862749,
+        "autocorr_lag_2": 0.04268908270860929,
+        "autocorr_lag_3": -0.01590956724605973,
+        "autocorr_lag_4": -0.004245510147246592,
+        "autocorr_lag_5": -0.02186019518613515,
+        "autocorr_lag_6": 0.0015170424828202418,
+        "autocorr_lag_7": 0.0019969570178777147,
+        "autocorr_lag_8": -0.003920449298600526,
+        "autocorr_lag_9": 0.020089419679739724,
+        "autocorr_lag_10": 0.025929428634373523
+      },
+      "evaluated_at": "2025-08-18T23:12:50.977270"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "6h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 1403,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.32691690013666197,
+        "ic_spearman": -0.3704814353425149,
+        "ic_kendall": -0.3026046096245198,
+        "mutual_information": 0.074102158229462,
+        "long_short_return": 0.0,
+        "long_return": 0.001601162233526502,
+        "short_return": 0.001601162233526502,
+        "returns_std": 0.031231310709644577,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.001601162233526502
+        },
+        "skewness": 2.7138229606506608,
+        "kurtosis": 5.372491612774557,
+        "turnover": 0.19613159797541577,
+        "win_rate": 0.04632929436920884,
+        "autocorr_lag_1": -0.10830039525691842,
+        "autocorr_lag_2": -0.003210754873879467,
+        "autocorr_lag_3": -0.003288428085141292,
+        "autocorr_lag_4": 0.012817101808044221,
+        "autocorr_lag_5": -0.01153643557135199,
+        "autocorr_lag_6": 0.012663654269494208,
+        "autocorr_lag_7": 0.012586747679481166,
+        "autocorr_lag_8": -0.02796119434161494,
+        "autocorr_lag_9": -0.011092495134332803,
+        "autocorr_lag_10": 0.005072558406732924
+      },
+      "evaluated_at": "2025-08-18T23:12:51.079341"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "8h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 1053,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.2915084128464224,
+        "ic_spearman": -0.34089707496057203,
+        "ic_kendall": -0.27847343064767455,
+        "mutual_information": 0.07217777853429283,
+        "long_short_return": 0.0,
+        "long_return": 0.00206792352345386,
+        "short_return": 0.00206792352345386,
+        "returns_std": 0.03474343257586987,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00206792352345386
+        },
+        "skewness": 3.1550377453263727,
+        "kurtosis": 7.969396145735178,
+        "turnover": 0.15304937076476283,
+        "win_rate": 0.0389363722697056,
+        "autocorr_lag_1": -0.08397576203944389,
+        "autocorr_lag_2": -0.0042524781039125535,
+        "autocorr_lag_3": -0.0033253067308796785,
+        "autocorr_lag_4": 0.009973472094684277,
+        "autocorr_lag_5": -0.04362480370753345,
+        "autocorr_lag_6": 0.036576949620428005,
+        "autocorr_lag_7": 0.009735815262585714,
+        "autocorr_lag_8": -0.02962362213762951,
+        "autocorr_lag_9": -0.029705940805301475,
+        "autocorr_lag_10": 0.09136581442161827
+      },
+      "evaluated_at": "2025-08-18T23:12:51.182676"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "12h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 701,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.3354246493195351,
+        "ic_spearman": -0.386133755828967,
+        "ic_kendall": -0.3155016878012089,
+        "mutual_information": 0.08638808114735325,
+        "long_short_return": 0.0,
+        "long_return": 0.003242095887053691,
+        "short_return": 0.003242095887053691,
+        "returns_std": 0.04565941832338394,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.003242095887053691
+        },
+        "skewness": 2.84397498460743,
+        "kurtosis": 6.105605333799467,
+        "turnover": 0.18054331864904552,
+        "win_rate": 0.04992867332382311,
+        "autocorr_lag_1": -0.09976127424559199,
+        "autocorr_lag_2": 0.03865884870121675,
+        "autocorr_lag_3": -0.030777258474547813,
+        "autocorr_lag_4": 0.05571025044954884,
+        "autocorr_lag_5": -0.01075962153989131,
+        "autocorr_lag_6": -0.02848471489180286,
+        "autocorr_lag_7": 0.05928932679861517,
+        "autocorr_lag_8": 0.02398174245477381,
+        "autocorr_lag_9": -0.0641037395632796,
+        "autocorr_lag_10": -0.046664992557002904
+      },
+      "evaluated_at": "2025-08-18T23:12:51.287341"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "1d",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "engulfing_bearish",
+        "data_length": 350,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.28597274159931274,
+        "ic_spearman": -0.31687719380831986,
+        "ic_kendall": -0.2590984947503583,
+        "mutual_information": 0.057679071136331805,
+        "long_short_return": 0.0,
+        "long_return": 0.0062401859653650445,
+        "short_return": 0.0062401859653650445,
+        "returns_std": 0.058418513025335954,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0062401859653650445
+        },
+        "skewness": 3.1096239362115945,
+        "kurtosis": 7.713807901524742,
+        "turnover": 0.16454545454545455,
+        "win_rate": 0.05142857142857143,
+        "autocorr_lag_1": -0.08722741433021743,
+        "autocorr_lag_2": -0.0875000000000002,
+        "autocorr_lag_3": -0.01007613076578588,
+        "autocorr_lag_4": 0.028526504941599373,
+        "autocorr_lag_5": 0.028278503830553685,
+        "autocorr_lag_6": 0.028028933092224793,
+        "autocorr_lag_7": -0.011111111111111047,
+        "autocorr_lag_8": -0.08917197452229352,
+        "autocorr_lag_9": 0.030975146622157567,
+        "autocorr_lag_10": 0.030725118273404198
+      },
+      "evaluated_at": "2025-08-18T23:12:51.400260"
+    }
+  ]
+}

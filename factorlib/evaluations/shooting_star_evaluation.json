@@ -1,0 +1,885 @@
+{
+  "factor_id": "shooting_star",
+  "evaluations": [
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "1m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 20999,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.00256852142096994,
+        "ic_spearman": -0.0026718160473144,
+        "ic_kendall": -0.002182978985397113,
+        "mutual_information": 3.30071481243466e-05,
+        "long_short_return": 0.0,
+        "long_return": 3.866442176436675e-05,
+        "short_return": 3.866442176436675e-05,
+        "returns_std": 0.003423985783309737,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 3.866442176436675e-05
+        },
+        "skewness": 3.6669900822359236,
+        "kurtosis": 11.447906582887814,
+        "turnover": 0.11384003050669718,
+        "win_rate": 0.06271727225105958,
+        "autocorr_lag_1": 0.007252042972771794,
+        "autocorr_lag_2": 0.008079722630954538,
+        "autocorr_lag_3": -0.0026734346476288734,
+        "autocorr_lag_4": 0.009789394959640709,
+        "autocorr_lag_5": 0.0031378101195264825,
+        "autocorr_lag_6": 0.0006415208615123066,
+        "autocorr_lag_7": -0.0010237141648585994,
+        "autocorr_lag_8": 0.0039596206948281695,
+        "autocorr_lag_9": -0.00019884036851826241,
+        "autocorr_lag_10": 0.011433149019033336
+      },
+      "evaluated_at": "2025-08-18T23:14:31.935608"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "3m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.002917711227242797,
+        "ic_spearman": 0.0022489842357419397,
+        "ic_kendall": 0.0018364403385449704,
+        "mutual_information": 4.918333830713768e-05,
+        "long_short_return": 0.0,
+        "long_return": 6.913071194043069e-05,
+        "short_return": 6.913071194043069e-05,
+        "returns_std": 0.005111607216892625,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 6.913071194043069e-05
+        },
+        "skewness": 4.6139738877308725,
+        "kurtosis": 19.291970605322867,
+        "turnover": 0.07790299691126137,
+        "win_rate": 0.027918993249437453,
+        "autocorr_lag_1": 0.013960852494974797,
+        "autocorr_lag_2": -0.005025331177392598,
+        "autocorr_lag_3": 0.0012986399114491654,
+        "autocorr_lag_4": -0.002923336830197392,
+        "autocorr_lag_5": 0.022383540601635433,
+        "autocorr_lag_6": 0.0181616079938211,
+        "autocorr_lag_7": 0.011830423318719458,
+        "autocorr_lag_8": -0.0008284936611488436,
+        "autocorr_lag_9": 0.009714097608572761,
+        "autocorr_lag_10": 0.0033828127229352115
+      },
+      "evaluated_at": "2025-08-18T23:14:32.098938"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "5m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 12903,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.002054758609394047,
+        "ic_spearman": 0.002097819179301854,
+        "ic_kendall": 0.0017129382708205277,
+        "mutual_information": 3.317906815402489e-05,
+        "long_short_return": 0.0,
+        "long_return": 6.555117362863959e-05,
+        "short_return": 6.555117362863959e-05,
+        "returns_std": 0.005155257251506646,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 6.555117362863959e-05
+        },
+        "skewness": 5.058528620847038,
+        "kurtosis": 23.59236866508337,
+        "turnover": 0.06740277885585655,
+        "win_rate": 0.020770363481360923,
+        "autocorr_lag_1": 0.00037814976721022123,
+        "autocorr_lag_2": 0.023407804435513276,
+        "autocorr_lag_3": 0.011929199894658711,
+        "autocorr_lag_4": 0.016516778130469662,
+        "autocorr_lag_5": 0.00274290409715861,
+        "autocorr_lag_6": 0.005035290277112379,
+        "autocorr_lag_7": 0.0004420960671440351,
+        "autocorr_lag_8": -0.011036736649365329,
+        "autocorr_lag_9": 0.00043647093449732257,
+        "autocorr_lag_10": 0.009705165003309877
+      },
+      "evaluated_at": "2025-08-18T23:14:32.274892"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "15m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.027531625568158066,
+        "ic_spearman": 0.0033858651374945887,
+        "ic_kendall": 0.0027646629079297333,
+        "mutual_information": 0.0012495777062638855,
+        "long_short_return": 0.0,
+        "long_return": 6.686627027389519e-05,
+        "short_return": 6.686627027389519e-05,
+        "returns_std": 0.004969785999351548,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 6.686627027389519e-05
+        },
+        "skewness": 5.906572031477938,
+        "kurtosis": 32.89307577151047,
+        "turnover": 0.050646965522998584,
+        "win_rate": 0.01425118759896658,
+        "autocorr_lag_1": 0.011744111403105944,
+        "autocorr_lag_2": -0.004380187587004869,
+        "autocorr_lag_3": 0.0021079073629461592,
+        "autocorr_lag_4": 0.005350842100686228,
+        "autocorr_lag_5": -0.001141798328716919,
+        "autocorr_lag_6": 0.005440208654251507,
+        "autocorr_lag_7": -0.014063252110788372,
+        "autocorr_lag_8": 0.0021855094462363035,
+        "autocorr_lag_9": -0.0010669604422247972,
+        "autocorr_lag_10": -0.00431944539329659
+      },
+      "evaluated_at": "2025-08-18T23:14:32.437678"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "1h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 8424,
+        "missing_ratio": 0.0,
+        "ic_pearson": -3.516554123644116e-05,
+        "ic_spearman": 0.0004877884274214181,
+        "ic_kendall": 0.0003983012219618836,
+        "mutual_information": 0.0014378623963728567,
+        "long_short_return": 0.0,
+        "long_return": 9.483751348164575e-05,
+        "short_return": 9.483751348164575e-05,
+        "returns_std": 0.005031752167284472,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 9.483751348164575e-05
+        },
+        "skewness": 7.048904539301981,
+        "kurtosis": 47.698379549740324,
+        "turnover": 0.0375,
+        "win_rate": 0.010565052231718898,
+        "autocorr_lag_1": -0.006621384485053745,
+        "autocorr_lag_2": 0.006118373275236275,
+        "autocorr_lag_3": -0.012997064520033954,
+        "autocorr_lag_4": -0.006628329297820908,
+        "autocorr_lag_5": 0.006111514711224175,
+        "autocorr_lag_6": 0.006109227415839371,
+        "autocorr_lag_7": 0.01247804892818197,
+        "autocorr_lag_8": 0.02521802325581376,
+        "autocorr_lag_9": -0.013011053906723236,
+        "autocorr_lag_10": 0.025213532832565895
+      },
+      "evaluated_at": "2025-08-18T23:14:32.567734"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "2h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 4212,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.004826740460573262,
+        "ic_spearman": 0.00805225097498032,
+        "ic_kendall": 0.006575415808314864,
+        "mutual_information": 0.0015718991035601248,
+        "long_short_return": 0.0,
+        "long_return": 0.00018897721028568546,
+        "short_return": 0.00018897721028568546,
+        "returns_std": 0.007030686705194497,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00018897721028568546
+        },
+        "skewness": 7.097284297399588,
+        "kurtosis": 48.39442348358199,
+        "turnover": 0.03769083969465649,
+        "win_rate": 0.0097340930674264,
+        "autocorr_lag_1": -0.01911907066795739,
+        "autocorr_lag_2": 0.006676901108935342,
+        "autocorr_lag_3": 0.019572746498299112,
+        "autocorr_lag_4": 0.019568289744351926,
+        "autocorr_lag_5": 0.03246430674124242,
+        "autocorr_lag_6": 0.019559369757048865,
+        "autocorr_lag_7": -0.019146873485215724,
+        "autocorr_lag_8": 0.019550441120060966,
+        "autocorr_lag_9": 0.032446684428292294,
+        "autocorr_lag_10": 0.019541503820801002
+      },
+      "evaluated_at": "2025-08-18T23:14:32.682766"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "4h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 2106,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.009208354417135347,
+        "ic_spearman": -0.014918368585344328,
+        "ic_kendall": -0.012183688526838,
+        "mutual_information": 0.0018321300337731678,
+        "long_short_return": 0.0,
+        "long_return": 0.00037864146973802217,
+        "short_return": 0.00037864146973802217,
+        "returns_std": 0.010016779349305777,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00037864146973802217
+        },
+        "skewness": 9.636913509658148,
+        "kurtosis": 90.95647955243047,
+        "turnover": 0.02109300095877277,
+        "win_rate": 0.004748338081671415,
+        "autocorr_lag_1": -0.010561689870379186,
+        "autocorr_lag_2": 0.035368090123133196,
+        "autocorr_lag_3": -0.010571840461316597,
+        "autocorr_lag_4": -0.010576923076923126,
+        "autocorr_lag_5": -0.010582010582010573,
+        "autocorr_lag_6": 0.03534867442470951,
+        "autocorr_lag_7": 0.03534380881516152,
+        "autocorr_lag_8": -0.01059730250481695,
+        "autocorr_lag_9": -0.010602409638554177,
+        "autocorr_lag_10": 0.035329183834487285
+      },
+      "evaluated_at": "2025-08-18T23:14:32.816029"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "6h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 1403,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.004976062905245718,
+        "ic_spearman": -0.00644495106827068,
+        "ic_kendall": -0.005264155544690462,
+        "mutual_information": 0.001388006897981348,
+        "long_short_return": 0.0,
+        "long_return": 0.0005660336571006821,
+        "short_return": 0.0005660336571006821,
+        "returns_std": 0.01204028022040971,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0005660336571006821
+        },
+        "skewness": 11.172295793692568,
+        "kurtosis": 122.99552362556582,
+        "turnover": 0.015907447577729574,
+        "win_rate": 0.0021382751247327157,
+        "autocorr_lag_1": -0.007907979870596766,
+        "autocorr_lag_2": -0.007913669064748106,
+        "autocorr_lag_3": -0.007919366450683953,
+        "autocorr_lag_4": -0.007925072046109495,
+        "autocorr_lag_5": -0.007930785868781478,
+        "autocorr_lag_6": -0.007936507936508009,
+        "autocorr_lag_7": 0.08368887430259273,
+        "autocorr_lag_8": -0.007947976878612744,
+        "autocorr_lag_9": -0.00795372378886474,
+        "autocorr_lag_10": -0.007959479015919063
+      },
+      "evaluated_at": "2025-08-18T23:14:32.972779"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "8h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 1053,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.008028705761368979,
+        "ic_spearman": -0.01573266178979301,
+        "ic_kendall": -0.012851762668629417,
+        "mutual_information": 0.0033210250951502774,
+        "long_short_return": 0.0,
+        "long_return": 0.0007458384610736111,
+        "short_return": 0.0007458384610736111,
+        "returns_std": 0.013577599887665584,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0007458384610736111
+        },
+        "skewness": 9.64379128662782,
+        "kurtosis": 91.17588064426297,
+        "turnover": 0.021297192642787996,
+        "win_rate": 0.00949667616334283,
+        "autocorr_lag_1": -0.010566762728146032,
+        "autocorr_lag_2": -0.010576923076923163,
+        "autocorr_lag_3": -0.010587102983638137,
+        "autocorr_lag_4": -0.010597302504816938,
+        "autocorr_lag_5": -0.010607521697203436,
+        "autocorr_lag_6": -0.010617760617760619,
+        "autocorr_lag_7": -0.01062801932367154,
+        "autocorr_lag_8": -0.010638297872340425,
+        "autocorr_lag_9": 0.08122854879873252,
+        "autocorr_lag_10": -0.010658914728682075
+      },
+      "evaluated_at": "2025-08-18T23:14:33.121421"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "12h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 701,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.005702348709458413,
+        "ic_spearman": -0.009831015875387926,
+        "ic_kendall": -0.008032714194661677,
+        "mutual_information": 0.004403643834058942,
+        "long_short_return": 0.0,
+        "long_return": 0.0011516553978615667,
+        "short_return": 0.0011516553978615667,
+        "returns_std": 0.017430860730535198,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0011516553978615667
+        },
+        "skewness": 8.673157938474139,
+        "kurtosis": 73.43317108858417,
+        "turnover": 0.02643171806167401,
+        "win_rate": 0.009985734664764621,
+        "autocorr_lag_1": -0.01302460202604912,
+        "autocorr_lag_2": -0.013043478260869545,
+        "autocorr_lag_3": -0.01306240928882441,
+        "autocorr_lag_4": -0.013081395348837229,
+        "autocorr_lag_5": -0.013100436681222818,
+        "autocorr_lag_6": -0.013119533527696722,
+        "autocorr_lag_7": -0.013138686131386907,
+        "autocorr_lag_8": -0.013157894736842105,
+        "autocorr_lag_9": -0.013177159590043858,
+        "autocorr_lag_10": -0.013196480938416435
+      },
+      "evaluated_at": "2025-08-18T23:14:33.265803"
+    },
+    {
+      "metadata": {
+        "symbol": "BTC_USDT",
+        "timeframe": "1d",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 350,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.028171104689542103,
+        "ic_spearman": -0.04187276482300444,
+        "ic_kendall": -0.034237775859751234,
+        "mutual_information": 0.004614716395799287,
+        "long_short_return": 0.0,
+        "long_return": 0.0023244923373097054,
+        "short_return": 0.0023244923373097054,
+        "returns_std": 0.023495708681011016,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0023244923373097054
+        },
+        "skewness": 10.707807857117889,
+        "kurtosis": 113.30458171158587,
+        "turnover": 0.01818181818181818,
+        "win_rate": 0.002857142857142857,
+        "autocorr_lag_1": -0.008670520231213888,
+        "autocorr_lag_2": -0.008695652173913028,
+        "autocorr_lag_3": -0.008720930232558162,
+        "autocorr_lag_4": -0.00874635568513121,
+        "autocorr_lag_5": -0.008771929824561332,
+        "autocorr_lag_6": -0.008797653958944277,
+        "autocorr_lag_7": -0.008823529411764673,
+        "autocorr_lag_8": -0.008849557522123911,
+        "autocorr_lag_9": -0.008875739644970402,
+        "autocorr_lag_10": -0.008902077151335331
+      },
+      "evaluated_at": "2025-08-18T23:14:33.416990"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "1m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.014596163670068201,
+        "ic_spearman": 0.012055103288761339,
+        "ic_kendall": 0.009844518074107649,
+        "mutual_information": 0.00018681533413999834,
+        "long_short_return": 0.0,
+        "long_return": 0.00021264319416064426,
+        "short_return": 0.00021264319416064426,
+        "returns_std": 0.014950136557185257,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00021264319416064426
+        },
+        "skewness": 5.020934104085893,
+        "kurtosis": 23.213648513699432,
+        "turnover": 0.067618332081142,
+        "win_rate": 0.032836069672472705,
+        "autocorr_lag_1": 0.014297502957600189,
+        "autocorr_lag_2": -0.0003085664622949145,
+        "autocorr_lag_3": 0.004556060071173311,
+        "autocorr_lag_4": -0.00031470698162555893,
+        "autocorr_lag_5": 0.009417674790096201,
+        "autocorr_lag_6": 0.01428237445769142,
+        "autocorr_lag_7": -0.022228825138275635,
+        "autocorr_lag_8": 0.011842433763845344,
+        "autocorr_lag_9": 0.00453771864439262,
+        "autocorr_lag_10": 0.011836361650545182
+      },
+      "evaluated_at": "2025-08-18T23:14:33.673121"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "3m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.0012694646049402545,
+        "ic_spearman": 0.011638077377174384,
+        "ic_kendall": 0.009503047495667924,
+        "mutual_information": 0.0004106166897502741,
+        "long_short_return": 0.0,
+        "long_return": 0.00021543148866262624,
+        "short_return": 0.00021543148866262624,
+        "returns_std": 0.016006150212653163,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00021543148866262624
+        },
+        "skewness": 6.085356874533787,
+        "kurtosis": 35.037408317456176,
+        "turnover": 0.04825110610234577,
+        "win_rate": 0.01758479873322777,
+        "autocorr_lag_1": 0.011961588875591256,
+        "autocorr_lag_2": -0.005134649910233513,
+        "autocorr_lag_3": -0.008555631554947506,
+        "autocorr_lag_4": -0.0017201083083939802,
+        "autocorr_lag_5": 0.0016965965452366428,
+        "autocorr_lag_6": 0.011951024829669865,
+        "autocorr_lag_7": 0.01878663473600169,
+        "autocorr_lag_8": 0.005109058249936017,
+        "autocorr_lag_9": 0.001688052466495624,
+        "autocorr_lag_10": -0.0017329683177917123
+      },
+      "evaluated_at": "2025-08-18T23:14:33.834945"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "5m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.007397855043924295,
+        "ic_spearman": 0.011763862509902752,
+        "ic_kendall": 0.009605777151551007,
+        "mutual_information": 0.0007735711125836719,
+        "long_short_return": 0.0,
+        "long_return": 0.00022187299852203577,
+        "short_return": 0.00022187299852203577,
+        "returns_std": 0.016421580491196765,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00022187299852203577
+        },
+        "skewness": 6.4146279986192996,
+        "kurtosis": 39.15397853991717,
+        "turnover": 0.04425661574421906,
+        "win_rate": 0.017001416784732062,
+        "autocorr_lag_1": -0.0006258089113183219,
+        "autocorr_lag_2": 0.010762163033889684,
+        "autocorr_lag_3": -0.0005453637820682377,
+        "autocorr_lag_4": 0.006989797450986326,
+        "autocorr_lag_5": 0.01075643377874929,
+        "autocorr_lag_6": -0.0043197204628373925,
+        "autocorr_lag_7": 0.003215476168838166,
+        "autocorr_lag_8": -0.008092176003452306,
+        "autocorr_lag_9": 0.003211624608256724,
+        "autocorr_lag_10": -0.0043274818310403565
+      },
+      "evaluated_at": "2025-08-18T23:14:33.996183"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "15m",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 11999,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.0003916738144295312,
+        "ic_spearman": 0.008742079139391942,
+        "ic_kendall": 0.0071382182909503385,
+        "mutual_information": 0.00010504700008192366,
+        "long_short_return": 0.0,
+        "long_return": 0.00020403737233866902,
+        "short_return": 0.00020403737233866902,
+        "returns_std": 0.01489478369222359,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00020403737233866902
+        },
+        "skewness": 7.130134789761651,
+        "kurtosis": 48.84696393163961,
+        "turnover": 0.036559813006094,
+        "win_rate": 0.012834402866905575,
+        "autocorr_lag_1": -0.0006615063837081609,
+        "autocorr_lag_2": 0.0039061518082331493,
+        "autocorr_lag_3": -0.009803156039566123,
+        "autocorr_lag_4": -0.000666246120230595,
+        "autocorr_lag_5": 0.0039014329127636336,
+        "autocorr_lag_6": -0.018946474086661037,
+        "autocorr_lag_7": 0.0038982856459185856,
+        "autocorr_lag_8": 0.01760455502952476,
+        "autocorr_lag_9": 0.013033714031145338,
+        "autocorr_lag_10": 0.008462858323252576
+      },
+      "evaluated_at": "2025-08-18T23:14:34.158798"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "1h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 8424,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.005555530129132174,
+        "ic_spearman": 0.013875186417411792,
+        "ic_kendall": 0.011329727588870431,
+        "mutual_information": 0.00381528653119763,
+        "long_short_return": 0.0,
+        "long_return": 0.00026647847703418354,
+        "short_return": 0.00026647847703418354,
+        "returns_std": 0.012714512894681843,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00026647847703418354
+        },
+        "skewness": 7.6210770952501985,
+        "kurtosis": 56.094133731316845,
+        "turnover": 0.03212755830556878,
+        "win_rate": 0.009615384615384616,
+        "autocorr_lag_1": 0.005444622287528389,
+        "autocorr_lag_2": 0.005442655301996423,
+        "autocorr_lag_3": -0.0019264181744691894,
+        "autocorr_lag_4": 0.005438719905925131,
+        "autocorr_lag_5": -0.009297518853180618,
+        "autocorr_lag_6": 0.020169082125604625,
+        "autocorr_lag_7": 0.012799977593037365,
+        "autocorr_lag_8": -0.0019363355287807668,
+        "autocorr_lag_9": 0.012796066627795196,
+        "autocorr_lag_10": -0.001940305825820843
+      },
+      "evaluated_at": "2025-08-18T23:14:34.291000"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "2h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 4212,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.00011638096396414975,
+        "ic_spearman": 0.0073564492850515945,
+        "ic_kendall": 0.006007229347771412,
+        "mutual_information": 0.0009261407741425138,
+        "long_short_return": 0.0,
+        "long_return": 0.0005332404423675684,
+        "short_return": 0.0005332404423675684,
+        "returns_std": 0.01780234621320989,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0005332404423675684
+        },
+        "skewness": 8.92508954499575,
+        "kurtosis": 77.69411495730897,
+        "turnover": 0.024224713740458016,
+        "win_rate": 0.006647673314339981,
+        "autocorr_lag_1": -0.0122596153846155,
+        "autocorr_lag_2": 0.007585722435162934,
+        "autocorr_lag_3": 0.007582831112242873,
+        "autocorr_lag_4": -0.012268462833774443,
+        "autocorr_lag_5": 0.027425503406367405,
+        "autocorr_lag_6": -0.01227436823104682,
+        "autocorr_lag_7": -0.012277323062108922,
+        "autocorr_lag_8": 0.027416986539378636,
+        "autocorr_lag_9": -0.012283236994219555,
+        "autocorr_lag_10": -0.01228619609732598
+      },
+      "evaluated_at": "2025-08-18T23:14:34.405612"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "4h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 2106,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.006185744224010089,
+        "ic_spearman": 0.020270695355376313,
+        "ic_kendall": 0.016554882460468875,
+        "mutual_information": 0.002289639837866712,
+        "long_short_return": 0.0,
+        "long_return": 0.0010596003175140564,
+        "short_return": 0.0010596003175140564,
+        "returns_std": 0.025458902144886254,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0010596003175140564
+        },
+        "skewness": 8.350686948628907,
+        "kurtosis": 67.79835754535284,
+        "turnover": 0.027804410354745925,
+        "win_rate": 0.009021842355175688,
+        "autocorr_lag_1": -0.013969171483622233,
+        "autocorr_lag_2": -0.013975903614458083,
+        "autocorr_lag_3": 0.05594719515844934,
+        "autocorr_lag_4": -0.013989387361312274,
+        "autocorr_lag_5": -0.013996138996138932,
+        "autocorr_lag_6": -0.01400289715113483,
+        "autocorr_lag_7": -0.014009661835748696,
+        "autocorr_lag_8": -0.014016433059448897,
+        "autocorr_lag_9": -0.014023210831721504,
+        "autocorr_lag_10": 0.02093655639524223
+      },
+      "evaluated_at": "2025-08-18T23:14:34.537942"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "6h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 1403,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.008708753611647626,
+        "ic_spearman": 0.024610385539993864,
+        "ic_kendall": 0.020101455561879162,
+        "mutual_information": 0.003116455578997677,
+        "long_short_return": 0.0,
+        "long_return": 0.001601162233526502,
+        "short_return": 0.001601162233526502,
+        "returns_std": 0.031231310709644577,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.001601162233526502
+        },
+        "skewness": 8.928162359459272,
+        "kurtosis": 77.82301921352537,
+        "turnover": 0.022234273318872018,
+        "win_rate": 0.0042765502494654314,
+        "autocorr_lag_1": -0.012274368231047083,
+        "autocorr_lag_2": -0.01191218748859943,
+        "autocorr_lag_3": -0.011920797672223756,
+        "autocorr_lag_4": -0.011929420311811968,
+        "autocorr_lag_5": -0.011938055434413546,
+        "autocorr_lag_6": -0.011946703067155232,
+        "autocorr_lag_7": -0.011955363237242632,
+        "autocorr_lag_8": 0.04939563381070825,
+        "autocorr_lag_9": -0.01197272129867493,
+        "autocorr_lag_10": 0.04937930504945096
+      },
+      "evaluated_at": "2025-08-18T23:14:34.682122"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "8h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 1053,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.010166157196831126,
+        "ic_spearman": 0.0004957789746456284,
+        "ic_kendall": 0.00040499400567905336,
+        "mutual_information": 0.00803019733442329,
+        "long_short_return": 0.0,
+        "long_return": 0.00206792352345386,
+        "short_return": 0.00206792352345386,
+        "returns_std": 0.03474343257586987,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.00206792352345386
+        },
+        "skewness": 7.689342134078028,
+        "kurtosis": 57.23468689762018,
+        "turnover": 0.03228460793804453,
+        "win_rate": 0.005698005698005698,
+        "autocorr_lag_1": -0.01642512077294695,
+        "autocorr_lag_2": -0.016441005802707933,
+        "autocorr_lag_3": -0.016456921587608878,
+        "autocorr_lag_4": -0.016472868217054425,
+        "autocorr_lag_5": -0.016488845780795274,
+        "autocorr_lag_6": -0.01650485436893204,
+        "autocorr_lag_7": 0.10306979934831043,
+        "autocorr_lag_8": -0.016536964980544747,
+        "autocorr_lag_9": -0.016553067185978623,
+        "autocorr_lag_10": -0.016569200779727313
+      },
+      "evaluated_at": "2025-08-18T23:14:34.838883"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "12h",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 701,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.0019448156735182387,
+        "ic_spearman": 0.0069528285038459835,
+        "ic_kendall": 0.005681008445496803,
+        "mutual_information": 0.003073005021938892,
+        "long_short_return": 0.0,
+        "long_return": 0.003242095887053691,
+        "short_return": 0.003242095887053691,
+        "returns_std": 0.04565941832338394,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.003242095887053691
+        },
+        "skewness": 11.738680401766938,
+        "kurtosis": 136.18515638881127,
+        "turnover": 0.014684287812041116,
+        "win_rate": 0.0028530670470756064,
+        "autocorr_lag_1": -0.007194244604316545,
+        "autocorr_lag_2": -0.0072046109510086696,
+        "autocorr_lag_3": -0.007215007215007198,
+        "autocorr_lag_4": -0.00722543352601149,
+        "autocorr_lag_5": -0.007235890014471806,
+        "autocorr_lag_6": -0.007246376811594216,
+        "autocorr_lag_7": -0.007256894049346895,
+        "autocorr_lag_8": -0.007267441860465044,
+        "autocorr_lag_9": -0.007278020378456974,
+        "autocorr_lag_10": -0.007288629737609415
+      },
+      "evaluated_at": "2025-08-18T23:14:34.984615"
+    },
+    {
+      "metadata": {
+        "symbol": "SUI_USDT",
+        "timeframe": "1d",
+        "start_date": "2024-09-01",
+        "end_date": "2025-08-18"
+      },
+      "results": {
+        "factor_name": "shooting_star",
+        "data_length": 350,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.02623150135462464,
+        "ic_spearman": 0.04370846818393638,
+        "ic_kendall": 0.035738761058179074,
+        "mutual_information": 0.004698242193666116,
+        "long_short_return": 0.0,
+        "long_return": 0.0062401859653650445,
+        "short_return": 0.0062401859653650445,
+        "returns_std": 0.058418513025335954,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 0.0062401859653650445
+        },
+        "skewness": 18.708286933869704,
+        "kurtosis": 349.99999999999994,
+        "turnover": 0.006060606060606061,
+        "win_rate": 0.002857142857142857,
+        "autocorr_lag_1": -0.002873563218390786,
+        "autocorr_lag_2": -0.002881844380403494,
+        "autocorr_lag_3": -0.002890173410404616,
+        "autocorr_lag_4": -0.0028985507246376474,
+        "autocorr_lag_5": -0.002906976744186061,
+        "autocorr_lag_6": -0.0029154518950437022,
+        "autocorr_lag_7": -0.00292397660818718,
+        "autocorr_lag_8": -0.00293255131964807,
+        "autocorr_lag_9": -0.002941176470588269,
+        "autocorr_lag_10": -0.002949852507374695
+      },
+      "evaluated_at": "2025-08-18T23:14:35.130962"
+    }
+  ]
+}

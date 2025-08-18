@@ -94,6 +94,50 @@
                         🚀 开始下载
                     </button>
                 </form>
+                
+                <hr class="my-3">
+                
+                <!-- 批量下载表单 -->
+                <div class="mb-2">
+                    <h6 class="mb-2">📦 批量下载</h6>
+                    <form id="batchDownloadForm">
+                        <div class="mb-3">
+                            <label for="batchSymbols" class="form-label small mb-1">选择交易对 (多选)</label>
+                            <select class="form-select" id="batchSymbols" name="batchSymbols" multiple size="8" style="min-height: 200px;">
+                                <option value="">请先选择交易类型</option>
+                            </select>
+                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                <small class="form-text text-muted">按住 Ctrl/Cmd 键可多选</small>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectAllSymbols()">全选</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearAllSymbols()">清空</button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="batchTimeframes" class="form-label small mb-1">选择时间框架 (多选)</label>
+                            <select class="form-select" id="batchTimeframes" name="batchTimeframes" multiple size="6" style="min-height: 150px;">
+                                <option value="">请先选择交易所和交易类型</option>
+                            </select>
+                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                <small class="form-text text-muted">按住 Ctrl/Cmd 键可多选</small>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectAllTimeframes()">全选</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearAllTimeframes()">清空</button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="alert alert-info small mb-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>📊 选择统计:</span>
+                                    <span id="batchSelectionStats">未选择</span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-warning btn-sm w-100" onclick="startBatchDownload()">
+                                🚀 开始批量下载
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -183,6 +227,17 @@ function initDataConfigForm() {
     const tradeTypeSelect = document.getElementById('tradeType');
     const symbolSelect = document.getElementById('symbol');
     const timeframeSelect = document.getElementById('timeframe');
+    
+    // 为批量下载选择框添加change事件监听器
+    const batchSymbolsSelect = document.getElementById('batchSymbols');
+    const batchTimeframesSelect = document.getElementById('batchTimeframes');
+    
+    if (batchSymbolsSelect) {
+        batchSymbolsSelect.addEventListener('change', updateBatchSelectionStats);
+    }
+    if (batchTimeframesSelect) {
+        batchTimeframesSelect.addEventListener('change', updateBatchSelectionStats);
+    }
     
     // 设置默认日期
     const today = new Date();
@@ -304,6 +359,59 @@ async function updateSymbols() {
         console.error('加载交易对失败:', error);
         symbolSelect.innerHTML = '<option value="">加载失败</option>';
     }
+    
+    // 同时更新批量下载的交易对选择框
+    updateBatchSymbols();
+}
+
+async function updateBatchSymbols() {
+    const exchange = document.getElementById('exchange').value;
+    const tradeType = document.getElementById('tradeType').value;
+    const batchSymbolSelect = document.getElementById('batchSymbols');
+    
+    if (!tradeType) {
+        batchSymbolSelect.innerHTML = '<option value="">请先选择交易类型</option>';
+        return;
+    }
+    
+    batchSymbolSelect.innerHTML = '<option value="">加载中...</option>';
+    
+    try {
+        const response = await fetch(`/api/data/symbols/${exchange}`);
+        const result = await response.json();
+        
+        if (result.success && result.data[tradeType]) {
+            batchSymbolSelect.innerHTML = '<option value="">请选择交易对 (可多选)</option>';
+            
+            const markets = result.data[tradeType] || [];
+            if (markets && markets.length > 0) {
+                // 过滤：只显示 USDT 计价且状态为 active 的交易对
+                const filteredMarkets = markets.filter(item => 
+                    item.quote === 'USDT' && item.active === true
+                );
+                
+                if (filteredMarkets.length > 0) {
+                    filteredMarkets.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.symbol;
+                        option.textContent = `${item.symbol} (${item.name})`;
+                        batchSymbolSelect.appendChild(option);
+                    });
+                    
+                    console.log(`批量下载显示 ${filteredMarkets.length} 个符合条件的交易对`);
+                } else {
+                    batchSymbolSelect.innerHTML = '<option value="">暂无符合条件的交易对</option>';
+                }
+            } else {
+                batchSymbolSelect.innerHTML = '<option value="">暂无可用交易对</option>';
+            }
+        } else {
+            batchSymbolSelect.innerHTML = '<option value="">加载失败</option>';
+        }
+    } catch (error) {
+        console.error('加载批量下载交易对失败:', error);
+        batchSymbolSelect.innerHTML = '<option value="">加载失败</option>';
+    }
 }
 
 async function updateTimeframes() {
@@ -342,6 +450,44 @@ async function updateTimeframes() {
         console.error('加载时间框架失败:', error);
         timeframeSelect.innerHTML = '<option value="">加载失败</option>';
     }
+    
+    // 同时更新批量下载的时间框架选择框
+    updateBatchTimeframes();
+}
+
+async function updateBatchTimeframes() {
+    const exchange = document.getElementById('exchange').value;
+    const tradeType = document.getElementById('tradeType').value;
+    const batchTimeframeSelect = document.getElementById('batchTimeframes');
+    
+    if (!exchange || !tradeType) {
+        batchTimeframeSelect.innerHTML = '<option value="">请先选择交易所和交易类型</option>';
+        return;
+    }
+    
+    batchTimeframeSelect.innerHTML = '<option value="">加载中...</option>';
+    
+    try {
+        const response = await fetch(`/api/data/timeframes?exchange=${exchange}&trade_type=${tradeType}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            batchTimeframeSelect.innerHTML = '<option value="">请选择时间框架 (可多选)</option>';
+            
+            result.data.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.value;
+                option.textContent = `${item.name} (${item.value})`;
+                option.title = item.description;
+                batchTimeframeSelect.appendChild(option);
+            });
+        } else {
+            batchTimeframeSelect.innerHTML = '<option value="">加载失败</option>';
+        }
+    } catch (error) {
+        console.error('加载批量下载时间框架失败:', error);
+        batchTimeframeSelect.innerHTML = '<option value="">加载失败</option>';
+    }
 }
 
 async function startDownload() {
@@ -362,6 +508,17 @@ async function startDownload() {
     // 验证必填字段
     if (!downloadData.exchange || !downloadData.trade_type || !downloadData.symbol || !downloadData.timeframe) {
         alert('请填写所有必填字段：交易所、交易类型、交易对、时间框架');
+        return;
+    }
+    
+    // 验证日期
+    if (!downloadData.start_date || !downloadData.end_date) {
+        alert('请选择开始和结束日期');
+        return;
+    }
+    
+    if (new Date(downloadData.start_date) >= new Date(downloadData.end_date)) {
+        alert('开始日期必须早于结束日期');
         return;
     }
     
@@ -715,6 +872,284 @@ function applySuggestion(index) {
             
         }, 500);
     });
+}
+
+// 下载状态更新函数
+async function updateDownloadStatus() {
+    try {
+        // 获取所有下载任务的状态
+        const response = await fetch('/api/data/downloads');
+        const result = await response.json();
+        
+        if (result.success) {
+            const downloads = result.data;
+            updateDownloadProgress(downloads);
+            updateDownloadHistory(downloads);
+        }
+    } catch (error) {
+        console.error('更新下载状态失败:', error);
+    }
+}
+
+function updateDownloadProgress(downloads) {
+    const progressDiv = document.getElementById('downloadProgress');
+    const progressBar = progressDiv.querySelector('.progress-bar');
+    const progressText = document.getElementById('progressText');
+    
+    // 查找正在进行的下载任务
+    const activeDownload = downloads.find(d => d.status === 'downloading' || d.status === 'starting');
+    
+    if (activeDownload) {
+        progressDiv.style.display = 'block';
+        progressBar.style.width = `${activeDownload.progress}%`;
+        progressText.textContent = activeDownload.message;
+        
+        // 如果是批量下载，显示详细信息
+        if (activeDownload.type === 'batch') {
+            progressText.innerHTML = `
+                ${activeDownload.message}<br>
+                <small class="text-muted">
+                    进度: ${activeDownload.progress}% | 
+                    已完成: ${activeDownload.completed_tasks || 0} | 
+                    失败: ${activeDownload.failed_tasks || 0} | 
+                    总计: ${activeDownload.total_tasks || 0}
+                </small>
+            `;
+        }
+    } else {
+        progressDiv.style.display = 'none';
+    }
+}
+
+function updateDownloadHistory(downloads) {
+    const historyList = document.getElementById('historyList');
+    
+    if (!historyList) return;
+    
+    // 清空现有历史
+    historyList.innerHTML = '';
+    
+    // 显示最近的下载任务
+    const recentDownloads = downloads.slice(-5).reverse();
+    
+    recentDownloads.forEach(download => {
+        const listItem = document.createElement('div');
+        listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+        
+        let statusBadge = '';
+        if (download.status === 'completed') {
+            statusBadge = '<span class="badge bg-success">完成</span>';
+        } else if (download.status === 'downloading') {
+            statusBadge = '<span class="badge bg-primary">下载中</span>';
+        } else if (download.status === 'failed') {
+            statusBadge = '<span class="badge bg-danger">失败</span>';
+        } else if (download.status === 'starting') {
+            statusBadge = '<span class="badge bg-warning">启动中</span>';
+        }
+        
+        let downloadInfo = '';
+        if (download.type === 'batch') {
+            downloadInfo = `批量下载 (${download.symbols?.length || 0}×${download.timeframes?.length || 0})`;
+        } else {
+            downloadInfo = `${download.symbol} ${download.timeframe}`;
+        }
+        
+        listItem.innerHTML = `
+            <div>
+                <strong>${downloadInfo}</strong><br>
+                <small class="text-muted">${download.message}</small>
+            </div>
+            ${statusBadge}
+        `;
+        
+        historyList.appendChild(listItem);
+    });
+    
+    if (recentDownloads.length === 0) {
+        historyList.innerHTML = '<div class="text-muted text-center">暂无下载历史</div>';
+    }
+}
+
+// 定期更新下载状态
+setInterval(updateDownloadStatus, 2000); // 每2秒更新一次
+
+// 批量下载辅助函数
+function selectAllSymbols() {
+    const select = document.getElementById('batchSymbols');
+    for (let option of select.options) {
+        if (option.value) {  // 跳过空值选项
+            option.selected = true;
+        }
+    }
+    updateBatchSelectionStats();
+}
+
+function clearAllSymbols() {
+    const select = document.getElementById('batchSymbols');
+    for (let option of select.options) {
+        option.selected = false;
+    }
+}
+
+function selectAllTimeframes() {
+    const select = document.getElementById('batchTimeframes');
+    for (let option of select.options) {
+        if (option.value) {  // 跳过空值选项
+            option.selected = true;
+        }
+    }
+    updateBatchSelectionStats();
+}
+
+function clearAllTimeframes() {
+    const select = document.getElementById('batchTimeframes');
+    for (let option of select.options) {
+        option.selected = false;
+    }
+    updateBatchSelectionStats();
+}
+
+// 更新批量选择统计
+function updateBatchSelectionStats() {
+    const symbolsSelect = document.getElementById('batchSymbols');
+    const timeframesSelect = document.getElementById('batchTimeframes');
+    const statsSpan = document.getElementById('batchSelectionStats');
+    
+    if (!symbolsSelect || !timeframesSelect || !statsSpan) return;
+    
+    const selectedSymbols = Array.from(symbolsSelect.selectedOptions).filter(option => option.value).length;
+    const selectedTimeframes = Array.from(timeframesSelect.selectedOptions).filter(option => option.value).length;
+    const totalTasks = selectedSymbols * selectedTimeframes;
+    
+    if (selectedSymbols === 0 || selectedTimeframes === 0) {
+        statsSpan.textContent = '未选择';
+        statsSpan.className = 'text-muted';
+    } else {
+        statsSpan.textContent = `${selectedSymbols} 个交易对 × ${selectedTimeframes} 个时间框架 = ${totalTasks} 个任务`;
+        statsSpan.className = 'text-success fw-bold';
+    }
+}
+
+async function startBatchDownload() {
+    const exchange = document.getElementById('exchange').value;
+    const tradeType = document.getElementById('tradeType').value;
+    const batchSymbols = Array.from(document.getElementById('batchSymbols').selectedOptions).map(option => option.value);
+    const batchTimeframes = Array.from(document.getElementById('batchTimeframes').selectedOptions).map(option => option.value);
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    // 验证必填字段
+    if (!exchange || !tradeType) {
+        alert('请选择交易所和交易类型');
+        return;
+    }
+    
+    if (batchSymbols.length === 0) {
+        alert('请选择至少一个交易对');
+        return;
+    }
+    
+    if (batchTimeframes.length === 0) {
+        alert('请选择至少一个时间框架');
+        return;
+    }
+    
+    if (!startDate || !endDate) {
+        alert('请选择开始和结束日期');
+        return;
+    }
+    
+    if (new Date(startDate) >= new Date(endDate)) {
+        alert('开始日期必须早于结束日期');
+        return;
+    }
+    
+    // 计算总任务数
+    const totalTasks = batchSymbols.length * batchTimeframes.length;
+    
+    // 确认对话框
+    const confirmMessage = `确认开始批量下载？\n\n` +
+        `交易所: ${exchange}\n` +
+        `交易类型: ${tradeType}\n` +
+        `交易对: ${batchSymbols.join(', ')}\n` +
+        `时间框架: ${batchTimeframes.join(', ')}\n` +
+        `时间范围: ${startDate} 到 ${endDate}\n` +
+        `总任务数: ${totalTasks} 个\n\n` +
+        `这将启动 ${totalTasks} 个下载任务，可能需要较长时间。`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    // 准备批量下载数据
+    const batchDownloadData = {
+        exchange: exchange,
+        trade_type: tradeType,
+        symbols: batchSymbols,
+        timeframes: batchTimeframes,
+        start_date: startDate,
+        end_date: endDate
+    };
+    
+    try {
+        // 显示加载状态
+        const batchButton = document.querySelector('button[onclick="startBatchDownload()"]');
+        const originalText = batchButton.textContent;
+        batchButton.textContent = '🔄 正在启动...';
+        batchButton.disabled = true;
+        
+        // 发送批量下载请求
+        const response = await fetch('/api/data/batch-download', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(batchDownloadData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 显示成功消息
+            const successDiv = document.createElement('div');
+            successDiv.className = 'alert alert-success alert-dismissible fade show';
+            successDiv.innerHTML = `
+                <strong>🚀 批量下载已启动!</strong><br>
+                任务ID: ${result.data.id}<br>
+                总任务数: ${result.data.total_tasks}<br>
+                状态: ${result.data.status}<br>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // 插入到表单前面
+            const form = document.getElementById('batchDownloadForm');
+            form.parentNode.insertBefore(successDiv, form);
+            
+            // 立即更新下载状态
+            if (typeof updateDownloadStatus === 'function') {
+                updateDownloadStatus();
+            }
+            
+            // 显示成功消息3秒后自动隐藏
+            setTimeout(() => {
+                if (successDiv.parentNode) {
+                    successDiv.remove();
+                }
+            }, 3000);
+            
+        } else {
+            alert(`批量下载启动失败: ${result.error}`);
+        }
+        
+    } catch (error) {
+        console.error('批量下载请求失败:', error);
+        alert(`批量下载请求失败: ${error.message}`);
+    } finally {
+        // 恢复按钮状态
+        const batchButton = document.querySelector('button[onclick="startBatchDownload()"]');
+        batchButton.textContent = originalText;
+        batchButton.disabled = false;
+    }
 }
 </script>
 {% endblock %} 

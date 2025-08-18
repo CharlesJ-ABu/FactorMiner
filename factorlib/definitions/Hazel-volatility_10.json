@@ -1,0 +1,23 @@
+{
+  "factor_id": "Hazel-volatility_10",
+  "name": "Hazel 波动率(10)",
+  "description": "rolling(std,10) / rolling(mean,10) of close",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "function",
+  "computation_data": {
+    "function_file": "functions/Hazel-volatility_10.py",
+    "function_code": "import pandas as pd\nimport numpy as np\n\ndef calculate(data: pd.DataFrame, window: int = 10, **kwargs) -> pd.Series:\n    if data is None or len(data) == 0 or \"close\" not in data.columns:\n        return pd.Series(dtype=float)\n    close = pd.to_numeric(data[\"close\"], errors=\"coerce\")\n    ma = close.rolling(window).mean()\n    std = close.rolling(window).std()\n    return std / ma\n",
+    "entry_point": "calculate",
+    "imports": []
+  },
+  "parameters": {
+    "window": 10
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "49211b24",
+    "created_at": "2025-08-18T22:51:16.961411"
+  }
+}
