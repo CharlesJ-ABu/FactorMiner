@@ -13,6 +13,8 @@ import time
 import logging
 
 from config.user_config import config_manager
+from .data_health_checker import health_checker
+from .data_processor import data_processor
 
 
 class DataDownloader:
@@ -142,20 +144,34 @@ class DataDownloader:
             if not all_data:
                 return {'success': False, 'error': '没有下载到数据'}
             
-            # 转换为DataFrame
+            # 转换为DataFrame - 直接命名为 date，避免后续复杂操作
             df = pd.DataFrame(all_data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            df['datetime'] = pd.to_datetime(df['timestamp'], unit='ms')
-            df.set_index('datetime', inplace=True)
+            df['date'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df.set_index('date', inplace=True)  # 设置 date 为索引
             df.drop('timestamp', axis=1, inplace=True)
             
-            # 去重和排序（索引为 datetime）
+            # 去重和排序（按 date 索引）
             df = df.drop_duplicates().sort_index()
             
-            # 过滤日期范围（索引为 datetime）
+            # 过滤日期范围（按 date 索引）
             df = df[(df.index >= start_date) & (df.index <= end_date)]
             
-            # 转换为与现有文件一致的格式：包含 date 列
-            df_save = df.reset_index().rename(columns={"datetime": "date"})
+            # 数据健康度检查
+            health_report = health_checker.check_data_health(df, timeframe, symbol)
+            if not health_report['is_healthy']:
+                self.logger.warning(f"数据健康度检查未通过: {health_report['summary']}")
+                # 尝试修复数据问题
+                df = self._fix_data_issues(df, health_report)
+            
+            # 最终去重处理 - 先重置索引，然后去重
+            df_temp = df.reset_index()
+            # 重命名 index 列为 date 列
+            df_temp = df_temp.rename(columns={'index': 'date'})
+            df_temp = data_processor.remove_duplicates(df_temp, 'date')
+            
+            # 数据已经重置索引，直接使用
+            df_save = df_temp
+            print("去重和重置索引完成")
             
             # 保存数据 - 使用与现有文件一致的命名格式
             # 例如：BTC_USDT_USDT-2h-futures.feather
@@ -421,6 +437,128 @@ class DataDownloader:
         except Exception as e:
             self.logger.error(f"获取数据信息失败: {e}")
             return {'success': False, 'error': str(e)}
+    
+    def _fix_data_issues(self, df: pd.DataFrame, health_report: Dict) -> pd.DataFrame:
+        """
+        修复数据问题
+        
+        Args:
+            df: 原始数据
+            health_report: 健康度检查报告
+            
+        Returns:
+            修复后的数据
+        """
+        try:
+            df_fixed = df.copy()
+            issues = health_report.get('issues', [])
+            
+            # 首先检查数据类型问题
+            df_fixed = self._fix_data_types(df_fixed)
+            
+            for issue in issues:
+                if 'OHLC数据逻辑错误' in issue:
+                    # 修复OHLC逻辑错误
+                    df_fixed = self._fix_ohlc_logic(df_fixed)
+                elif '价格为0或负数' in issue:
+                    # 修复价格问题
+                    df_fixed = self._fix_price_issues(df_fixed)
+                elif '成交量为负数' in issue:
+                    # 修复成交量问题
+                    df_fixed = self._fix_volume_issues(df_fixed)
+            
+            # 最终去重 - 修复：使用正确的列名
+            if 'datetime' in df_fixed.columns:
+                df_fixed = data_processor.remove_duplicates(df_fixed, 'datetime')
+            elif 'date' in df_fixed.columns:
+                df_fixed = data_processor.remove_duplicates(df_fixed, 'date')
+            else:
+                self.logger.warning("找不到时间列，跳过去重")
+            
+            self.logger.info(f"数据修复完成，原始数据 {len(df)} 条，修复后 {len(df_fixed)} 条")
+            return df_fixed
+            
+        except Exception as e:
+            self.logger.error(f"数据修复失败: {e}")
+            return df
+    
+    def _fix_ohlc_logic(self, df: pd.DataFrame) -> pd.DataFrame:
+        """修复OHLC逻辑错误"""
+        try:
+            df_fixed = df.copy()
+            
+            # 确保 high >= low
+            df_fixed['high'] = df_fixed[['high', 'low']].max(axis=1)
+            df_fixed['low'] = df_fixed[['high', 'low']].min(axis=1)
+            
+            # 确保 open 和 close 在 high 和 low 之间
+            df_fixed['open'] = df_fixed['open'].clip(df_fixed['low'], df_fixed['high'])
+            df_fixed['close'] = df_fixed['close'].clip(df_fixed['low'], df_fixed['high'])
+            
+            return df_fixed
+        except Exception as e:
+            self.logger.error(f"修复OHLC逻辑失败: {e}")
+            return df
+    
+    def _fix_price_issues(self, df: pd.DataFrame) -> pd.DataFrame:
+        """修复价格问题"""
+        try:
+            df_fixed = df.copy()
+            
+            # 将0或负数价格替换为前一个有效价格
+            for col in ['open', 'high', 'low', 'close']:
+                if col in df_fixed.columns:
+                    df_fixed[col] = df_fixed[col].replace([0, -np.inf, np.inf], np.nan)
+                    df_fixed[col] = df_fixed[col].fillna(method='ffill')
+            
+            return df_fixed
+        except Exception as e:
+            self.logger.error(f"修复价格问题失败: {e}")
+            return df
+    
+    def _fix_data_types(self, df: pd.DataFrame) -> pd.DataFrame:
+        """修复数据类型问题"""
+        try:
+            df_fixed = df.copy()
+            
+            # 修复OHLC列的数据类型
+            ohlc_columns = ['open', 'high', 'low', 'close']
+            for col in ohlc_columns:
+                if col in df_fixed.columns:
+                    # 如果列是datetime类型但应该是数值，进行修复
+                    if pd.api.types.is_datetime64_any_dtype(df_fixed[col]):
+                        self.logger.warning(f"发现 {col} 列类型错误（应该是数值但实际是datetime），尝试修复...")
+                        try:
+                            # 尝试转换为数值类型
+                            df_fixed[col] = pd.to_numeric(df_fixed[col], errors='coerce')
+                            # 如果转换失败，用前一个有效值填充
+                            if df_fixed[col].isna().all():
+                                self.logger.error(f"无法修复 {col} 列，将使用前一个有效值")
+                                df_fixed[col] = df_fixed[col].fillna(method='ffill')
+                        except Exception as e:
+                            self.logger.error(f"修复 {col} 列失败: {e}")
+                            # 使用前一个有效值填充
+                            df_fixed[col] = df_fixed[col].fillna(method='ffill')
+            
+            return df_fixed
+            
+        except Exception as e:
+            self.logger.error(f"修复数据类型失败: {e}")
+            return df
+    
+    def _fix_volume_issues(self, df: pd.DataFrame) -> pd.DataFrame:
+        """修复成交量问题"""
+        try:
+            df_fixed = df.copy()
+            
+            if 'volume' in df_fixed.columns:
+                # 将负数成交量替换为0
+                df_fixed['volume'] = df_fixed['volume'].clip(lower=0)
+            
+            return df_fixed
+        except Exception as e:
+            self.logger.error(f"修复成交量问题失败: {e}")
+            return df
     
     def list_downloaded_data(self) -> List[Dict]:
         """

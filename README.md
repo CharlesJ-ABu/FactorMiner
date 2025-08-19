@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-3.0.0-orange.svg)]()
+[![Version](https://img.shields.io/badge/Version-3.1.0-orange.svg)]()
 [![Maintenance](https://img.shields.io/badge/Maintenance-Actively%20Maintained-green.svg)](https://github.com/CharlesJ-ABu/FactorMiner)
 [![GitHub](https://img.shields.io/badge/GitHub-CharlesJ--ABu-blue.svg)](https://github.com/CharlesJ-ABu)
 
@@ -98,6 +98,8 @@ python run_webui.py
 
 ### 🎯 核心功能
 - **V3架构设计**: 全新的透明因子存储系统，支持多种计算类型
+- **稳定数据系统**: 修复核心下载问题，支持现货/期货数据完整获取和智能合并
+- **数据质量管理**: 新增健康度检查、自动修复和断层填充功能，确保数据完整性
 - **丰富的因子库**: 包含27个Hazel技术因子，覆盖价格、动量、趋势、波动率、成交量等维度
 - **多种因子类型**: 技术因子、统计因子、机器学习因子、高级因子
 - **全面评估体系**: IC、IR、胜率、有效性得分等多种评估指标
@@ -117,22 +119,68 @@ python run_webui.py
 ## 🏗️ 项目架构
 
 ### V3架构核心组件
+
+```mermaid
+graph TB
+    subgraph "用户界面层"
+        direction LR
+        UI1[Flask WebUI]
+        UI2[Bootstrap UI]
+        UI3[JavaScript]
+    end
+    
+    subgraph "应用服务层"
+        direction LR
+        APP1[数据管理API]
+        APP2[因子挖掘API]
+        APP3[因子评估API]
+        APP4[因子优化API]
+    end
+    
+    subgraph "业务逻辑层"
+        direction LR
+        BIZ1[透明因子存储]
+        BIZ2[因子计算引擎]
+        BIZ3[因子构建器]
+        BIZ4[因子评估器]
+    end
+    
+    subgraph "数据访问层"
+        direction LR
+        DAL1[数据下载器]
+        DAL2[批量下载器]
+        DAL3[健康检查器]
+        DAL4[数据处理器]
+    end
+    
+    subgraph "数据存储层"
+        direction LR
+        DATA1[Hazel因子库]
+        DATA2[ML模型文件]
+        DATA3[市场数据]
+        DATA4[评估结果]
+    end
+    
+    UI1 --> APP1
+    UI2 --> APP2
+    UI3 --> APP3
+    
+    APP1 --> BIZ1
+    APP2 --> BIZ2
+    APP3 --> BIZ3
+    APP4 --> BIZ4
+    
+    BIZ1 --> DAL1
+    BIZ2 --> DAL2
+    BIZ3 --> DAL3
+    BIZ4 --> DAL4
+    
+    DAL1 --> DATA1
+    DAL2 --> DATA2
+    DAL3 --> DATA3
+    DAL4 --> DATA4
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    FactorMiner V3.0                        │
-├─────────────────────────────────────────────────────────────┤
-│  WebUI (Flask)          │  Core Engine                     │
-│  ├─ 数据管理            │  ├─ TransparentFactorStorage     │
-│  ├─ 因子挖掘            │  ├─ FactorEngine                │
-│  ├─ 因子评估            │  ├─ FactorBuilder               │
-│  └─ 因子优化            │  └─ FactorEvaluator             │
-├─────────────────────────────────────────────────────────────┤
-│  Factor Library         │  Data Management                 │
-│  ├─ 27个Hazel因子      │  ├─ DataDownloader              │
-│  ├─ ML模型文件          │  ├─ SmartBatchDownloader        │
-│  └─ 评估结果            │  └─ Data Quality Check          │
-└─────────────────────────────────────────────────────────────┘
-```
+
 
 ### 支持的计算类型
 - **`formula`**: 数学公式计算
@@ -415,6 +463,18 @@ python scripts/repair_empty_evaluations.py
 python scripts/clean_factor_names.py
 ```
 
+#### 数据管理工具 (NEW)
+```bash
+# 数据健康度检查 (新增)
+python -c "from factor_miner.core.data_health_checker import health_checker; print(health_checker)"
+
+# 数据断层填充 (新增)
+python -c "from factor_miner.core.data_gap_filler import gap_filler; print(gap_filler)"
+
+# 数据处理工具 (新增)
+python -c "from factor_miner.core.data_processor import data_processor; print(data_processor)"
+```
+
 #### 因子注册
 ```bash
 # 注册Hazel技术因子
@@ -578,6 +638,8 @@ python tests/test_basic.py
 - [x] 扩展Hazel技术因子库 (已完成)
 - [x] 修复ML因子挖掘和存储问题 (已完成)
 - [x] 优化批量数据下载功能 (已完成)
+- [x] 修复数据下载核心问题 (已完成)
+- [x] 新增数据质量管理系统 (已完成)
 - [ ] 增加更多交易所支持
 - [ ] 增强因子可视化功能
 

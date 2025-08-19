@@ -12,6 +12,10 @@ import ccxt  # 添加 CCXT 库
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import threading
+import sys
+
+# 添加项目路径
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 bp = Blueprint('data_api', __name__)
 
@@ -497,7 +501,7 @@ def start_download():
                         if download_id in DOWNLOADS:
                             DOWNLOADS[download_id]['status'] = 'completed'
                             DOWNLOADS[download_id]['progress'] = 100
-                            DOWNLOADS[download_id]['message'] = f'下载完成！共 {result.get("data_points", 0)} 条数据'
+                            DOWNLOADS[download_id]['message'] = f'下载完成！共 {result.get("total_records", 0)} 条数据'
                             DOWNLOADS[download_id]['file_path'] = result.get('file_path', '')
                 else:
                     with DOWNLOADS_LOCK:
@@ -906,6 +910,92 @@ def get_download_suggestions():
             'success': False,
             'error': f'获取下载建议失败: {str(e)}'
         }), 500
+
+@bp.route('/data-health', methods=['POST'])
+def check_data_health():
+    """检查数据健康度"""
+    try:
+        data = request.get_json()
+        file_path = data.get('file_path')
+        symbol = data.get('symbol')
+        timeframe = data.get('timeframe')
+        
+        if not file_path or not os.path.exists(file_path):
+            return jsonify({'success': False, 'error': '文件不存在'})
+        
+        # 导入健康度检查器
+        from factor_miner.core.data_health_checker import health_checker
+        
+        # 读取数据文件
+        df = pd.read_feather(file_path)
+        
+        # 检查数据健康度
+        health_report = health_checker.check_data_health(df, timeframe, symbol)
+        
+        return jsonify({
+            'success': True,
+            'data': health_report
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@bp.route('/auto-fill-gaps', methods=['POST'])
+def auto_fill_gaps():
+    """自动补全数据断层"""
+    try:
+        data = request.get_json()
+        symbol = data.get('symbol')
+        timeframe = data.get('timeframe')
+        trade_type = data.get('trade_type', 'futures')
+        data_dir = data.get('data_dir')
+        
+        if not symbol or not timeframe:
+            return jsonify({'success': False, 'error': '缺少必要参数'})
+        
+        # 导入断层补全器
+        from factor_miner.core.data_gap_filler import gap_filler
+        
+        # 执行自动补全
+        result = gap_filler.auto_fill_gaps(symbol, timeframe, trade_type, data_dir)
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@bp.route('/scan-gaps', methods=['POST'])
+def scan_data_gaps():
+    """扫描数据断层"""
+    try:
+        data = request.get_json()
+        data_dir = data.get('data_dir', 'data/binance/futures')
+        symbol = data.get('symbol')
+        timeframe = data.get('timeframe')
+        
+        # 导入断层补全器
+        from factor_miner.core.data_gap_filler import gap_filler
+        
+        # 扫描断层
+        gaps = gap_filler.scan_for_gaps(data_dir, symbol, timeframe)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'gaps': gaps,
+                'total_gaps': len(gaps),
+                'data_dir': data_dir
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 
 @bp.route('/delete-data', methods=['POST'])
 def delete_data():

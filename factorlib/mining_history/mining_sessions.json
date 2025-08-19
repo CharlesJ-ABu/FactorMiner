@@ -255,11 +255,61 @@
         "execution_time": 0,
         "output_path": ""
       }
+    },
+    {
+      "session_id": "950adffa-898a-4dfe-9b3b-9c7cf3e386e4",
+      "timestamp": "2025-08-19T13:56:39.167219",
+      "status": "completed",
+      "config": {
+        "symbols": [
+          "SUI_USDT"
+        ],
+        "timeframes": [
+          "1m",
+          "3m",
+          "5m",
+          "15m",
+          "1h",
+          "2h",
+          "4h",
+          "6h",
+          "8h",
+          "12h",
+          "1d"
+        ],
+        "factor_types": [
+          "ml"
+        ],
+        "max_factors": 15,
+        "optimization_method": "greedy",
+        "start_date": "2024-11-01",
+        "end_date": "2025-02-16"
+      },
+      "results": {
+        "total_factors": 12,
+        "selected_factors": [
+          "pca_component_1",
+          "pca_component_4",
+          "pca_component_8",
+          "pca_component_7",
+          "ensemble_lasso",
+          "ensemble_ridge",
+          "ensemble_random_forest",
+          "ensemble_gradient_boosting",
+          "pca_component_5",
+          "pca_component_9",
+          "pca_component_10",
+          "pca_component_6"
+        ],
+        "optimization_score": 0.7431863257311542,
+        "execution_time": 0,
+        "output_path": ""
+      }
     }
   ],
   "metadata": {
-    "total_sessions": 6,
-    "last_updated": "2025-08-18T23:43:49.306451",
+    "total_sessions": 7,
+    "last_updated": "2025-08-19T13:56:39.167255",
     "version": "1.0"
   }
 }
