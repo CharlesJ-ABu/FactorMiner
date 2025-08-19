@@ -86,8 +86,8 @@ class DataHealthChecker:
             all_issues.extend(continuity_checks.get('issues', []))
             all_issues.extend(quality_checks.get('issues', []))
             
-            # 判断是否健康
-            is_healthy = health_score >= 80.0 and len(all_issues) <= 3
+            # 判断是否健康 - 只有100分才能保存
+            is_healthy = health_score >= 100.0 and len(all_issues) == 0
             
             return self._create_health_report(
                 is_healthy=is_healthy,
@@ -188,14 +188,24 @@ class DataHealthChecker:
             
             # 计算预期数据条数 (修复：包含起始和结束时间点)
             expected_interval = self.timeframe_intervals.get(timeframe, pd.Timedelta('1 minute'))
+            
+            # 计算预期数据条数
             if timeframe == '1d':
+                # 日线：计算天数 + 1
                 expected_count = time_span.days + 1
-            elif timeframe in ['1h', '2h', '4h', '6h', '8h', '12h']:
-                # 修复：时间跨度内的间隔数 + 1 (包含起始时间点)
-                expected_count = time_span.total_seconds() / expected_interval.total_seconds() + 1
             else:
-                # 修复：时间跨度内的间隔数 + 1 (包含起始时间点)
-                expected_count = time_span.total_seconds() / expected_interval.total_seconds() + 1
+                # 其他时间框架：计算时间间隔数 + 1
+                # 注意：这里需要正确处理时间跨度的计算
+                total_seconds = time_span.total_seconds()
+                interval_seconds = expected_interval.total_seconds()
+                
+                if interval_seconds > 0:
+                    # 计算完整的间隔数量，然后 +1 (包含起始时间点)
+                    expected_count = int(total_seconds / interval_seconds) + 1
+                else:
+                    expected_count = 1
+            
+
             
             # 计算覆盖率
             actual_count = len(df_time)
@@ -229,24 +239,30 @@ class DataHealthChecker:
                     'expected_interval': str(expected_interval_td)
                 })
             
-            # 判断状态
+            # 判断状态 - 覆盖率过低直接设为error
             if coverage < self.health_thresholds['min_coverage']:
                 issues.append(f'数据覆盖率过低: {coverage:.2f}% (期望 >= {self.health_thresholds["min_coverage"]}%)')
-            
-            if len(large_gaps) > 0:
+                status = 'error'  # 覆盖率过低直接设为error
+            elif len(large_gaps) > 0:
                 gap_ratio = len(large_gaps) / len(df_time)
                 if gap_ratio > self.health_thresholds['max_gap_ratio']:
                     issues.append(f'数据断层过多: {len(large_gaps)} 个断层 ({gap_ratio:.2%})')
+                    status = 'error'  # 断层过多直接设为error
                 else:
                     warnings.append(f'发现 {len(large_gaps)} 个数据断层')
-            
-            if len(abnormal_intervals) > 0:
+                    status = 'warning'
+            elif len(abnormal_intervals) > 0:
                 abnormal_ratio = len(abnormal_intervals) / len(df_time)
                 if abnormal_ratio > 0.1:  # 超过10%的异常间隔
                     warnings.append(f'时间间隔异常: {len(abnormal_intervals)} 个异常间隔 ({abnormal_ratio:.2%})')
+                    status = 'warning'
+                else:
+                    status = 'ok'
+            else:
+                status = 'ok'
             
             return {
-                'status': 'ok' if not issues else 'warning',
+                'status': status,
                 'issues': issues,
                 'warnings': warnings,
                 'coverage': round(coverage, 2),
@@ -363,12 +379,14 @@ class DataHealthChecker:
         else:
             scores.append(30.0)
         
-        # 时间连续性分数
+        # 时间连续性分数 - 覆盖率过低直接给0分
         if continuity_checks['status'] == 'ok':
             scores.append(100.0)
         elif continuity_checks['status'] == 'warning':
             coverage = continuity_checks.get('coverage', 0)
             scores.append(max(50.0, coverage))
+        elif continuity_checks['status'] == 'error':
+            scores.append(0.0)  # error状态直接给0分
         else:
             scores.append(20.0)
         
@@ -413,13 +431,13 @@ class DataHealthChecker:
     
     def _get_health_level(self, score: float) -> str:
         """根据分数获取健康等级"""
-        if score >= 90:
-            return 'excellent'
-        elif score >= 80:
+        if score >= 100:
+            return 'excellent'  # 只有100分才是excellent
+        elif score >= 90:
             return 'good'
-        elif score >= 70:
+        elif score >= 80:
             return 'fair'
-        elif score >= 60:
+        elif score >= 70:
             return 'poor'
         else:
             return 'critical'
@@ -427,15 +445,17 @@ class DataHealthChecker:
     def _generate_summary(self, is_healthy: bool, score: float, issues: List[str]) -> str:
         """生成健康度摘要"""
         if is_healthy:
-            if score >= 95:
-                return f"数据非常健康，健康度分数: {score}"
+            if score >= 100:
+                return f"数据完美健康，健康度分数: {score} - 可以保存"
             else:
                 return f"数据基本健康，健康度分数: {score}，有少量问题需要关注"
         else:
-            if score >= 60:
-                return f"数据质量一般，健康度分数: {score}，建议进行修复"
+            if score >= 80:
+                return f"数据质量一般，健康度分数: {score}，需要修复后才能保存"
+            elif score >= 60:
+                return f"数据质量较差，健康度分数: {score}，建议重新下载"
             else:
-                return f"数据质量较差，健康度分数: {score}，需要立即修复"
+                return f"数据质量很差，健康度分数: {score}，需要立即重新下载"
     
     def _generate_recommendations(self, issues: List[str]) -> List[str]:
         """生成修复建议"""

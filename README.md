@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-3.1.0-orange.svg)]()
+[![Version](https://img.shields.io/badge/Version-3.1.1-orange.svg)]()
 [![Maintenance](https://img.shields.io/badge/Maintenance-Actively%20Maintained-green.svg)](https://github.com/CharlesJ-ABu/FactorMiner)
 [![GitHub](https://img.shields.io/badge/GitHub-CharlesJ--ABu-blue.svg)](https://github.com/CharlesJ-ABu)
 
@@ -100,6 +100,8 @@ python run_webui.py
 - **V3架构设计**: 全新的透明因子存储系统，支持多种计算类型
 - **稳定数据系统**: 修复核心下载问题，支持现货/期货数据完整获取和智能合并
 - **数据质量管理**: 新增健康度检查、自动修复和断层填充功能，确保数据完整性
+- **智能去重系统**: 统一按时间点去重逻辑，避免数据重复和间隙问题
+- **动态下载优化**: 智能计算请求大小，提升数据下载效率和稳定性
 - **丰富的因子库**: 包含27个Hazel技术因子，覆盖价格、动量、趋势、波动率、成交量等维度
 - **多种因子类型**: 技术因子、统计因子、机器学习因子、高级因子
 - **全面评估体系**: IC、IR、胜率、有效性得分等多种评估指标
@@ -151,6 +153,8 @@ graph TB
         DAL2[批量下载器]
         DAL3[健康检查器]
         DAL4[数据处理器]
+        DAL5[数据去重器]
+        DAL6[间隙填充器]
     end
     
     subgraph "数据存储层"
@@ -632,6 +636,22 @@ python tests/test_basic.py
 - **问题反馈**: [Issues](https://github.com/CharlesJ-ABu/FactorMiner/issues)
 - **讨论交流**: [Discussions](https://github.com/CharlesJ-ABu/FactorMiner/discussions)
 
+## 📝 更新日志
+
+### V3.1.1 (2025年8月) - 数据质量管理优化
+- ✅ **修复数据去重逻辑错误**：统一按时间点去重，确保数据一致性
+- ✅ **优化数据下载系统**：实现动态limit计算，智能设置请求大小
+- ✅ **增强数据健康检查**：严格要求100分才能保存，提升数据质量
+- ✅ **修复时区处理问题**：确保时间戳比较的一致性
+- ✅ **优化前端界面**：改进K线图显示和模态框尺寸
+- 🔄 **机器学习训练优化**：分批训练和超时保护（进行中）
+
+### V3.1.0 (2025年8月) - 核心功能完善
+- ✅ 扩展Hazel技术因子库
+- ✅ 修复ML因子挖掘和存储问题
+- ✅ 优化批量数据下载功能
+- ✅ 新增数据质量管理系统
+
 ## 🔮 未来规划
 
 ### 短期目标 (1-3个月)
@@ -640,6 +660,9 @@ python tests/test_basic.py
 - [x] 优化批量数据下载功能 (已完成)
 - [x] 修复数据下载核心问题 (已完成)
 - [x] 新增数据质量管理系统 (已完成)
+- [x] 修复数据去重逻辑错误 (已完成)
+- [x] 优化数据下载系统性能 (已完成)
+- [ ] 完善机器学习训练稳定性
 - [ ] 增加更多交易所支持
 - [ ] 增强因子可视化功能
 
@@ -667,6 +690,9 @@ python tests/test_basic.py
 - 确保数据质量，处理缺失值
 - 统一数据格式和时间戳
 - 进行数据标准化
+- 使用健康度检查确保数据完整性
+- 避免重复时间点，确保数据连续性
+- 处理时区问题，统一使用UTC时间
 
 ### 🔧 因子构建
 - 从简单因子开始，逐步增加复杂度

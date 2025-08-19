@@ -279,144 +279,173 @@ def get_local_data():
     try:
         # 获取查询参数
         exchange = request.args.get('exchange', 'binance')
-        trade_type = request.args.get('trade_type', 'futures')
+        trade_type = request.args.get('trade_type', '')  # 空字符串表示所有类型
         
         # 构建数据目录路径
         configured_data_dir = current_app.config.get('DATA_DIR', 'data')
         print(f"配置的DATA_DIR: {configured_data_dir}")
         
         # 如果配置的路径已经指向具体目录，则使用其父目录
-        if 'binance' in str(configured_data_dir) and 'futures' in str(configured_data_dir):
+        if 'binance' in str(configured_data_dir) and ('futures' in str(configured_data_dir) or 'spot' in str(configured_data_dir)):
             base_data_dir = Path(configured_data_dir).parent.parent
         else:
             base_data_dir = Path(configured_data_dir)
-            
-        data_dir = base_data_dir / exchange / trade_type
+        
         local_data = []
         
-        print(f"基础数据目录: {base_data_dir}")
-        print(f"扫描目录: {data_dir}")
-        print(f"目录是否存在: {data_dir.exists()}")
+        # 如果指定了特定类型，只扫描该类型目录
+        if trade_type:
+            search_dirs = [base_data_dir / exchange / trade_type]
+        else:
+            # 扫描所有类型目录
+            search_dirs = [
+                base_data_dir / exchange / 'futures',
+                base_data_dir / exchange / 'spot',
+                base_data_dir / exchange / 'perpetual',
+                base_data_dir / exchange / 'delivery'
+            ]
         
-        if data_dir.exists():
+        print(f"基础数据目录: {base_data_dir}")
+        print(f"扫描目录: {[str(d) for d in search_dirs]}")
+        
+        for data_dir in search_dirs:
+            if not data_dir.exists():
+                print(f"目录不存在: {data_dir}")
+                continue
+                
+            print(f"扫描目录: {data_dir}")
             print(f"目录内容: {list(data_dir.glob('*.feather'))}")
+            
             for file_path in data_dir.glob('*.feather'):
                 try:
                     # 解析文件名获取信息
                     filename = file_path.stem
                     
-                    # 文件名格式: SYMBOL_USDT_USDT-TIMEFRAME-futures
+                    # 检测数据类型和解析文件名
+                    data_type = 'unknown'
+                    base_name = filename
+                    timeframe_part = 'unknown'
+                    
+                    # 处理不同的文件名格式
                     if filename.endswith('-futures'):
-                        # 移除 '-futures' 后缀
+                        data_type = 'futures'
                         base_name = filename[:-8]
+                    elif filename.endswith('-spot'):
+                        data_type = 'spot'
+                        base_name = filename[:-5]
+                    elif filename.endswith('-perpetual'):
+                        data_type = 'perpetual'
+                        base_name = filename[:-10]
+                    elif filename.endswith('-delivery'):
+                        data_type = 'delivery'
+                        base_name = filename[:-9]
+                    
+                    # 查找最后一个连字符的位置（分隔交易对和时间框架）
+                    last_hyphen = base_name.rfind('-')
+                    if last_hyphen != -1:
+                        symbol_part = base_name[:last_hyphen]
+                        timeframe_part = base_name[last_hyphen + 1:]
                         
-                        # 查找最后一个连字符的位置（分隔交易对和时间框架）
-                        last_hyphen = base_name.rfind('-')
-                        if last_hyphen != -1:
-                            symbol_part = base_name[:last_hyphen]
-                            timeframe_part = base_name[last_hyphen + 1:]
+                        print(f"解析文件名: {filename}")
+                        print(f"  data_type: {data_type}")
+                        print(f"  base_name: {base_name}")
+                        print(f"  symbol_part: {symbol_part}")
+                        print(f"  timeframe_part: {timeframe_part}")
+                        
+                        # 解析交易对 (例如: BTC_USDT_USDT -> BTC_USDT)
+                        symbol_parts = symbol_part.split('_')
+                        if len(symbol_parts) >= 2:
+                            symbol = f"{symbol_parts[0]}_{symbol_parts[1]}"
                             
-                            print(f"解析文件名: {filename}")
-                            print(f"  base_name: {base_name}")
-                            print(f"  symbol_part: {symbol_part}")
-                            print(f"  timeframe_part: {timeframe_part}")
+                            print(f"  最终解析结果: symbol={symbol}, timeframe={timeframe_part}, type={data_type}")
                             
-                            # 解析交易对 (例如: BTC_USDT_USDT -> BTC_USDT)
-                            symbol_parts = symbol_part.split('_')
-                            if len(symbol_parts) >= 2:
-                                symbol = f"{symbol_parts[0]}_{symbol_parts[1]}"
-                                timeframe = timeframe_part
-                                
-                                print(f"  最终解析结果: symbol={symbol}, timeframe={timeframe}")
-                                
-                                print(f"解析文件名: {filename} -> symbol: {symbol}, timeframe: {timeframe}")
-                                
-                                # 读取数据获取基本信息
-                                df = pd.read_feather(file_path)
-                                print(f"文件 {filename} 的列名: {list(df.columns)}")
-                                
-                                # 推断时间范围：优先列，其次索引
-                                def to_datetime_series(series):
-                                    try:
-                                        if pd.api.types.is_datetime64_any_dtype(series):
-                                            return series
-                                        if pd.api.types.is_numeric_dtype(series):
-                                            # 判断毫秒/秒级
-                                            s = series.dropna()
-                                            if len(s) == 0:
-                                                return pd.to_datetime(series, errors='coerce', unit='s')
-                                            sample = s.iloc[0]
-                                            unit = 'ms' if sample > 10_000_000_000 else 's'
-                                            return pd.to_datetime(series, errors='coerce', unit=unit)
-                                        # 字符串
-                                        return pd.to_datetime(series, errors='coerce')
-                                    except Exception:
-                                        return pd.to_datetime(series, errors='coerce')
+                            # 读取数据获取基本信息
+                            df = pd.read_feather(file_path)
+                            print(f"文件 {filename} 的列名: {list(df.columns)}")
+                            
+                            # 推断时间范围：优先列，其次索引
+                            def to_datetime_series(series):
+                                try:
+                                    if pd.api.types.is_datetime64_any_dtype(series):
+                                        return series
+                                    if pd.api.types.is_numeric_dtype(series):
+                                        # 判断毫秒/秒级
+                                        s = series.dropna()
+                                        if len(s) == 0:
+                                            return pd.to_datetime(series, errors='coerce', unit='s')
+                                        sample = s.iloc[0]
+                                        unit = 'ms' if sample > 10_000_000_000 else 's'
+                                        return pd.to_datetime(series, errors='coerce', unit=unit)
+                                    # 字符串
+                                    return pd.to_datetime(series, errors='coerce')
+                                except Exception:
+                                    return pd.to_datetime(series, errors='coerce')
 
-                                start_ts = None
-                                end_ts = None
-                                cols_lower = {c.lower(): c for c in df.columns}
-                                # 常见列名
-                                open_cols = [name for key, name in cols_lower.items() if key in ['open_time', 'opentime', 'start_time', 'time', 'timestamp', 'datetime', 'date']]
-                                close_cols = [name for key, name in cols_lower.items() if key in ['close_time', 'closetime', 'end_time', 'time', 'timestamp', 'datetime', 'date']]
-                                cand_open = open_cols[0] if open_cols else None
-                                cand_close = close_cols[0] if close_cols else None
-                                if cand_open is not None:
-                                    s = to_datetime_series(df[cand_open])
-                                    if s.notna().any():
-                                        start_ts = s.min()
-                                if cand_close is not None:
-                                    s = to_datetime_series(df[cand_close])
-                                    if s.notna().any():
-                                        end_ts = s.max()
-                                # 若仍为空，尝试索引
-                                if (start_ts is None or pd.isna(start_ts)) and hasattr(df.index, 'min'):
-                                    idx = df.index
-                                    try:
-                                        if not pd.api.types.is_datetime64_any_dtype(idx):
-                                            idx = to_datetime_series(pd.Series(idx))
-                                        start_ts = idx.min()
-                                    except Exception:
-                                        start_ts = None
-                                if (end_ts is None or pd.isna(end_ts)) and hasattr(df.index, 'max'):
-                                    idx = df.index
-                                    try:
-                                        if not pd.api.types.is_datetime64_any_dtype(idx):
-                                            idx = to_datetime_series(pd.Series(idx))
-                                        end_ts = idx.max()
-                                    except Exception:
-                                        end_ts = None
+                            start_ts = None
+                            end_ts = None
+                            cols_lower = {c.lower(): c for c in df.columns}
+                            # 常见列名
+                            open_cols = [name for key, name in cols_lower.items() if key in ['open_time', 'opentime', 'start_time', 'time', 'timestamp', 'datetime', 'date']]
+                            close_cols = [name for key, name in cols_lower.items() if key in ['close_time', 'closetime', 'end_time', 'time', 'timestamp', 'datetime', 'date']]
+                            cand_open = open_cols[0] if open_cols else None
+                            cand_close = close_cols[0] if close_cols else None
+                            if cand_open is not None:
+                                s = to_datetime_series(df[cand_open])
+                                if s.notna().any():
+                                    start_ts = s.min()
+                            if cand_close is not None:
+                                s = to_datetime_series(df[cand_close])
+                                if s.notna().any():
+                                    end_ts = s.max()
+                            # 若仍为空，尝试索引
+                            if (start_ts is None or pd.isna(start_ts)) and hasattr(df.index, 'min'):
+                                idx = df.index
+                                try:
+                                    if not pd.api.types.is_datetime64_any_dtype(idx):
+                                        idx = to_datetime_series(pd.Series(idx))
+                                    start_ts = idx.min()
+                                except Exception:
+                                    start_ts = None
+                            if (end_ts is None or pd.isna(end_ts)) and hasattr(df.index, 'max'):
+                                idx = df.index
+                                try:
+                                    if not pd.api.types.is_datetime64_any_dtype(idx):
+                                        idx = to_datetime_series(pd.Series(idx))
+                                    end_ts = idx.max()
+                                except Exception:
+                                    end_ts = None
 
-                                # 格式化为 ISO 字符串
-                                if start_ts is not None and not pd.isna(start_ts):
-                                    try:
-                                        start_str = pd.to_datetime(start_ts).strftime('%Y-%m-%d')
-                                    except Exception:
-                                        start_str = str(start_ts)
-                                else:
-                                    start_str = ""
-                                if end_ts is not None and not pd.isna(end_ts):
-                                    try:
-                                        end_str = pd.to_datetime(end_ts).strftime('%Y-%m-%d')
-                                    except Exception:
-                                        end_str = str(end_ts)
-                                else:
-                                    end_str = ""
-                                
-                                data_info = {
-                                    'exchange': 'binance',
-                                    'symbol': symbol,
-                                    'timeframe': timeframe,
-                                    'file_path': str(file_path),
-                                    'file_size': f"{file_path.stat().st_size / 1024 / 1024:.2f} MB",
-                                    'data_points': len(df),
-                                    'date_range': {
-                                        'start': start_str,
-                                        'end': end_str
-                                    },
-                                    'last_modified': datetime.fromtimestamp(file_path.stat().st_mtime).strftime('%Y-%m-%d %H:%M:%S')
-                                }
-                                local_data.append(data_info)
+                            # 格式化为 ISO 字符串
+                            if start_ts is not None and not pd.isna(start_ts):
+                                try:
+                                    start_str = pd.to_datetime(start_ts).strftime('%Y-%m-%d')
+                                except Exception:
+                                    start_str = str(start_ts)
+                            else:
+                                start_str = ""
+                            if end_ts is not None and not pd.isna(end_ts):
+                                try:
+                                    end_str = pd.to_datetime(end_ts).strftime('%Y-%m-%d')
+                                except Exception:
+                                    end_str = str(end_ts)
+                            else:
+                                end_str = ""
+                            
+                            data_info = {
+                                'exchange': exchange,
+                                'symbol': symbol,
+                                'timeframe': timeframe_part,
+                                'data_type': data_type,
+                                'file_path': str(file_path),
+                                'file_size': f"{file_path.stat().st_size / 1024 / 1024:.2f} MB",
+                                'data_points': len(df),
+                                'date_range': {
+                                    'start': start_str,
+                                    'end': end_str
+                                },
+                                'last_modified': datetime.fromtimestamp(file_path.stat().st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                            }
+                            local_data.append(data_info)
                 except Exception as e:
                     print(f"Error reading file {file_path}: {e}")
                     continue
@@ -426,6 +455,289 @@ def get_local_data():
         return jsonify({'success': True, 'data': local_data})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+@bp.route('/view-data', methods=['POST'])
+def view_data():
+    """查看数据文件内容"""
+    print("🔍 view_data API 开始执行")
+    try:
+        data = request.get_json()
+        print(f"🔍 接收到的请求数据: {data}")
+        
+        file_path = data.get('file_path')
+        print(f"🔍 文件路径: {file_path}")
+        
+        if not file_path:
+            print("❌ 文件路径为空")
+            return jsonify({'success': False, 'error': '文件路径不能为空'})
+        
+        # 检查文件是否存在
+        print(f"🔍 检查文件是否存在: {os.path.exists(file_path)}")
+        if not os.path.exists(file_path):
+            print(f"❌ 文件不存在: {file_path}")
+            return jsonify({'success': False, 'error': '文件不存在'})
+        
+        # 读取Feather文件
+        print("🔍 开始读取Feather文件...")
+        df = pd.read_feather(file_path)
+        print(f"🔍 文件读取成功，数据形状: {df.shape}")
+        print(f"🔍 列名: {list(df.columns)}")
+        print(f"🔍 数据类型: {df.dtypes.to_dict()}")
+        
+        # 解析文件名获取基本信息
+        filename = Path(file_path).stem
+        
+        # 解析交易对和时间框架
+        if filename.endswith('-futures'):
+            base_name = filename[:-8]
+            last_hyphen = base_name.rfind('-')
+            if last_hyphen != -1:
+                symbol_part = base_name[:last_hyphen]
+                timeframe_part = base_name[last_hyphen + 1:]
+                symbol_parts = symbol_part.split('_')
+                if len(symbol_parts) >= 2:
+                    symbol = f"{symbol_parts[0]}_{symbol_parts[1]}"
+                    timeframe = timeframe_part
+                else:
+                    symbol = filename
+                    timeframe = 'unknown'
+            else:
+                symbol = filename
+                timeframe = 'unknown'
+        else:
+            symbol = filename
+            timeframe = 'unknown'
+        
+        # 准备OHLCV数据
+        print("🔍 开始准备OHLCV数据...")
+        ohlcv_data = []
+        
+        # 确定时间列和OHLCV列
+        time_col = None
+        ohlcv_cols = {}
+        
+        # 查找时间列
+        print("🔍 开始查找时间列...")
+        for col in df.columns:
+            col_lower = col.lower()
+            print(f"🔍 检查列: {col} (小写: {col_lower})")
+            if any(keyword in col_lower for keyword in ['time', 'date', 'timestamp', 'datetime']):
+                time_col = col
+                print(f"✅ 找到时间列: {col}")
+                break
+        
+        print(f"🔍 最终确定的时间列: {time_col}")
+        
+        # 如果没有找到时间列，尝试使用索引
+        if time_col is None and df.index.name:
+            time_col = df.index.name
+            df = df.reset_index()
+        
+        # 查找OHLCV列
+        print("🔍 开始查找OHLCV列...")
+        for col in df.columns:
+            col_lower = col.lower()
+            print(f"🔍 检查列: {col} (小写: {col_lower})")
+            if 'open' in col_lower:
+                ohlcv_cols['open'] = col
+                print(f"✅ 找到开盘价列: {col}")
+            elif 'high' in col_lower:
+                ohlcv_cols['high'] = col
+                print(f"✅ 找到最高价列: {col}")
+            elif 'low' in col_lower:
+                ohlcv_cols['low'] = col
+                print(f"✅ 找到最低价列: {col}")
+            elif 'close' in col_lower:
+                ohlcv_cols['close'] = col
+                print(f"✅ 找到收盘价列: {col}")
+            elif 'volume' in col_lower:
+                ohlcv_cols['volume'] = col
+                print(f"✅ 找到成交量列: {col}")
+        
+        print(f"🔍 找到的OHLCV列映射: {ohlcv_cols}")
+        
+        # 如果没有找到标准列名，尝试其他常见列名
+        if not ohlcv_cols.get('open'):
+            for col in df.columns:
+                if any(keyword in col.lower() for keyword in ['o', 'op', 'open']):
+                    ohlcv_cols['open'] = col
+                    break
+        
+        if not ohlcv_cols.get('high'):
+            for col in df.columns:
+                if any(keyword in col.lower() for keyword in ['h', 'hi', 'high']):
+                    ohlcv_cols['high'] = col
+                    break
+        
+        if not ohlcv_cols.get('low'):
+            for col in df.columns:
+                if any(keyword in col.lower() for keyword in ['l', 'lo', 'low']):
+                    ohlcv_cols['low'] = col
+                    break
+        
+        if not ohlcv_cols.get('close'):
+            for col in df.columns:
+                if any(keyword in col.lower() for keyword in ['c', 'cl', 'close']):
+                    ohlcv_cols['close'] = col
+                    break
+        
+        if not ohlcv_cols.get('volume'):
+            for col in df.columns:
+                if any(keyword in col.lower() for keyword in ['v', 'vol', 'volume']):
+                    ohlcv_cols['volume'] = col
+                    break
+        
+        # 构建OHLCV数据
+        print("🔍 开始构建OHLCV数据...")
+        print(f"🔍 数据行数: {len(df)}")
+        print(f"🔍 时间列: {time_col}")
+        print(f"🔍 OHLCV列映射: {ohlcv_cols}")
+        
+        for idx, row in df.iterrows():
+            if idx < 5:  # 只打印前5行的调试信息
+                print(f"🔍 处理第{idx}行数据...")
+            
+            # 处理时间
+            timestamp = None
+            if time_col and time_col in df.columns:
+                try:
+                    if pd.api.types.is_datetime64_any_dtype(df[time_col]):
+                        timestamp = df[time_col].iloc[idx]
+                        if idx < 5:
+                            print(f"🔍 第{idx}行时间(原始): {df[time_col].iloc[idx]}")
+                    elif pd.api.types.is_numeric_dtype(df[time_col]):
+                        # 判断是秒还是毫秒
+                        sample = df[time_col].iloc[0]
+                        unit = 'ms' if sample > 10_000_000_000 else 's'
+                        timestamp = pd.to_datetime(df[time_col].iloc[idx], unit=unit)
+                        if idx < 5:
+                            print(f"🔍 第{idx}行时间(转换): {timestamp}, 单位: {unit}")
+                    else:
+                        timestamp = pd.to_datetime(df[time_col].iloc[idx])
+                        if idx < 5:
+                            print(f"🔍 第{idx}行时间(字符串): {timestamp}")
+                except Exception as e:
+                    print(f"❌ 第{idx}行时间处理失败: {e}")
+                    timestamp = pd.Timestamp.now()
+            else:
+                timestamp = pd.Timestamp.now()
+                if idx < 5:
+                    print(f"🔍 第{idx}行使用默认时间: {timestamp}")
+            
+            # 处理OHLCV数据
+            ohlcv_item = {}
+            
+            # 开盘价
+            if ohlcv_cols.get('open') and ohlcv_cols['open'] in df.columns:
+                try:
+                    ohlcv_item['open'] = float(row[ohlcv_cols['open']])
+                    if idx < 5:
+                        print(f"🔍 第{idx}行开盘价: {ohlcv_item['open']}")
+                except:
+                    ohlcv_item['open'] = None
+            else:
+                ohlcv_item['open'] = None
+            
+            # 最高价
+            if ohlcv_cols.get('high') and ohlcv_cols['high'] in df.columns:
+                try:
+                    ohlcv_item['high'] = float(row[ohlcv_cols['high']])
+                    if idx < 5:
+                        print(f"🔍 第{idx}行最高价: {ohlcv_item['high']}")
+                except:
+                    ohlcv_item['high'] = None
+            else:
+                ohlcv_item['high'] = None
+            
+            # 最低价
+            if ohlcv_cols.get('low') and ohlcv_cols['low'] in df.columns:
+                try:
+                    ohlcv_item['low'] = float(row[ohlcv_cols['low']])
+                    if idx < 5:
+                        print(f"🔍 第{idx}行最低价: {ohlcv_item['low']}")
+                except:
+                    ohlcv_item['low'] = None
+            else:
+                ohlcv_item['low'] = None
+            
+            # 收盘价
+            if ohlcv_cols.get('close') and ohlcv_cols['close'] in df.columns:
+                try:
+                    ohlcv_item['close'] = float(row[ohlcv_cols['close']])
+                    if idx < 5:
+                        print(f"🔍 第{idx}行收盘价: {ohlcv_item['close']}")
+                except:
+                    ohlcv_item['close'] = None
+            else:
+                ohlcv_item['close'] = None
+            
+            # 成交量
+            if ohlcv_cols.get('volume') and ohlcv_cols['volume'] in df.columns:
+                try:
+                    ohlcv_item['volume'] = float(row[ohlcv_cols['volume']])
+                    if idx < 5:
+                        print(f"🔍 第{idx}行成交量: {ohlcv_item['volume']}")
+                except:
+                    ohlcv_item['volume'] = None
+            else:
+                ohlcv_item['volume'] = None
+            
+            # 添加时间戳 - 确保使用UTC时区
+            if timestamp:
+                # 如果时间有时区信息，转换为UTC
+                if timestamp.tz is not None:
+                    timestamp_utc = timestamp.tz_convert('UTC')
+                else:
+                    # 如果没有时区信息，假设是UTC
+                    timestamp_utc = timestamp.tz_localize('UTC')
+                
+                ohlcv_item['timestamp'] = timestamp_utc.isoformat()
+                if idx < 5:
+                    print(f"🔍 第{idx}行时间(UTC): {ohlcv_item['timestamp']}")
+            else:
+                ohlcv_item['timestamp'] = None
+            
+            if idx < 5:
+                print(f"🔍 第{idx}行完整OHLCV数据: {ohlcv_item}")
+            
+            ohlcv_data.append(ohlcv_item)
+        
+        print(f"🔍 构建完成，共{len(ohlcv_data)}条OHLCV数据")
+        if len(ohlcv_data) > 0:
+            print(f"🔍 第一条数据示例: {ohlcv_data[0]}")
+            print(f"🔍 最后一条数据示例: {ohlcv_data[-1]}")
+        
+        # 按时间排序
+        ohlcv_data.sort(key=lambda x: x['timestamp'] if x['timestamp'] else '')
+        
+        # 准备返回数据
+        print("🔍 准备返回数据...")
+        result_data = {
+            'symbol': symbol,
+            'timeframe': timeframe,
+            'file_path': file_path,
+            'file_size': f"{Path(file_path).stat().st_size / 1024 / 1024:.2f} MB",
+            'last_modified': datetime.fromtimestamp(Path(file_path).stat().st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
+            'ohlcv_data': ohlcv_data,
+            'columns_found': list(df.columns),
+            'ohlcv_columns_mapped': ohlcv_cols
+        }
+        
+        print(f"🔍 返回数据摘要:")
+        print(f"  - 交易对: {result_data['symbol']}")
+        print(f"  - 时间框架: {result_data['timeframe']}")
+        print(f"  - OHLCV数据条数: {len(result_data['ohlcv_data'])}")
+        print(f"  - 找到的列: {result_data['columns_found']}")
+        print(f"  - OHLCV列映射: {result_data['ohlcv_columns_mapped']}")
+        
+        print("✅ view_data API 执行成功，准备返回数据")
+        return jsonify({'success': True, 'data': result_data})
+        
+    except Exception as e:
+        import traceback
+        print(f"查看数据失败: {e}")
+        print(f"错误详情: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': f'查看数据失败: {str(e)}'})
 
 @bp.route('/download', methods=['POST'])
 def start_download():

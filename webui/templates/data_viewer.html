@@ -74,12 +74,134 @@
         </div>
     </div>
 </div>
+
+<!-- 数据查看模态框 -->
+<div class="modal fade" id="dataViewModal" tabindex="-1" aria-labelledby="dataViewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen-xl-down" style="max-width: 95vw; margin: 1rem auto; height: 95vh;">
+        <div class="modal-content" style="height: 100%;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dataViewModalLabel">📊 数据查看</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="height: calc(100% - 120px); overflow-y: auto;">
+                <!-- 标签页导航 -->
+                <ul class="nav nav-tabs" id="dataViewTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="kline-tab" data-bs-toggle="tab" data-bs-target="#kline-content" type="button" role="tab">
+                            📈 K线图
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="data-tab" data-bs-toggle="tab" data-bs-target="#data-content" type="button" role="tab">
+                            📋 行情数据
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="meta-tab" data-bs-toggle="tab" data-bs-target="#meta-content" type="button" role="tab">
+                            ℹ️ Meta信息
+                        </button>
+                    </li>
+                </ul>
+                
+                <!-- 标签页内容 -->
+                <div class="tab-content" id="dataViewTabContent">
+                    <!-- K线图标签页 -->
+                    <div class="tab-pane fade show active" id="kline-content" role="tabpanel">
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body p-3" style="min-height: 560px;">
+                                        <div id="klineChart" style="width: 100% !important; height: 540px; max-height: 540px; overflow: hidden; border: 1px solid #e9ecef; border-radius: 4px; min-width: 100%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 行情数据标签页 -->
+                    <div class="tab-pane fade" id="data-content" role="tabpanel">
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6>行情数据表格</h6>
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="exportData('csv')">
+                                            📥 导出CSV
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-success" onclick="exportData('excel')">
+                                            📥 导出Excel
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped" id="dataTable">
+                                        <thead>
+                                            <tr>
+                                                <th>时间</th>
+                                                <th>开盘价</th>
+                                                <th>最高价</th>
+                                                <th>最低价</th>
+                                                <th>收盘价</th>
+                                                <th>成交量</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="dataTableBody">
+                                            <!-- 数据将在这里动态生成 -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Meta信息标签页 -->
+                    <div class="tab-pane fade" id="meta-content" role="tabpanel">
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div id="metaInfo">
+                                            <!-- Meta信息将在这里动态生成 -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 {% endblock %}
 
 {% block extra_js %}
+<!-- 引入Plotly.js - 专业的图表库，支持真正的K线图 -->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     console.log('数据查看页面初始化');
+    
+    // 检查Plotly是否正确加载
+    console.log('🔍 检查Plotly库加载状态...');
+    console.log('🔍 Plotly 对象类型:', typeof Plotly);
+    console.log('🔍 Plotly 对象:', Plotly);
+    
+    if (typeof Plotly === 'undefined') {
+        console.error('❌ Plotly 库未加载! 请检查网络连接或CDN状态');
+        // 尝试重新加载Plotly
+        console.log('🔍 尝试重新加载Plotly...');
+        loadPlotly();
+    } else {
+        console.log('✅ Plotly 库已正确加载');
+    }
+    
     loadLocalData();
     
     // 添加筛选器事件监听器
@@ -89,13 +211,45 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('filterSymbol').addEventListener('change', function() {
         displayData(window.currentData || []);
     });
-    document.getElementById('filterTimeframe').addEventListener('change', function() {
-        displayData(window.currentData || []);
-    });
     document.getElementById('filterDataType').addEventListener('change', function() {
         displayData(window.currentData || []);
     });
 });
+
+// 动态加载Plotly的函数
+function loadPlotly() {
+    console.log('🔍 开始动态加载Plotly...');
+    
+    // 创建script标签 - 使用更稳定的CDN
+    const plotlyScript = document.createElement('script');
+    plotlyScript.src = 'https://cdn.plot.ly/plotly-latest.min.js';
+    plotlyScript.onload = function() {
+        console.log('✅ Plotly 库加载成功');
+        console.log('🔍 现在Plotly应该可以正常使用了');
+    };
+    plotlyScript.onerror = function() {
+        console.error('❌ Plotly 主库加载失败，尝试备用CDN...');
+        // 备用CDN
+        loadPlotlyBackup();
+    };
+    
+    document.head.appendChild(plotlyScript);
+}
+
+function loadPlotlyBackup() {
+    console.log('🔍 尝试备用CDN...');
+    
+    const backupScript = document.createElement('script');
+    backupScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.1/plotly.min.js';
+    backupScript.onload = function() {
+        console.log('✅ Plotly 备用CDN加载成功');
+    };
+    backupScript.onerror = function() {
+        console.error('❌ 所有Plotly CDN都加载失败');
+    };
+    
+    document.head.appendChild(backupScript);
+}
 
 async function loadLocalData() {
     try {
@@ -218,7 +372,378 @@ function refreshData() {
 }
 
 function viewData(filePath) {
-    alert(`查看数据: ${filePath}\n\n数据查看功能开发中...`);
+    console.log('查看数据:', filePath);
+    
+    // 显示模态框
+    const modal = new bootstrap.Modal(document.getElementById('dataViewModal'));
+    modal.show();
+    
+    // 更新模态框标题
+    document.getElementById('dataViewModalLabel').textContent = '📊 数据查看 - 加载中...';
+    
+    // 加载数据
+    loadDataForView(filePath);
+}
+
+async function loadDataForView(filePath) {
+    try {
+        // 调用API获取数据
+        const response = await fetch('/api/data/view-data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ file_path: filePath })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 更新模态框标题
+            document.getElementById('dataViewModalLabel').textContent = `📊 数据查看 - ${result.data.symbol} ${result.data.timeframe}`;
+            
+            // 显示数据内容
+            displayDataInModal(result.data);
+        } else {
+            console.error('加载数据失败:', result.error);
+            // 显示错误信息在K线图区域
+            const klineChart = document.getElementById('klineChart');
+            if (klineChart) {
+                klineChart.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6>❌ 加载失败</h6>
+                        <p>${result.error}</p>
+                    </div>
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('加载数据失败:', error);
+        // 显示错误信息在K线图区域
+        const klineChart = document.getElementById('klineChart');
+        if (klineChart) {
+            klineChart.innerHTML = `
+                <div class="alert alert-danger">
+                    <h6>❌ 加载失败</h6>
+                    <p>${error.message}</p>
+                </div>
+            `;
+        }
+    }
+}
+
+function displayDataInModal(data) {
+    console.log('🔍 displayDataInModal 开始执行');
+    console.log('📊 接收到的数据:', data);
+    console.log('📊 数据类型:', typeof data);
+    console.log('📊 数据键:', Object.keys(data));
+    
+    // 直接使用现有的标签页结构，不需要创建HTML
+    console.log('🔍 使用现有的标签页结构');
+    
+    // 渲染K线图
+    console.log('🔍 准备调用renderKlineChart...');
+    console.log('🔍 ohlcv_data:', data.ohlcv_data);
+    renderKlineChart(data.ohlcv_data);
+    
+    // 渲染数据表格
+    console.log('🔍 准备调用renderDataTable...');
+    renderDataTable(data.ohlcv_data);
+    
+    // 渲染Meta信息
+    console.log('🔍 准备调用renderMetaInfo...');
+    renderMetaInfo(data);
+}
+
+// 渲染K线图 - 使用Plotly创建真正的K线图
+function renderKlineChart(ohlcvData) {
+    console.log('🔍 renderKlineChart 开始执行');
+    console.log('📊 接收到的数据:', ohlcvData);
+    console.log('📊 数据类型:', typeof ohlcvData);
+    console.log('📊 数据长度:', ohlcvData ? ohlcvData.length : 'undefined');
+    
+    if (!ohlcvData || !Array.isArray(ohlcvData)) {
+        console.error('❌ ohlcvData 不是数组或为空:', ohlcvData);
+        return;
+    }
+    
+    if (ohlcvData.length === 0) {
+        console.warn('⚠️ ohlcvData 长度为0');
+        return;
+    }
+    
+    // 检查第一条数据的结构
+    console.log('🔍 第一条数据结构:', ohlcvData[0]);
+    console.log('🔍 第一条数据的所有键:', Object.keys(ohlcvData[0]));
+    
+    const chartContainer = document.getElementById('klineChart');
+    console.log('🔍 图表容器元素:', chartContainer);
+    
+    if (!chartContainer) {
+        console.error('❌ 找不到klineChart容器元素');
+        return;
+    }
+    
+    // 检查Plotly是否正确加载
+    if (typeof Plotly === 'undefined') {
+        console.error('❌ Plotly 库未加载!');
+        return;
+    }
+    
+    console.log('🔍 Plotly 库已加载:', typeof Plotly);
+    
+    // 准备数据
+    console.log('🔍 开始准备K线图数据...');
+    
+    // 提取OHLCV数据
+    const times = ohlcvData.map(item => item.timestamp);
+    const opens = ohlcvData.map(item => item.open);
+    const highs = ohlcvData.map(item => item.high);
+    const lows = ohlcvData.map(item => item.low);
+    const closes = ohlcvData.map(item => item.close);
+    const volumes = ohlcvData.map(item => item.volume);
+    
+    console.log('🔍 时间数据数量:', times.length);
+    console.log('🔍 开盘价数量:', opens.length);
+    console.log('🔍 最高价数量:', highs.length);
+    console.log('🔍 最低价数量:', lows.length);
+    console.log('🔍 收盘价数量:', closes.length);
+    console.log('🔍 成交量数量:', volumes.length);
+    
+    // 检查数据完整性
+    const validData = times.filter((_, index) => 
+        opens[index] !== null && highs[index] !== null && 
+        lows[index] !== null && closes[index] !== null
+    );
+    
+    console.log('🔍 有效数据数量:', validData.length);
+    
+    if (validData.length === 0) {
+        console.error('❌ 没有有效的OHLCV数据');
+        return;
+    }
+    
+    // 创建K线图数据
+    const candlestickData = [{
+        type: 'candlestick',
+        x: times,
+        open: opens,
+        high: highs,
+        low: lows,
+        close: closes,
+        name: 'K线图',
+        increasing: {
+            line: { color: '#26a69a' },
+            fillcolor: '#26a69a'
+        },
+        decreasing: {
+            line: { color: '#ef5350' },
+            fillcolor: '#ef5350'
+        }
+    }];
+    
+    // 创建成交量图数据
+    const volumeData = [{
+        type: 'bar',
+        x: times,
+        y: volumes,
+        name: '成交量',
+        yaxis: 'y2',
+        marker: {
+            color: 'rgba(0,100,80,0.7)'
+        },
+        opacity: 0.8
+    }];
+    
+    // 合并数据
+    const allData = [...candlestickData, ...volumeData];
+    
+    // 图表布局配置
+    const layout = {
+        title: {
+            text: 'K线图 (UTC时间)',
+            font: { size: 16 }
+        },
+        xaxis: {
+            title: '时间 (UTC)',
+            type: 'date',
+            rangeslider: { visible: false }
+        },
+        yaxis: {
+            title: '价格',
+            side: 'left',
+            domain: [0.3, 1]  // K线图占据70%的高度
+        },
+        yaxis2: {
+            title: '成交量',
+            side: 'left',
+            domain: [0, 0.25],  // 成交量占据25%的高度，不重叠
+            overlaying: false    // 不重叠，独立显示
+        },
+        height: null, // 让高度自动适应容器
+        width: null, // 让宽度自动适应容器
+        margin: { l: 40, r: 40, t: 40, b: 40 },
+        showlegend: true,
+        legend: { x: 0, y: 1 },
+        autosize: true,
+        fitToContainer: true
+    };
+    
+    console.log('🔍 开始创建Plotly K线图...');
+    console.log('🔍 图表数据:', allData);
+    console.log('🔍 图表布局:', layout);
+    
+    try {
+        // 销毁旧图表
+        if (window.klineChart) {
+            console.log('🔍 销毁旧图表');
+            Plotly.purge(chartContainer);
+        }
+        
+        // 创建新图表
+        Plotly.newPlot(chartContainer, allData, layout, {
+            responsive: true,
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],
+            useResizeHandler: true,
+            autosize: true
+        });
+        
+        // 确保图表适应容器大小
+        window.addEventListener('resize', function() {
+            Plotly.Plots.resize(chartContainer);
+        });
+        
+        // 强制重新计算图表大小
+        setTimeout(function() {
+            Plotly.Plots.resize(chartContainer);
+        }, 100);
+        
+        console.log('✅ Plotly K线图创建成功!');
+        window.klineChart = chartContainer;
+        
+    } catch (error) {
+        console.error('❌ 创建Plotly K线图失败:', error);
+        console.error('❌ 错误详情:', error.stack);
+        
+        // 显示错误信息
+        chartContainer.innerHTML = `
+            <div class="alert alert-danger">
+                <h6>❌ K线图创建失败</h6>
+                <p>${error.message}</p>
+                <p>请检查数据格式是否正确</p>
+            </div>
+        `;
+    }
+}
+
+// 渲染数据表格
+function renderDataTable(ohlcvData) {
+    const tbody = document.getElementById('dataTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    // 只显示前100条数据，避免页面过长
+    const displayData = ohlcvData.slice(0, 100);
+    
+    displayData.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${new Date(item.timestamp).toLocaleString()}</td>
+            <td>${item.open?.toFixed(4) || 'N/A'}</td>
+            <td>${item.high?.toFixed(4) || 'N/A'}</td>
+            <td>${item.low?.toFixed(4) || 'N/A'}</td>
+            <td>${item.close?.toFixed(4) || 'N/A'}</td>
+            <td>${item.volume?.toLocaleString() || 'N/A'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    if (ohlcvData.length > 100) {
+        const infoRow = document.createElement('tr');
+        infoRow.innerHTML = `
+            <td colspan="6" class="text-center text-muted">
+                显示前100条数据，共${ohlcvData.length}条
+            </td>
+        `;
+        tbody.appendChild(infoRow);
+    }
+}
+
+// 渲染Meta信息
+function renderMetaInfo(data) {
+    const metaInfo = document.getElementById('metaInfo');
+    if (!metaInfo) return;
+    
+    const ohlcvData = data.ohlcv_data;
+    if (!ohlcvData || ohlcvData.length === 0) {
+        metaInfo.innerHTML = '<p class="text-muted">暂无数据</p>';
+        return;
+    }
+    
+    // 计算统计信息
+    const prices = ohlcvData.map(item => item.close).filter(p => p !== null && !isNaN(p));
+    const volumes = ohlcvData.map(item => item.volume).filter(v => v !== null && !isNaN(v));
+    
+    const priceStats = {
+        min: Math.min(...prices),
+        max: Math.max(...prices),
+        avg: prices.reduce((a, b) => a + b, 0) / prices.length
+    };
+    
+    const volumeStats = {
+        min: Math.min(...volumes),
+        max: Math.max(...volumes),
+        avg: volumes.reduce((a, b) => a + b, 0) / volumes.length
+    };
+    
+    metaInfo.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>📊 基本信息</h6>
+                <ul class="list-unstyled">
+                    <li><strong>交易对:</strong> ${data.symbol}</li>
+                    <li><strong>时间框架:</strong> ${data.timeframe}</li>
+                    <li><strong>数据点数:</strong> ${ohlcvData.length.toLocaleString()}</li>
+                    <li><strong>时间范围:</strong> ${new Date(ohlcvData[0].timestamp).toLocaleDateString()} 到 ${new Date(ohlcvData[ohlcvData.length-1].timestamp).toLocaleDateString()}</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>💰 价格统计</h6>
+                <ul class="list-unstyled">
+                    <li><strong>最低价:</strong> ${priceStats.min?.toFixed(4) || 'N/A'}</li>
+                    <li><strong>最高价:</strong> ${priceStats.max?.toFixed(4) || 'N/A'}</li>
+                    <li><strong>平均价:</strong> ${priceStats.avg?.toFixed(4) || 'N/A'}</li>
+                    <li><strong>价格波动:</strong> ${((priceStats.max - priceStats.min) / priceStats.avg * 100).toFixed(2)}%</li>
+                </ul>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <h6>📈 成交量统计</h6>
+                <ul class="list-unstyled">
+                    <li><strong>最小成交量:</strong> ${volumeStats.min?.toLocaleString() || 'N/A'}</li>
+                    <li><strong>最大成交量:</strong> ${volumeStats.max?.toLocaleString() || 'N/A'}</li>
+                    <li><strong>平均成交量:</strong> ${volumeStats.avg?.toLocaleString() || 'N/A'}</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>🔍 数据质量</h6>
+                <ul class="list-unstyled">
+                    <li><strong>完整度:</strong> ${((ohlcvData.filter(item => item.open && item.high && item.low && item.close && item.volume).length / ohlcvData.length) * 100).toFixed(1)}%</li>
+                    <li><strong>文件大小:</strong> ${data.file_size || 'N/A'}</li>
+                    <li><strong>最后更新:</strong> ${data.last_modified || 'N/A'}</li>
+                </ul>
+            </div>
+        </div>
+    `;
+}
+
+// 导出数据
+function exportData(format) {
+    // TODO: 实现数据导出功能
+    alert(`导出${format.toUpperCase()}功能开发中...`);
 }
 
 function deleteData(filePath) {

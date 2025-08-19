@@ -225,63 +225,45 @@ class SmartBatchDownloader(DataDownloader):
             print(f"数据时间范围: {df.index.min()} 到 {df.index.max()}")
             
             # 去重和排序（按 date 索引）
-            df = df.drop_duplicates().sort_index()
+            df = df[~df.index.duplicated(keep='last')].sort_index()
             print(f"去重后数据: {len(df)} 条")
             
-            # 数据健康度检查
-            health_report = health_checker.check_data_health(df, timeframe, symbol)
-            if not health_report['is_healthy']:
-                print(f"⚠️  数据健康度检查未通过: {health_report['summary']}")
-                # 尝试修复数据问题
-                df = self._fix_data_issues(df, health_report)
-                print(f"🔧 数据修复后: {len(df)} 条")
-            else:
-                print(f"✅ 数据健康度检查通过: {health_report['summary']}")
+            # 阶段1: 与现有数据合并和验证
+            df_merged = self._merge_with_existing_data(df, symbol, timeframe, start_date, end_date)
             
-            # 最终去重处理 - 先重置索引，然后去重
-            df_temp = df.reset_index()
-            # 重命名 index 列为 date 列
-            df_temp = df_temp.rename(columns={'index': 'date'})
-            df_temp = data_processor.remove_duplicates(df_temp, 'date')
-            df = df_temp.set_index('date')  # 重新设置索引
-            print(f"最终去重后数据: {len(df)} 条")
+            # 阶段2: 检测和补全数据间断
+            df_complete = self._fill_data_gaps(df_merged, symbol, timeframe, start_date, end_date, progress_callback)
             
-            # 过滤日期范围 - 按 date 索引过滤
-            start_dt = pd.to_datetime(start_date).normalize()  # 设置为当天00:00:00
-            end_dt = pd.to_datetime(end_date).normalize() + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)  # 设置为当天23:59:59
+            # 阶段3: 最终验证 - 只有100分才能保存
+            if not self._final_validation(df_complete, timeframe, symbol):
+                print("⚠️ 数据验证失败，开始自动修复...")
+                df_complete = self._auto_fix_data_issues(df_complete, timeframe, symbol, max_retries=20)
+                
+                # 再次验证
+                if not self._final_validation(df_complete, timeframe, symbol):
+                    return {'success': False, 'error': '数据验证失败，自动修复后仍无法达到100分标准'}
+                
+                print("🎉 自动修复成功，数据达到100分标准！")
             
-            print(f"过滤时间范围: {start_dt} 到 {end_dt}")
-            print(f"数据类型: start_dt={type(start_dt)}, end_dt={type(end_dt)}")
-            print(f"索引类型: {type(df.index)}")
-            print(f"索引示例: {df.index[:5]}")
+            # 准备保存数据
+            print("=== 保存前数据检查 ===")
+            print(f"df_complete 索引名: {df_complete.index.name}")
+            print(f"df_complete 列名: {df_complete.columns.tolist()}")
+            print(f"df_complete 形状: {df_complete.shape}")
+            print(f"df_complete 数据类型:")
+            print(df_complete.dtypes)
+            print("========================")
             
-            # 确保时区一致
-            if start_dt.tz is not None:
-                start_dt = start_dt.tz_localize(None)
-            if end_dt.tz is not None:
-                end_dt = end_dt.tz_localize(None)
-            
-            # 如果索引有时区，也移除时区
-            if df.index.tz is not None:
-                df.index = df.index.tz_localize(None)
-            
-            df = df[(df.index >= start_dt) & (df.index <= end_dt)]
-            print(f"过滤后数据: {len(df)} 条")
-            
-            # 数据有 date 索引，需要重置索引并重命名
-            print(f"数据形状: {df.shape}")
-            print(f"列名: {list(df.columns)}")
-            print(f"索引名称: {df.index.name}")
-            
-            df_save = df.reset_index().rename(columns={'date': 'date'})
-            print("重置索引并重命名完成")
-            
-            print(f"转换后数据形状: {df_save.shape}")
-            print(f"转换后列名: {list(df_save.columns)}")
-            print(f"转换后数据类型:")
-            print(df_save.dtypes)
-            print(f"转换后前几行:")
-            print(df_save.head())
+            # 检查是否需要重置索引
+            # if df_complete.index.name == 'date' and 'date' in df_complete.columns:
+            #     print("⚠️ 检测到 date 索引和 date 列冲突，需要重置索引")
+            #     df_save = df_complete.reset_index()
+            # else:
+            #     print("✅ 没有索引和列冲突，直接使用原数据")
+            #     df_save = df_complete.copy()
+            df_save = df_complete.copy()
+
+            print(f"最终验证通过，准备保存: {len(df_save)} 条数据")
             
             if progress_callback:
                 progress_callback(98, f"数据处理完成，准备保存...")

@@ -249,11 +249,11 @@ def main():
         
         # 分析因子贡献
         correlations, signal_quality = analyze_factor_contribution(factors, signals, data)
-        
-        print("\n" + "=" * 60)
+    
+    print("\n" + "=" * 60)
         print("✅ 所有演示完成！")
-        print("=" * 60)
-        
+    print("=" * 60)
+    
         # 保存结果
         output_dir = Path(__file__).parent / "output"
         output_dir.mkdir(exist_ok=True)

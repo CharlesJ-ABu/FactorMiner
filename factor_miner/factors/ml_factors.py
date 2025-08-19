@@ -10,6 +10,7 @@ from pathlib import Path
 import pickle
 import threading
 import time
+import signal
 from datetime import datetime
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import Ridge, Lasso
@@ -218,12 +219,31 @@ class MLFactorBuilder:
         # 标准化特征
         if progress_callback:
             progress_callback(stage='ml', progress=15, message='集成模型训练: 标准化特征...')
-        features_scaled = self.scaler.fit_transform(features_clean)
         
-        # 构建多个模型
+        print(f"🔍 开始标准化特征，数据形状: {features_clean.shape}")
+        try:
+            features_scaled = self.scaler.fit_transform(features_clean)
+            print(f"✅ 特征标准化完成，形状: {features_scaled.shape}")
+        except Exception as e:
+            print(f"❌ 特征标准化失败: {e}")
+            raise
+        
+        # 构建多个模型 - 优化参数避免卡住
         models = {
-            'random_forest': RandomForestRegressor(n_estimators=100, random_state=42),
-            'gradient_boosting': GradientBoostingRegressor(n_estimators=100, random_state=42),
+            'random_forest': RandomForestRegressor(
+                n_estimators=50,      # 减少树的数量
+                max_depth=10,         # 限制树深度
+                min_samples_split=10, # 增加分裂所需的最小样本数
+                min_samples_leaf=5,   # 增加叶节点最小样本数
+                random_state=42,
+                n_jobs=1             # 使用单线程，避免多线程问题
+            ),
+            'gradient_boosting': GradientBoostingRegressor(
+                n_estimators=50,      # 减少树的数量
+                max_depth=6,          # 限制树深度
+                learning_rate=0.1,    # 降低学习率
+                random_state=42
+            ),
             'ridge': Ridge(alpha=1.0),
             'lasso': Lasso(alpha=0.01)
         }
@@ -239,27 +259,95 @@ class MLFactorBuilder:
                 progress_callback(stage='ml', progress=int(base_progress + 1), message=f'集成模型训练: {name} 初始化...')
             
             try:
+                print(f"🚀 开始训练 {name} 模型...")
+                
+                # 强制更新进度到开始训练
+                if progress_callback:
+                    progress_callback(stage='ml', progress=int(base_progress + 2), 
+                                   message=f'集成模型训练: {name} 开始训练...')
+                
                 # 启动进度模拟器模拟模型训练过程
                 simulator = None
                 if progress_callback:
                     simulator = ProgressSimulator(
                         progress_callback=progress_callback,
                         stage='ml',
-                        start_progress=int(base_progress),
+                        start_progress=int(base_progress + 2),
                         end_progress=int(base_progress + 12),
-                        duration=2.0,  # 2秒的模拟训练时间
+                        duration=1.0,  # 减少到1秒，更快响应
                         message_template=f'集成模型训练: {name} 训练中... ' + '{progress}%'
                     )
                     simulator.start()
                 
-                model.fit(features_scaled, target_clean)
+                # 启动紧急进度更新线程，防止卡住
+                def emergency_progress_update():
+                    """紧急进度更新，防止训练卡住"""
+                    for i in range(10):  # 10次更新
+                        time.sleep(3)  # 每3秒更新一次
+                        if progress_callback:
+                            emergency_progress = int(base_progress + 2 + i)
+                            progress_callback(stage='ml', progress=emergency_progress, 
+                                           message=f'集成模型训练: {name} 紧急进度更新 {i+1}/10')
+                        print(f"  🚨 紧急进度更新 {i+1}/10: {name} 模型训练中...")
+                
+                emergency_thread = threading.Thread(target=emergency_progress_update, daemon=True)
+                emergency_thread.start()
+                
+                # 分批训练逻辑 - 避免大数据集卡住
+                if len(features_clean) > 5000 and hasattr(model, 'partial_fit'):
+                    print(f"📊 数据量较大({len(features_clean)}条)，使用分批训练...")
+                    batch_size = 2000
+                    total_batches = (len(features_clean) + batch_size - 1) // batch_size
+                    
+                    # 超时保护函数
+                    def timeout_handler(signum, frame):
+                        raise TimeoutError(f"{name} 模型训练超时")
+                    
+                    # 设置30秒超时
+                    signal.signal(signal.SIGALRM, timeout_handler)
+                    signal.alarm(30)
+                    
+                    try:
+                        for batch_idx in range(0, len(features_clean), batch_size):
+                            batch_end = min(batch_idx + batch_size, len(features_clean))
+                            batch_features = features_scaled[batch_idx:batch_end]
+                            batch_target = target_clean.iloc[batch_idx:batch_end]
+                            
+                            print(f"  🔄 训练批次 {batch_idx//batch_size + 1}/{total_batches} ({batch_idx}-{batch_end})")
+                            
+                            if batch_idx == 0:
+                                # 第一批数据，初始化模型
+                                model.partial_fit(batch_features, batch_target)
+                            else:
+                                # 后续批次，继续训练
+                                model.partial_fit(batch_features, batch_target)
+                            
+                            # 强制更新进度，防止卡住
+                            batch_progress = (batch_idx + batch_size) / len(features_clean)
+                            if progress_callback:
+                                current_progress = int(base_progress + batch_progress * 10)
+                                progress_callback(stage='ml', progress=current_progress, 
+                                               message=f'集成模型训练: {name} 分批训练中... {batch_idx//batch_size + 1}/{total_batches}')
+                            
+                            print(f"  ✅ 批次 {batch_idx//batch_size + 1}/{total_batches} 完成")
+                    finally:
+                        # 取消超时
+                        signal.alarm(0)
+                else:
+                    # 数据量不大，直接训练
+                    print(f"📊 数据量适中({len(features_clean)}条)，直接训练...")
+                    model.fit(features_scaled, target_clean)
                 
                 # 停止进度模拟器
                 if simulator:
                     simulator.stop()
                 
+                print(f"✅ {name} 模型训练完成，开始生成预测...")
+                
+                # 强制更新进度
                 if progress_callback:
-                    progress_callback(stage='ml', progress=int(base_progress + 14), message=f'集成模型训练: {name} 生成预测...')
+                    progress_callback(stage='ml', progress=int(base_progress + 14), 
+                                   message=f'集成模型训练: {name} 生成预测...')
                 
                 predictions = model.predict(features_scaled)
                 
@@ -287,8 +375,17 @@ class MLFactorBuilder:
                     completion_progress = 20 + ((model_idx + 1) / len(models)) * 60
                     progress_callback(stage='ml', progress=int(completion_progress), message=f'集成模型训练: {name} 完成')
             
-            except Exception:
-                tqdm.write(f"✗ 训练 {name} 模型失败")
+            except TimeoutError as e:
+                tqdm.write(f"⏰ {name} 模型训练超时: {e}")
+                if progress_callback:
+                    progress_callback(stage='ml', progress=int(base_progress + 15), 
+                                   message=f'集成模型训练: {name} 超时，跳过此模型')
+                continue
+            except Exception as e:
+                tqdm.write(f"✗ 训练 {name} 模型失败: {e}")
+                if progress_callback:
+                    progress_callback(stage='ml', progress=int(base_progress + 15), 
+                                   message=f'集成模型训练: {name} 失败，跳过此模型')
                 continue
         
         if progress_callback:

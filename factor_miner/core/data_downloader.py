@@ -70,7 +70,7 @@ class DataDownloader:
     def download_ohlcv(self, config_id: int = None, symbol: str = None, timeframe: str = None, 
                       start_date: str = None, end_date: str = None, trade_type: str = None, progress_callback=None) -> Dict:
         """
-        下载OHLCV数据
+        下载OHLCV数据 - 重构版本：确保数据完整性
         
         Args:
             config_id: 交易所配置ID
@@ -150,28 +150,52 @@ class DataDownloader:
             df.set_index('date', inplace=True)  # 设置 date 为索引
             df.drop('timestamp', axis=1, inplace=True)
             
-            # 去重和排序（按 date 索引）
-            df = df.drop_duplicates().sort_index()
+            # 基础去重和排序
+            df = df[~df.index.duplicated(keep='last')].sort_index()
+            print(f"原始下载数据: {len(df)} 条")
             
-            # 过滤日期范围（按 date 索引）
+            # 过滤日期范围
             df = df[(df.index >= start_date) & (df.index <= end_date)]
+            print(f"过滤后数据: {len(df)} 条")
             
-            # 数据健康度检查
-            health_report = health_checker.check_data_health(df, timeframe, symbol)
-            if not health_report['is_healthy']:
-                self.logger.warning(f"数据健康度检查未通过: {health_report['summary']}")
-                # 尝试修复数据问题
-                df = self._fix_data_issues(df, health_report)
+            # 阶段1: 与现有数据合并和验证
+            df_merged = self._merge_with_existing_data(df, symbol, timeframe, start_date, end_date)
             
-            # 最终去重处理 - 先重置索引，然后去重
-            df_temp = df.reset_index()
-            # 重命名 index 列为 date 列
-            df_temp = df_temp.rename(columns={'index': 'date'})
-            df_temp = data_processor.remove_duplicates(df_temp, 'date')
+            # 阶段2: 检测和补全数据间断
+            df_complete = self._fill_data_gaps(df_merged, symbol, timeframe, start_date, end_date, progress_callback)
             
-            # 数据已经重置索引，直接使用
-            df_save = df_temp
-            print("去重和重置索引完成")
+            # 阶段3: 最终验证 - 只有100分才能保存
+            if not self._final_validation(df_complete, timeframe, symbol):
+                print("⚠️ 数据验证失败，开始自动修复...")
+                df_complete = self._auto_fix_data_issues(df_complete, timeframe, symbol, max_retries=20)
+                
+                # 再次验证
+                if not self._final_validation(df_complete, timeframe, symbol):
+                    return {'success': False, 'error': '数据验证失败，自动修复后仍无法达到100分标准'}
+                
+                print("🎉 自动修复成功，数据达到100分标准！")
+            
+            # 准备保存数据
+            print("=== 保存前数据检查 ===")
+            print(f"df_complete 索引名: {df_complete.index.name}")
+            print(f"df_complete 列名: {df_complete.columns.tolist()}")
+            print(f"df_complete 形状: {df_complete.shape}")
+            print(f"df_complete 数据类型:")
+            print(df_complete.dtypes)
+            print("========================")
+            
+            # 检查是否需要重置索引
+            # if df_complete.index.name == 'date' and 'date' in df_complete.columns:
+            #     print("⚠️ 检测到 date 索引和 date 列冲突，需要重置索引")
+            #     df_save = df_complete.reset_index()
+            # else:
+            #     print("✅ 没有索引和列冲突，直接使用原数据")
+            #     df_save = df_complete.copy()
+            df_save = df_complete.copy()
+
+
+            
+            print(f"最终验证通过，准备保存: {len(df_save)} 条数据")
             
             # 保存数据 - 使用与现有文件一致的命名格式
             # 例如：BTC_USDT_USDT-2h-futures.feather
@@ -348,6 +372,780 @@ class DataDownloader:
         except Exception as e:
             self.logger.error(f"下载数据失败: {e}")
             return {'success': False, 'error': str(e)}
+    
+    def _merge_with_existing_data(self, new_df: pd.DataFrame, symbol: str, timeframe: str, 
+                                 start_date: str, end_date: str) -> pd.DataFrame:
+        """
+        与现有数据合并和验证
+        
+        Args:
+            new_df: 新下载的数据
+            symbol: 交易对
+            timeframe: 时间框架
+            start_date: 开始日期
+            end_date: 结束日期
+            
+        Returns:
+            合并后的数据
+        """
+        try:
+            # 构建文件路径
+            if hasattr(self, 'trade_type') and self.trade_type:
+                if self.trade_type == 'futures':
+                    filename = f"{symbol.replace('/', '_')}_USDT-{timeframe}-futures.feather"
+                    save_path = Path("data/binance/futures") / filename
+                elif self.trade_type == 'spot':
+                    filename = f"{symbol.replace('/', '_')}_USDT-{timeframe}-spot.feather"
+                    save_path = Path("data/binance/spot") / filename
+                else:
+                    filename = f"{symbol}_{timeframe}_{start_date}_{end_date}.feather"
+                    save_path = Path("data/binance") / filename
+            else:
+                filename = f"{symbol}_{timeframe}_{start_date}_{end_date}.feather"
+                save_path = Path("data/binance") / filename
+            
+            # 检查是否存在现有文件
+            if not save_path.exists():
+                print(f"没有现有文件，直接使用新数据")
+                return new_df
+            
+            print(f"发现现有文件: {save_path}")
+            
+            try:
+                # 读取现有数据
+                existing_df = pd.read_feather(save_path)
+                print(f"现有数据: {len(existing_df)} 条")
+                
+                # 确保现有数据有date列
+                if 'date' not in existing_df.columns:
+                    print("现有数据没有date列，跳过合并")
+                    return new_df
+                
+                # 转换时间列
+                existing_df['date'] = pd.to_datetime(existing_df['date'])
+                existing_df = existing_df.set_index('date')
+                
+                # 合并数据
+                combined_df = pd.concat([existing_df, new_df], ignore_index=False)
+                
+                # 去重（保留最新的数据）- 按 index（时间点）去重
+                combined_df = combined_df[~combined_df.index.duplicated(keep='last')].sort_index()
+                
+                print(f"合并完成: 现有 {len(existing_df)} 条 + 新 {len(new_df)} 条 = 合并后 {len(combined_df)} 条")
+                
+                return combined_df
+                
+            except Exception as e:
+                print(f"读取现有文件失败: {e}，跳过合并")
+                return new_df
+                
+        except Exception as e:
+            print(f"合并现有数据失败: {e}")
+            return new_df
+    
+    def _fill_data_gaps(self, df: pd.DataFrame, symbol: str, timeframe: str, 
+                        start_date: str, end_date: str, progress_callback=None) -> pd.DataFrame:
+        """
+        检测和补全数据间断
+        
+        Args:
+            df: 输入数据
+            symbol: 交易对
+            timeframe: 时间框架
+            start_date: 开始日期
+            end_date: 结束日期
+            progress_callback: 进度回调
+            
+        Returns:
+            补全后的数据
+        """
+        try:
+            if progress_callback:
+                progress_callback(85, "检测数据间断...")
+            
+            # 检测间断
+            gaps = self._detect_data_gaps(df, timeframe)
+            
+            if not gaps:
+                print("没有发现数据间断")
+                if progress_callback:
+                    progress_callback(90, "数据完整，无需补全")
+                return df
+            
+            print(f"发现 {len(gaps)} 个数据间断，开始补全...")
+            
+            if progress_callback:
+                progress_callback(87, f"发现 {len(gaps)} 个间断，开始补全...")
+            
+            # 补全间断
+            df_complete = self._download_missing_data(df, gaps, symbol, timeframe, progress_callback)
+            
+            if progress_callback:
+                progress_callback(95, "数据间断补全完成")
+            
+            return df_complete
+            
+        except Exception as e:
+            print(f"补全数据间断失败: {e}")
+            return df
+    
+    def _detect_data_gaps(self, df: pd.DataFrame, timeframe: str) -> List[Dict]:
+        """
+        检测数据中的时间间断
+        
+        Args:
+            df: 数据DataFrame
+            timeframe: 时间框架
+            
+        Returns:
+            间断信息列表
+        """
+        try:
+            gaps = []
+            
+            # 确保数据格式标准化
+            df_work = self._ensure_data_format(df)
+            
+            # 确保时区一致 - 移除时区信息
+            if df_work.index.tz is not None:
+                df_work.index = df_work.index.tz_localize(None)
+            
+            # 计算预期时间间隔
+            timeframe_intervals = {
+                '1m': pd.Timedelta('1 minute'),
+                '3m': pd.Timedelta('3 minutes'),
+                '5m': pd.Timedelta('5 minutes'),
+                '15m': pd.Timedelta('15 minutes'),
+                '30m': pd.Timedelta('30 minutes'),
+                '1h': pd.Timedelta('1 hour'),
+                '2h': pd.Timedelta('2 hours'),
+                '4h': pd.Timedelta('4 hours'),
+                '6h': pd.Timedelta('6 hours'),
+                '8h': pd.Timedelta('8 hours'),
+                '12h': pd.Timedelta('12 hours'),
+                '1d': pd.Timedelta('1 day'),
+            }
+            
+            expected_interval = timeframe_intervals.get(timeframe, pd.Timedelta('1 minute'))
+            
+            # 计算时间差
+            time_diff = df_work.index.to_series().diff()
+            # print('time_diff 完整内容:')
+            # print(time_diff.to_string())  
+
+            # 检测大断层（超过预期间隔的2.5倍）
+            gap_threshold = expected_interval * 1.5
+            large_gaps = time_diff[time_diff > gap_threshold]
+            
+            for idx, gap in large_gaps.items():
+                gap_start = idx - gap
+                gap_end = idx
+                
+                gaps.append({
+                    'start_time': gap_start,
+                    'end_time': gap_end,
+                    'duration': gap,
+                    'expected_interval': expected_interval,
+                    'missing_intervals': int(gap.total_seconds() / expected_interval.total_seconds())
+                })
+            
+            print(f"检测到 {len(gaps)} 个数据间断")
+            return gaps
+            
+        except Exception as e:
+            print(f"检测数据间断失败: {e}")
+            return []
+    
+    def _download_missing_data(self, df: pd.DataFrame, gaps: List[Dict], symbol: str, 
+                              timeframe: str, progress_callback=None) -> pd.DataFrame:
+        """
+        下载缺失的数据
+        
+        Args:
+            df: 原始数据
+            gaps: 间断信息
+            symbol: 交易对
+            timeframe: 时间框架
+            progress_callback: 进度回调
+            
+        Returns:
+            补全后的数据
+        """
+        try:
+            if not gaps:
+                return df
+            
+            exchange = self.get_exchange_instance()
+            if not exchange:
+                print("无法创建交易所实例，跳过数据补全")
+                return df
+            
+            df_complete = df.copy()
+            total_gaps = len(gaps)
+            
+            for i, gap in enumerate(gaps):
+                if progress_callback:
+                    progress = 87 + int((i + 1) / total_gaps * 8)
+                    progress_callback(progress, f"补全间断 {i+1}/{total_gaps}...")
+                
+                try:
+                    # 下载缺失数据 - 确保时区一致性
+                    start_time = gap['start_time']
+                    end_time = gap['end_time']
+                    
+                    # 移除时区信息以避免比较错误
+                    if hasattr(start_time, 'tz') and start_time.tz is not None:
+                        start_time = start_time.tz_localize(None)
+                    if hasattr(end_time, 'tz') and end_time.tz is not None:
+                        end_time = end_time.tz_localize(None)
+                    
+                    start_timestamp = int(start_time.timestamp() * 1000)
+                    end_timestamp = int(end_time.timestamp() * 1000)
+                    
+                    # 分批下载缺失数据
+                    missing_data = []
+                    current_ts = start_timestamp
+                    
+                    while current_ts < end_timestamp:
+                        # 计算剩余时间区间
+                        remaining_time = end_timestamp - current_ts
+                        timeframe_ms = exchange.parse_timeframe(timeframe) * 1000
+                        
+                        # 计算理论上剩余的数据条数
+                        remaining_candles = remaining_time // timeframe_ms
+                        
+                        # 动态设置 limit，但不超过1000
+                        dynamic_limit = min(remaining_candles, 1000)
+                        #print(f"dynamic_limit: {dynamic_limit}")
+                        
+                        ohlcv = exchange.fetch_ohlcv(
+                            symbol, 
+                            timeframe, 
+                            current_ts,
+                            limit=dynamic_limit
+                        )
+                        
+                        if not ohlcv:
+                            print(f"没有数据，继续用当前的current_ts尝试下载")
+                            # 如果没有数据，继续用当前的current_ts尝试下载
+                            # 不要推进时间，因为可能这个时间点确实没有数据
+                            continue
+                        else:
+                            # 如果有数据，使用最后一条数据的时间戳推进
+                            missing_data.extend(ohlcv)
+                            last_timestamp = ohlcv[-1][0]  # 最后一条数据的时间戳
+                            #print(f"last_timestamp: {last_timestamp}")
+                            current_ts = last_timestamp + timeframe_ms
+                        
+                        # 限速
+                        time.sleep(exchange.rateLimit / 1000)
+                    
+                    if missing_data:
+                        # 转换为DataFrame
+                        missing_df = pd.DataFrame(missing_data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+                        missing_df['date'] = pd.to_datetime(missing_df['timestamp'], unit='ms')
+                        missing_df = missing_df.set_index('date').drop('timestamp', axis=1)
+                        
+                        # 在合并之前确保时区一致
+                        # 如果原始数据有时区，先移除时区
+                        if hasattr(df_complete.index, 'tz') and df_complete.index.tz is not None:
+                            print('移除原始数据时区信息')
+                            df_complete.index = df_complete.index.tz_localize(None)
+                        
+                        # 确保新数据也无时区
+                        if hasattr(missing_df.index, 'tz') and missing_df.index.tz is not None:
+                            print('移除新数据时区信息')
+                            missing_df.index = missing_df.index.tz_localize(None)
+                        
+                        # 合并数据
+                        df_complete = pd.concat([df_complete, missing_df], ignore_index=False)
+                        print('df_complete 合并成功')
+                        
+                        # 确保没有重复的 date 列
+                        if 'date' in df_complete.columns and df_complete.index.name == 'date':
+                            print('检测到重复的 date 列，移除列中的 date')
+                            df_complete = df_complete.drop('date', axis=1)
+                        
+                        # 去重前的详细统计
+                        #print(f"去重前数据: {len(df_complete)} 条")
+                        print(f"去重前重复时间点数量: {df_complete.index.duplicated().sum()} 条")
+                        #print(f"去重前时间范围: {df_complete.index.min()} 到 {df_complete.index.max()}")
+                        
+                        # 记录去重前的数据量
+                        before_count = len(df_complete)
+                        
+                        # 执行去重 - 按 index（时间点）去重，不是按列去重
+                        df_complete = df_complete[~df_complete.index.duplicated(keep='last')].sort_index()
+                        
+                        # 去重后的详细统计
+                        #print(f"去重后数据: {len(df_complete)} 条")
+                        print(f"去重后重复时间点数量: {df_complete.index.duplicated().sum()} 条")
+                        #print(f"去重后时间范围: {df_complete.index.min()} 到 {df_complete.index.max()}")
+                        
+                        # 计算实际移除的数量
+                        removed_count = before_count - len(df_complete)
+                        if removed_count > 0:
+                            print(f"✅ 成功移除 {removed_count} 条重复数据")
+                        else:
+                            print("✅ 没有发现重复数据，无需移除")
+                        
+                        # 验证去重是否成功
+                        if df_complete.index.duplicated().sum() == 0:
+                            print("✅ 去重验证成功，没有重复时间点")
+                        else:
+                            print(f"❌ 去重验证失败，仍有 {df_complete.index.duplicated().sum()} 个重复时间点")
+                        
+                        print(f"补全间断 {i+1}: 添加 {len(missing_data)} 条数据")
+                    
+                except Exception as e:
+                    print(f"补全间断 {i+1} 失败: {e}")
+                    continue
+            
+            
+            print(f"数据补全完成，最终数据: {len(df_complete)} 条")
+            return df_complete
+            
+        except Exception as e:
+            print(f"下载缺失数据失败: {e}")
+            return df
+    
+    def _final_validation(self, df: pd.DataFrame, timeframe: str, symbol: str) -> bool:
+        """
+        最终验证：确保数据完美，只有100分才能保存
+        
+        Args:
+            df: 数据DataFrame
+            timeframe: 时间框架
+            symbol: 交易对
+            
+        Returns:
+            是否通过验证
+        """
+        try:
+            print("开始最终数据验证...")
+            
+            # 确保数据格式标准化
+            df_check = self._ensure_data_format(df)
+            
+            # 1. 检查无重复时间点
+            duplicate_count = df_check.index.duplicated().sum()
+            if duplicate_count > 0:
+                print(f"❌ 验证失败：发现 {duplicate_count} 个重复时间点")
+                return False
+            
+            print("✅ 无重复时间点")
+            
+            # 2. 检查无时间间断
+            gaps = self._detect_data_gaps(df_check, timeframe)
+            if gaps:
+                print(f"❌ 验证失败：仍有 {len(gaps)} 个数据间断")
+                return False
+            
+            print("✅ 无时间间断")
+            
+            # 3. 检查覆盖率≥95%
+            coverage = self._calculate_coverage(df_check, timeframe)
+            if coverage < 95.0:
+                print(f"❌ 验证失败：数据覆盖率 {coverage:.2f}% < 95%")
+                return False
+            
+            print(f"✅ 数据覆盖率: {coverage:.2f}%")
+            
+            # 4. 健康度检查100分
+            # 健康度检查器期望数据有date列，所以我们需要重置索引
+            df_for_health_check = self._ensure_data_format_for_health_check(df_check)
+            health_report = health_checker.check_data_health(df_for_health_check, timeframe, symbol)
+            if not health_report['is_healthy']:
+                print(f"❌ 验证失败：健康度检查未通过 - {health_report['summary']}")
+                return False
+            
+            if health_report['health_score'] < 100.0:
+                print(f"❌ 验证失败：健康度分数 {health_report['health_score']} < 100")
+                return False
+            
+            print(f"✅ 健康度检查通过: {health_report['health_score']}分")
+            print("🎉 最终验证通过！数据完美，可以保存")
+            
+            return True
+            
+        except Exception as e:
+            print(f"最终验证失败: {e}")
+            return False
+    
+    def _auto_fix_data_issues(self, df: pd.DataFrame, timeframe: str, symbol: str, max_retries: int = 20) -> pd.DataFrame:
+        """
+        自动修复数据问题，最多重试指定次数
+        
+        Args:
+            df: 输入数据
+            timeframe: 时间框架
+            symbol: 交易对
+            max_retries: 最大重试次数
+            
+        Returns:
+            修复后的数据
+        """
+        print(f"🔧 开始自动修复数据问题，最大重试次数: {max_retries}")
+        
+        df_fixed = df.copy()
+        
+        for attempt in range(max_retries):
+            print(f"\\n🔄 修复尝试 {attempt + 1}/{max_retries}")
+            
+            # 1. 自动去重
+            df_fixed = self._remove_duplicates_auto(df_fixed)
+            
+            # 2. 检测和补全间断
+            gaps = self._detect_data_gaps(df_fixed, timeframe)
+            if gaps:
+                print(f"发现 {len(gaps)} 个数据间断，开始补全...")
+                df_fixed = self._download_missing_data(df_fixed, gaps, symbol, timeframe)
+            else:
+                print("没有发现数据间断")
+            
+            # 3. 验证修复结果
+            if self._final_validation(df_fixed, timeframe, symbol):
+                print(f"🎉 数据修复成功！在第 {attempt + 1} 次尝试后通过验证")
+                return df_fixed
+            else:
+                print(f"⚠️ 第 {attempt + 1} 次修复后仍未通过验证，继续尝试...")
+                
+                # 如果还有重复，进行更彻底的清理
+                if df_fixed.index.duplicated().sum() > 0:
+                    print("检测到重复时间点，进行深度清理...")
+                    df_fixed = self._deep_clean_duplicates(df_fixed)
+                
+                # 如果还有间断，尝试重新下载补全
+                gaps = self._detect_data_gaps(df_fixed, timeframe)
+                if gaps:
+                    print("检测到数据间断，尝试重新下载补全...")
+                    df_fixed = self._download_missing_data(df_fixed, gaps, symbol, timeframe)
+        
+        print(f"❌ 达到最大重试次数 {max_retries}，数据修复失败")
+        return df_fixed
+    
+    def _ensure_data_format(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        确保数据既有date索引又有date列，不改变原始数据
+        
+        Args:
+            df: 输入数据
+            
+        Returns:
+            格式标准化的数据副本
+        """
+        try:
+            df_work = df.copy()  # 创建副本，不修改原始数据
+            
+            # 如果只有索引，添加列
+            if df_work.index.name == 'date' and 'date' not in df_work.columns:
+                df_work['date'] = df_work.index
+                print("✅ 数据格式标准化：添加date列")
+            # 如果只有列，设置索引
+            elif 'date' in df_work.columns and df_work.index.name != 'date':
+                df_work = df_work.set_index('date')
+                print("✅ 数据格式标准化：设置date索引")
+            # 如果既有索引又有列，确保一致性
+            elif df_work.index.name == 'date' and 'date' in df_work.columns:
+                # 确保索引和列的值一致
+                if not df_work.index.equals(df_work['date']):
+                    df_work['date'] = df_work.index
+                    print("✅ 数据格式标准化：同步date列和索引")
+                else:
+                    print("✅ 数据格式已标准化")
+            else:
+                print("⚠️ 数据格式异常，尝试修复...")
+                # 尝试从索引创建date列
+                if df_work.index.name == 'date':
+                    df_work['date'] = df_work.index
+                # 或者从列创建索引
+                elif 'date' in df_work.columns:
+                    df_work = df_work.set_index('date')
+                else:
+                    print("❌ 无法识别数据格式")
+                    return df
+            
+            return df_work
+            
+        except Exception as e:
+            print(f"数据格式标准化失败: {e}")
+            return df
+    
+    def _ensure_data_format_for_health_check(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        为健康度检查准备数据格式（只有date列，没有date索引）
+        
+        Args:
+            df: 输入数据
+            
+        Returns:
+            适合健康度检查的数据格式
+        """
+        try:
+            df_work = df.copy()
+            
+            # 如果有date索引，重置索引
+            if df_work.index.name == 'date':
+                # 如果同时有date列，先重命名索引
+                if 'date' in df_work.columns:
+                    df_work.index.name = 'date_index'
+                    print("✅ 为健康度检查准备数据：重命名索引避免冲突")
+                
+                df_work = df_work.reset_index()
+                print("✅ 为健康度检查准备数据：重置索引")
+                
+                # 如果现在有date_index列，将其重命名为date，并移除原来的date列
+                if 'date_index' in df_work.columns and 'date' in df_work.columns:
+                    df_work['date'] = df_work['date_index']
+                    df_work = df_work.drop('date_index', axis=1)
+                    print("✅ 为健康度检查准备数据：统一date列")
+            
+            # 确保有date列
+            if 'date' not in df_work.columns:
+                print("❌ 数据缺少date列，无法进行健康度检查")
+                return df
+            
+            # 移除重复的date列（如果存在）
+            if df_work.columns.duplicated().any():
+                df_work = df_work.loc[:, ~df_work.columns.duplicated()]
+                print("✅ 移除重复列")
+            
+            return df_work
+            
+        except Exception as e:
+            print(f"为健康度检查准备数据失败: {e}")
+            return df
+    
+    def _remove_duplicates_auto(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        自动去除重复数据
+        
+        Args:
+            df: 输入数据
+            
+        Returns:
+            去重后的数据
+        """
+        try:
+            # 确保数据格式标准化
+            df_work = self._ensure_data_format(df)
+            
+            # 统计重复情况
+            duplicate_count = df_work.index.duplicated().sum()
+            if duplicate_count == 0:
+                print("✅ 没有发现重复时间点")
+                return df_work
+            
+            print(f"🔍 发现 {duplicate_count} 个重复时间点，开始去重...")
+            
+            # 方法1: 保留最新的数据
+            df_clean = df_work[~df_work.index.duplicated(keep='last')]
+            print(f"方法1去重后: {len(df_clean)} 条 (保留最新)")
+            
+            # 方法2: 如果还有重复，尝试基于OHLCV的去重
+            if df_clean.index.duplicated().sum() > 0:
+                print("方法1仍有重复，尝试基于OHLCV的去重...")
+                df_clean = self._remove_duplicates_by_ohlcv(df_clean)
+            
+            # 方法3: 如果还有重复，尝试基于时间窗口的去重
+            if df_clean.index.duplicated().sum() > 0:
+                print("方法2仍有重复，尝试基于时间窗口的去重...")
+                df_clean = self._remove_duplicates_by_time_window(df_clean)
+            
+            final_duplicates = df_clean.index.duplicated().sum()
+            print(f"去重完成，剩余重复: {final_duplicates} 个")
+            
+            return df_clean
+            
+        except Exception as e:
+            print(f"自动去重失败: {e}")
+            return df
+    
+    def _remove_duplicates_by_ohlcv(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        基于OHLCV数据去重
+        
+        Args:
+            df: 输入数据
+            
+        Returns:
+            去重后的数据
+        """
+        try:
+            # 确保数据格式标准化
+            df_work = self._ensure_data_format(df)
+            
+            # 重置索引，基于所有列去重
+            df_temp = df_work.reset_index()
+            
+            # 基于时间和其他列去重
+            df_clean = df_temp.drop_duplicates(subset=['date', 'open', 'high', 'low', 'close', 'volume'], keep='last')
+            
+            # 重新设置索引
+            df_clean = df_clean.set_index('date')
+            
+            print(f"基于OHLCV去重后: {len(df_clean)} 条")
+            return df_clean
+            
+        except Exception as e:
+            print(f"基于OHLCV去重失败: {e}")
+            return df
+    
+    def _remove_duplicates_by_time_window(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        基于时间窗口去重
+        
+        Args:
+            df: 输入数据
+            
+        Returns:
+            去重后的数据
+        """
+        try:
+            # 确保数据格式标准化
+            df_work = self._ensure_data_format(df)
+            
+            # 重置索引
+            df_temp = df_work.reset_index()
+            
+            # 基于时间窗口去重（1秒内的数据视为重复）
+            df_temp['date_rounded'] = df_temp['date'].dt.round('1S')
+            df_clean = df_temp.drop_duplicates(subset=['date_rounded'], keep='last')
+            
+            # 移除辅助列，重新设置索引
+            df_clean = df_clean.drop('date_rounded', axis=1).set_index('date')
+            
+            print(f"基于时间窗口去重后: {len(df_clean)} 条")
+            return df_clean
+            
+        except Exception as e:
+            print(f"基于时间窗口去重失败: {e}")
+            return df
+    
+    def _deep_clean_duplicates(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        深度清理重复数据
+        
+        Args:
+            df: 输入数据
+            
+        Returns:
+            清理后的数据
+        """
+        try:
+            print("🔧 开始深度清理重复数据...")
+            
+            # 确保数据格式标准化
+            df_work = self._ensure_data_format(df)
+            
+            # 重置索引
+            df_temp = df_work.reset_index()
+            
+            # 1. 基于精确时间戳去重
+            df_clean = df_temp.drop_duplicates(subset=['date'], keep='last')
+            
+            # 2. 基于时间窗口去重（1秒内）
+            df_clean['date_rounded'] = df_clean['date'].dt.round('1S')
+            df_clean = df_clean.drop_duplicates(subset=['date_rounded'], keep='last')
+            
+            # 3. 基于OHLCV去重
+            df_clean = df_clean.drop_duplicates(subset=['date_rounded', 'open', 'high', 'low', 'close', 'volume'], keep='last')
+            
+            # 4. 移除辅助列，重新设置索引
+            df_clean = df_clean.drop('date_rounded', axis=1).set_index('date')
+            
+            # 5. 排序
+            df_clean = df_clean.sort_index()
+            
+            print(f"深度清理完成: {len(df_clean)} 条")
+            return df_clean
+            
+        except Exception as e:
+            print(f"深度清理失败: {e}")
+            return df
+    
+
+    
+
+    
+    def _get_timeframe_interval(self, timeframe: str) -> pd.Timedelta:
+        """
+        获取时间框架对应的时间间隔
+        
+        Args:
+            timeframe: 时间框架
+            
+        Returns:
+            时间间隔
+        """
+        timeframe_intervals = {
+            '1m': pd.Timedelta('1 minute'),
+            '3m': pd.Timedelta('3 minutes'),
+            '5m': pd.Timedelta('5 minutes'),
+            '15m': pd.Timedelta('15 minutes'),
+            '30m': pd.Timedelta('30 minutes'),
+            '1h': pd.Timedelta('1 hour'),
+            '2h': pd.Timedelta('2 hours'),
+            '4h': pd.Timedelta('4 hours'),
+            '6h': pd.Timedelta('6 hours'),
+            '8h': pd.Timedelta('8 hours'),
+            '12h': pd.Timedelta('12 hours'),
+            '1d': pd.Timedelta('1 day'),
+        }
+        
+        return timeframe_intervals.get(timeframe, pd.Timedelta('1 minute'))
+    
+    def _calculate_coverage(self, df: pd.DataFrame, timeframe: str) -> float:
+        """
+        计算数据覆盖率
+        
+        Args:
+            df: 数据DataFrame
+            timeframe: 时间框架
+            
+        Returns:
+            覆盖率百分比
+        """
+        try:
+            if df.empty:
+                return 0.0
+            
+            # 确保数据格式标准化
+            df_check = self._ensure_data_format(df)
+            
+            # 确保时区一致 - 移除时区信息
+            if df_check.index.tz is not None:
+                df_check.index = df_check.index.tz_localize(None)
+            
+            # 计算时间跨度
+            time_span = df_check.index.max() - df_check.index.min()
+            
+            # 计算预期数据条数
+            timeframe_intervals = {
+                '1m': pd.Timedelta('1 minute'),
+                '3m': pd.Timedelta('3 minutes'),
+                '5m': pd.Timedelta('5 minutes'),
+                '15m': pd.Timedelta('15 minutes'),
+                '30m': pd.Timedelta('30 minutes'),
+                '1h': pd.Timedelta('1 hour'),
+                '2h': pd.Timedelta('2 hours'),
+                '4h': pd.Timedelta('4 hours'),
+                '6h': pd.Timedelta('6 hours'),
+                '8h': pd.Timedelta('8 hours'),
+                '12h': pd.Timedelta('12 hours'),
+                '1d': pd.Timedelta('1 day'),
+            }
+            
+            expected_interval = timeframe_intervals.get(timeframe, pd.Timedelta('1 minute'))
+            expected_count = time_span.total_seconds() / expected_interval.total_seconds() + 1
+            actual_count = len(df_check)
+            
+            coverage = (actual_count / expected_count * 100) if expected_count > 0 else 0
+            return round(coverage, 2)
+            
+        except Exception as e:
+            print(f"计算覆盖率失败: {e}")
+            return 0.0
     
     def get_available_symbols(self, config_id: int) -> Dict:
         """

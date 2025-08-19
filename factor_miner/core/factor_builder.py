@@ -686,16 +686,16 @@ class FactorBuilder:
                             print(f"⚠️ 未找到ML因子artifact: {factor_id}.pkl，尝试保存为function类型")
                             # 即使没有artifact，ML因子也应该保存为function类型
                             # 因为它们的计算逻辑在functions文件中
-                            success = self.storage.save_function_factor(
-                                factor_id=factor_id,
-                                name=factor_name,
-                                function_code=self._generate_ml_factor_code(factor_name, factor_type),
+                        success = self.storage.save_function_factor(
+                            factor_id=factor_id,
+                            name=factor_name,
+                            function_code=self._generate_ml_factor_code(factor_name, factor_type),
                                 description=f"机器学习生成的{factor_name}因子（函数实现）",
-                                category=factor_type,
-                                parameters={}
-                            )
-                            if success:
-                                print(f"✅ ML因子 {factor_name} 保存为function类型成功")
+                            category=factor_type,
+                            parameters={}
+                        )
+                        if success:
+                            print(f"✅ ML因子 {factor_name} 保存为function类型成功")
                     else:
                         # 其他因子保存为公式类型
                         success = self.storage.save_formula_factor(
@@ -738,7 +738,7 @@ def calculate(data: pd.DataFrame, **kwargs) -> pd.Series:
         data: 市场数据DataFrame，必须包含 OHLCV 列
         **kwargs: 其他参数
         
-    Returns:
+        Returns:
         因子值Series，预测结果
     \"\"\"
     try:
@@ -812,7 +812,7 @@ def calculate(data: pd.DataFrame, **kwargs) -> pd.Series:
         print(f"计算{factor_name}因子时出错: {{e}}")
         import traceback
         traceback.print_exc()
-        return pd.Series(index=data.index, dtype=float)
+    return pd.Series(index=data.index, dtype=float)
 
 def _build_features(data: pd.DataFrame) -> pd.DataFrame:
     \"\"\"构建与训练一致的特征\"\"\"
