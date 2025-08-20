@@ -53,7 +53,7 @@ logs/
 # data/binance/*/*.feather
 
 # User config (contains sensitive information)
-data/user_config/
+config/user_config/
 config/user_config.json
 
 # Temporary files

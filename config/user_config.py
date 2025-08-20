@@ -16,7 +16,7 @@ class UserConfigManager:
     
     def __init__(self, config_dir: str = None):
         if config_dir is None:
-            config_dir = Path(__file__).parent.parent / "data" / "user_config"
+            config_dir = Path(__file__).parent / "user_config"
         
         self.config_dir = Path(config_dir)
         self.config_dir.mkdir(parents=True, exist_ok=True)
