@@ -305,11 +305,54 @@
         "execution_time": 0,
         "output_path": ""
       }
+    },
+    {
+      "session_id": "5e62d969-c470-4358-8745-864eaaa6af6a",
+      "timestamp": "2025-08-20T09:12:34.054072",
+      "status": "completed",
+      "config": {
+        "symbols": [
+          "SUI_USDT"
+        ],
+        "timeframes": [
+          "1m"
+        ],
+        "factor_types": [
+          "ml"
+        ],
+        "max_factors": 15,
+        "optimization_method": "greedy",
+        "start_date": "2024-01-01",
+        "end_date": "2024-05-31"
+      },
+      "results": {
+        "total_factors": 15,
+        "selected_factors": [
+          "pca_component_4",
+          "pca_component_1",
+          "rolling_ml_factor",
+          "ensemble_random_forest",
+          "adaptive_ml_factor",
+          "ensemble_ridge",
+          "ensemble_lasso",
+          "pca_component_5",
+          "pca_component_8",
+          "pca_component_2",
+          "pca_component_3",
+          "feature_selection_mutual_info_weighted",
+          "feature_selection_f_regression_mean",
+          "feature_selection_mutual_info_mean",
+          "feature_selection_f_regression_weighted"
+        ],
+        "optimization_score": 0.2437330154670194,
+        "execution_time": 0,
+        "output_path": ""
+      }
     }
   ],
   "metadata": {
-    "total_sessions": 7,
-    "last_updated": "2025-08-19T13:56:39.167255",
+    "total_sessions": 8,
+    "last_updated": "2025-08-20T09:12:34.054092",
     "version": "1.0"
   }
 }

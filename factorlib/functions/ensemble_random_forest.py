@@ -10,14 +10,14 @@ def calculate(data: pd.DataFrame, **kwargs) -> pd.Series:
     """
     计算ensemble_random_forest因子
     
-    加载预训练的随机森林模型，使用pkl文件进行推理
+    智能加载预训练的ML模型，使用pkl文件进行推理
     
     Args:
         data: 市场数据DataFrame，必须包含 OHLCV 列
         **kwargs: 其他参数
         
-    Returns:
-        因子值Series，预测的下一期收益率
+        Returns:
+        因子值Series，预测结果
     """
     try:
         # 检查数据完整性
@@ -30,13 +30,26 @@ def calculate(data: pd.DataFrame, **kwargs) -> pd.Series:
             print(f"缺少必要的列: {missing_cols}")
             return pd.Series(index=data.index, dtype=float)
         
-        # 加载预训练的模型
-        model_path = Path(__file__).parent.parent / "models" / "ensemble_random_forest.pkl"
-        if not model_path.exists():
-            print(f"模型文件不存在: {model_path}")
+        # 智能查找模型文件
+        model_paths = [
+            Path(__file__).parent.parent / "models" / "ensemble_random_forest.pkl",
+            Path.cwd() / "factorlib" / "models" / "ensemble_random_forest.pkl",
+            Path(__file__).parent.parent.parent / "models" / "ensemble_random_forest.pkl"
+        ]
+        
+        artifact_file = None
+        for path in model_paths:
+            if path.exists():
+                artifact_file = path
+                break
+        
+        if artifact_file is None:
+            print(f"未找到模型文件: {factor_name}.pkl")
+            print(f"尝试过的路径: {[str(p) for p in model_paths]}")
             return pd.Series(index=data.index, dtype=float)
         
-        with open(model_path, 'rb') as f:
+        # 加载预训练的模型
+        with open(artifact_file, 'rb') as f:
             artifact = pickle.load(f)
         
         model = artifact.get("model")
@@ -77,7 +90,7 @@ def calculate(data: pd.DataFrame, **kwargs) -> pd.Series:
         print(f"计算ensemble_random_forest因子时出错: {e}")
         import traceback
         traceback.print_exc()
-        return pd.Series(index=data.index, dtype=float)
+    return pd.Series(index=data.index, dtype=float)
 
 def _build_features(data: pd.DataFrame) -> pd.DataFrame:
     """构建与训练一致的特征"""
@@ -86,7 +99,7 @@ def _build_features(data: pd.DataFrame) -> pd.DataFrame:
     # 价格动量特征
     features['price_momentum_1'] = data['close'].pct_change(1)
     features['price_momentum_5'] = data['close'].pct_change(5)
-    features['price_momentum_10'] = data['close'].pct_change(1)
+    features['price_momentum_10'] = data['close'].pct_change(10)
     
     # 成交量特征
     features['volume_ratio'] = data['volume'] / data['volume'].rolling(20).mean()

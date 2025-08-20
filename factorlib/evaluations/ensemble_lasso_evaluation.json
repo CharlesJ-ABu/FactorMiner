@@ -319,6 +319,69 @@
         "autocorr_lag_10": 0.8910128473438022
       },
       "evaluated_at": "2025-08-19T13:56:39.049365"
+    },
+    {
+      "metadata": {
+        "mining_session": true,
+        "mining_config": {
+          "factor_types": [
+            "ml"
+          ],
+          "optimization": {
+            "method": "greedy",
+            "max_factors": 15,
+            "min_ic": 0.02,
+            "min_ir": 0.1
+          },
+          "evaluation": {
+            "min_sample_size": 30,
+            "metrics": [
+              "ic_pearson",
+              "ic_spearman",
+              "sharpe_ratio",
+              "win_rate",
+              "factor_decay"
+            ]
+          }
+        },
+        "factor_type": [
+          "ml"
+        ],
+        "symbols": [],
+        "timeframes": []
+      },
+      "results": {
+        "factor_name": "ensemble_lasso",
+        "data_length": 217441,
+        "missing_ratio": 0.0,
+        "ic_pearson": -0.001962551205958866,
+        "ic_spearman": -0.0033714158545223383,
+        "ic_kendall": -0.0027538841978235872,
+        "mutual_information": 3.35352558104597e-06,
+        "long_short_return": 0.0,
+        "long_return": 2.611296935662087e-06,
+        "short_return": 2.611296935662087e-06,
+        "returns_std": 0.0017587877629912118,
+        "sharpe_ratio": 0.0,
+        "group_returns": {
+          "0": 2.611296935662087e-06
+        },
+        "skewness": 0.0,
+        "kurtosis": 4432.673609100235,
+        "turnover": 1.1784886048047746e-11,
+        "win_rate": 0.4830367777925966,
+        "autocorr_lag_1": 0.9897410422058763,
+        "autocorr_lag_2": 0.9793747234883499,
+        "autocorr_lag_3": 0.968897597862343,
+        "autocorr_lag_4": 0.9583060309910305,
+        "autocorr_lag_5": 0.9475961854494221,
+        "autocorr_lag_6": 0.9367640044736109,
+        "autocorr_lag_7": 0.925805193996676,
+        "autocorr_lag_8": 0.9147152027485776,
+        "autocorr_lag_9": 0.9034892001579351,
+        "autocorr_lag_10": 0.892122051750351
+      },
+      "evaluated_at": "2025-08-20T09:12:31.317265"
     }
   ]
 }
