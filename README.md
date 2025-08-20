@@ -45,6 +45,15 @@ pip install -r requirements.txt
 
 ### 2. 启动Web界面
 ```bash
+# 如果无法连接交易所需要使用代理请设置代理
+# linux/mac
+export HTTP_PROXY=http://127.0.0.1:7890
+export HTTP_PROXY=http://127.0.0.1:7890
+
+# windows
+set HTTP_PROXY=http://127.0.0.1:7890
+set HTTPS_PROXY=http://127.0.0.1:7890
+
 # 启动Web服务
 python run_webui.py
 

@@ -52,10 +52,19 @@ def get_exchange_instance(exchange_id, is_futures=False):
     """获取交易所实例"""
     exchange_class = getattr(ccxt, exchange_id)
     
-    # 基础配置
+    # 基础配置 - 检测环境变量中的代理配置
+    http_proxy = os.getenv('HTTP_PROXY')
+    https_proxy = os.getenv('HTTPS_PROXY')
+    proxies = {}
+    if http_proxy:
+        proxies['http'] = http_proxy
+    if https_proxy:
+        proxies['https'] = https_proxy
+
     options = {
         'enableRateLimit': True,
         'timeout': 30000,
+        'proxies': proxies if proxies else None
     }
     
     # 为不同交易所配置期货市场选项
