@@ -2,6 +2,7 @@
 pandas>=1.5.0
 numpy>=1.21.0
 scipy>=1.9.0
+ta
 
 # 机器学习
 scikit-learn>=1.1.0
@@ -28,6 +29,7 @@ psutil>=5.9.0
 
 # 交易所接口
 ccxt>=4.0.0
+yfinance
 
 # 数据存储
-sqlite3 
+sqlite3
