@@ -358,8 +358,8 @@ class SmartBatchDownloader(DataDownloader):
             
             # 保存数据
             save_path.parent.mkdir(parents=True, exist_ok=True)
-            df_save.to_feather(save_path)
-            
+            df_save.reset_index().to_feather(save_path)
+
             return {
                 'success': True,
                 'message': f'数据保存成功，共 {len(df_save)} 条记录',
@@ -367,6 +367,7 @@ class SmartBatchDownloader(DataDownloader):
             }
             
         except Exception as e:
+            print(f"保存数据失败: {e}")
             return {
                 'success': False,
                 'error': f'保存失败: {e}'
