@@ -47,8 +47,8 @@ pip install -r requirements.txt
 ```bash
 # 如果无法连接交易所需要使用代理请设置代理
 # linux/mac
-export HTTP_PROXY=http://127.0.0.1:7890
-export HTTP_PROXY=http://127.0.0.1:7890
+export HTTP_PROXY=http://127.0.0.1:7890 #端口改为自己的代理端口
+export HTTPS_PROXY=http://127.0.0.1:7890 #端口改为自己的代理端口
 
 # windows
 set HTTP_PROXY=http://127.0.0.1:7890

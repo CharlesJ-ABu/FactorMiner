@@ -314,7 +314,8 @@ class SmartBatchDownloader(DataDownloader):
                     filename = f"{symbol}_{timeframe}_{start_date}_{end_date}.feather"
             else:
                 filename = f"{symbol}_{timeframe}_{start_date}_{end_date}.feather"
-            
+            print(f"完成构建文件名: {filename}")
+
             # 确定存储目录
             if hasattr(self, 'trade_type') and self.trade_type:
                 if self.trade_type == 'futures':
@@ -327,26 +328,43 @@ class SmartBatchDownloader(DataDownloader):
                     save_path = Path("data/binance") / filename
             else:
                 save_path = Path("data/binance") / filename
+            print(f"生成保存路径: {save_path}")
             
             # 检查现有文件并合并
             if save_path.exists():
                 try:
                     existing_df = pd.read_feather(save_path)
+                    print(f"读取到现有数据: {len(existing_df)} 条")
                     
                     # 确保两个数据框的 date 列都是 datetime 类型
-                    if 'date' in existing_df.columns:
-                        if existing_df['date'].dtype == 'int64':
-                            existing_df['date'] = pd.to_datetime(existing_df['date'], unit='ms')
-                        elif existing_df['date'].dtype == 'int32':
-                            existing_df['date'] = pd.to_datetime(existing_df['date'], unit='s')
+                    if 'date' in existing_df.columns and len(existing_df) > 0:
+                        try:
+                            # 检查数据类型并转换
+                            if existing_df['date'].dtype in ['int64', 'int32']:
+                                # 根据数值大小判断单位
+                                sample_date = existing_df['date'].iloc[0]
+                                if sample_date > 1e12:  # 毫秒时间戳
+                                    existing_df['date'] = pd.to_datetime(existing_df['date'], unit='ms')
+                                else:  # 秒时间戳
+                                    existing_df['date'] = pd.to_datetime(existing_df['date'], unit='s')
+                            elif existing_df['date'].dtype == 'object':
+                                existing_df['date'] = pd.to_datetime(existing_df['date'])
+                            
+                            print(f"✅ 成功转换date列，数据类型: {existing_df['date'].dtype}")
+                        except Exception as e:
+                            print(f"❌ 转换date列失败: {e}")
+                            # 如果转换失败，跳过后续处理
+                            return None
                     
                     # 新数据已经有 date 列，无需处理
                     print("合并时：数据格式已正确")
                     
                     # 合并数据，按 date 去重，保留最新的数据
                     combined_df = pd.concat([existing_df, df_save], ignore_index=True)
-                    combined_df = combined_df.drop_duplicates(subset=['date'], keep='last').sort_values('date')
-                    
+                    #combined_df = combined_df.drop_duplicates(subset=['date'], keep='last').sort_values('date')
+                    combined_df = combined_df[~combined_df.index.duplicated(keep='last')].sort_index()
+
+
                     print(f"合并完成：原数据 {len(existing_df)} 行，新数据 {len(df_save)} 行，合并后 {len(combined_df)} 行")
                     df_save = combined_df
                     
@@ -359,6 +377,7 @@ class SmartBatchDownloader(DataDownloader):
             # 保存数据
             save_path.parent.mkdir(parents=True, exist_ok=True)
             df_save.reset_index().to_feather(save_path)
+            print(f"保存数据成功，共 {len(df_save)} 条记录")
 
             return {
                 'success': True,
