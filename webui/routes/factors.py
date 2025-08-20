@@ -465,20 +465,34 @@ def load_local_market_data(symbol, timeframe, start_date, end_date, exchange='bi
             if cand in data.columns:
                 time_col = cand
                 break
+        
         if time_col is not None:
+            # 找到时间列，正确设置索引
+            print(f"找到时间列: {time_col}")
             data[time_col] = parse_time_series(data[time_col])
             data.set_index(time_col, inplace=True)
         else:
-            # 如果没有明确的时间列，尝试使用第一列作为时间索引
-            print("没有找到时间列，尝试使用第一列作为时间索引")
-            try:
-                first_col = data.columns[0]
-                data[first_col] = parse_time_series(data[first_col])
-                data.set_index(first_col, inplace=True)
-            except Exception as e:
-                print(f"设置时间索引失败: {e}")
-                # 如果设置时间索引失败，使用默认的数字索引
-                pass
+            # 没有找到时间列，检查数据是否已经有正确的索引
+            if isinstance(data.index, pd.DatetimeIndex):
+                print("数据已有正确的时间索引，无需设置")
+            else:
+                # 尝试从文件名推断时间信息
+                print("没有找到时间列，且数据没有时间索引")
+                print("尝试从文件名推断时间信息...")
+                
+                # 检查数据是否已经是正确的格式（feather文件通常保持索引）
+                if len(data) > 0:
+                    print(f"数据行数: {len(data)}")
+                    print(f"数据列: {list(data.columns)}")
+                    print(f"当前索引类型: {type(data.index)}")
+                    
+                    # 如果数据量很大且没有时间索引，可能是索引丢失了
+                    if len(data) > 1000 and not isinstance(data.index, pd.DatetimeIndex):
+                        print("警告：数据量大但缺少时间索引，可能无法正确加载")
+                        return None
+                else:
+                    print("数据为空，无法处理")
+                    return None
         
         print(f"设置索引后的数据形状: {data.shape}")
         print(f"设置索引后的索引类型: {type(data.index)}")
@@ -494,7 +508,12 @@ def load_local_market_data(symbol, timeframe, start_date, end_date, exchange='bi
                 # 确保索引是datetime类型
                 if not isinstance(data.index, pd.DatetimeIndex):
                     print("警告：数据索引不是datetime类型，尝试转换...")
-                    data.index = pd.to_datetime(data.index, utc=True)
+                    try:
+                        data.index = pd.to_datetime(data.index, utc=True)
+                    except Exception as conv_err:
+                        print(f"索引转换失败: {conv_err}")
+                        return None
+                
                 # 统一索引到UTC（若无tz则本地化为UTC）
                 try:
                     if data.index.tz is None:
@@ -503,17 +522,59 @@ def load_local_market_data(symbol, timeframe, start_date, end_date, exchange='bi
                         data.index = data.index.tz_convert('UTC')
                 except Exception as tz_err:
                     print(f"时区统一失败: {tz_err}")
+                    # 如果时区处理失败，尝试移除时区信息
+                    try:
+                        data.index = data.index.tz_localize(None)
+                        print("已移除时区信息，使用本地时间")
+                    except Exception:
+                        print("时区处理完全失败")
+                        return None
                 
+                # 执行日期过滤
+                original_count = len(data)
                 data = data[(data.index >= start_dt) & (data.index <= end_dt)]
-                print(f"日期过滤后的数据形状: {data.shape}")
+                filtered_count = len(data)
+                print(f"日期过滤: {original_count} -> {filtered_count} 条记录")
+                
+                if filtered_count == 0:
+                    print("警告：过滤后数据为空，请检查日期范围")
+                    print(f"数据时间范围: {data.index.min()} 到 {data.index.max()}")
+                    print(f"请求时间范围: {start_dt} 到 {end_dt}")
+                    
             except Exception as e:
                 print(f"日期过滤失败: {e}")
-                # 如果日期过滤失败，继续使用原始数据
+                # 如果日期过滤失败，返回None而不是继续使用原始数据
+                return None
         
         # 确保数据按时间排序
         data.sort_index(inplace=True)
         
-        print(f"成功加载数据: {len(data)} 条记录")
+        # 最终数据验证
+        if len(data) == 0:
+            print("❌ 最终数据为空，无法使用")
+            return None
+        
+        # 验证数据完整性
+        required_columns = ['open', 'high', 'low', 'close', 'volume']
+        missing_columns = [col for col in required_columns if col not in data.columns]
+        if missing_columns:
+            print(f"❌ 数据缺少必要列: {missing_columns}")
+            return None
+        
+        # 验证时间索引
+        if not isinstance(data.index, pd.DatetimeIndex):
+            print("❌ 数据索引不是时间类型")
+            return None
+        
+        # 检查时间范围
+        time_range = data.index.max() - data.index.min()
+        if time_range.total_seconds() < 60:  # 少于1分钟
+            print("❌ 数据时间范围过短")
+            return None
+        
+        print(f"✅ 成功加载数据: {len(data)} 条记录")
+        print(f"   时间范围: {data.index.min()} 到 {data.index.max()}")
+        print(f"   数据列: {list(data.columns)}")
         return data
         
     except Exception as e:

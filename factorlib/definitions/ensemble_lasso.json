@@ -1,19 +1,21 @@
 {
   "factor_id": "ensemble_lasso",
   "name": "ensemble_lasso",
-  "description": "机器学习生成的ensemble_lasso因子",
+  "description": "机器学习生成的ensemble_lasso因子（函数实现）",
   "category": "ml",
   "subcategory": "",
-  "computation_type": "ml_model",
+  "computation_type": "function",
   "computation_data": {
-    "artifact_path": "models/ensemble_lasso.pkl",
-    "feature_set": "basic_v1"
+    "function_file": "functions/ensemble_lasso.py",
+    "function_code": "\nimport pandas as pd\nimport numpy as np\nimport pickle\nfrom pathlib import Path\nimport warnings\nwarnings.filterwarnings('ignore')\n\ndef calculate(data: pd.DataFrame, **kwargs) -> pd.Series:\n    \"\"\"\n    计算ensemble_lasso因子\n    \n    智能加载预训练的ML模型，使用pkl文件进行推理\n    \n    Args:\n        data: 市场数据DataFrame，必须包含 OHLCV 列\n        **kwargs: 其他参数\n        \n        Returns:\n        因子值Series，预测结果\n    \"\"\"\n    try:\n        # 检查数据完整性\n        required_cols = ['open', 'high', 'low', 'close', 'volume']\n        if data is None or len(data) == 0:\n            return pd.Series(dtype=float)\n        \n        missing_cols = [col for col in required_cols if col not in data.columns]\n        if missing_cols:\n            print(f\"缺少必要的列: {missing_cols}\")\n            return pd.Series(index=data.index, dtype=float)\n        \n        # 智能查找模型文件\n        model_paths = [\n            Path(__file__).parent.parent / \"models\" / \"ensemble_lasso.pkl\",\n            Path.cwd() / \"factorlib\" / \"models\" / \"ensemble_lasso.pkl\",\n            Path(__file__).parent.parent.parent / \"models\" / \"ensemble_lasso.pkl\"\n        ]\n        \n        artifact_file = None\n        for path in model_paths:\n            if path.exists():\n                artifact_file = path\n                break\n        \n        if artifact_file is None:\n            print(f\"未找到模型文件: {factor_name}.pkl\")\n            print(f\"尝试过的路径: {[str(p) for p in model_paths]}\")\n            return pd.Series(index=data.index, dtype=float)\n        \n        # 加载预训练的模型\n        with open(artifact_file, 'rb') as f:\n            artifact = pickle.load(f)\n        \n        model = artifact.get(\"model\")\n        feature_columns = artifact.get(\"feature_columns\", [])\n        scaler = artifact.get(\"scaler\")\n        \n        if model is None:\n            print(\"模型文件损坏：无法加载模型\")\n            return pd.Series(index=data.index, dtype=float)\n        \n        # 构建特征（与训练时一致）\n        features = _build_features(data)\n        \n        # 对齐所需列\n        missing = [c for c in feature_columns if c not in features.columns]\n        if missing:\n            print(f\"缺少特征列: {missing}\")\n            # 对缺失列补NaN，保持列齐全\n            for c in missing:\n                features[c] = np.nan\n        \n        X = features[feature_columns]\n        \n        # 清洗与标准化\n        X = X.replace([np.inf, -np.inf], np.nan)\n        X = X.fillna(method='ffill').fillna(method='bfill')\n        \n        if scaler is not None:\n            X_scaled = scaler.transform(X)\n        else:\n            X_scaled = X.values\n        \n        # 预测\n        y_pred = model.predict(X_scaled)\n        return pd.Series(y_pred, index=data.index)\n        \n    except Exception as e:\n        print(f\"计算ensemble_lasso因子时出错: {e}\")\n        import traceback\n        traceback.print_exc()\n    return pd.Series(index=data.index, dtype=float)\n\ndef _build_features(data: pd.DataFrame) -> pd.DataFrame:\n    \"\"\"构建与训练一致的特征\"\"\"\n    features = pd.DataFrame(index=data.index)\n    \n    # 价格动量特征\n    features['price_momentum_1'] = data['close'].pct_change(1)\n    features['price_momentum_5'] = data['close'].pct_change(5)\n    features['price_momentum_10'] = data['close'].pct_change(10)\n    \n    # 成交量特征\n    features['volume_ratio'] = data['volume'] / data['volume'].rolling(20).mean()\n    features['volume_momentum'] = data['volume'].pct_change(5)\n    \n    # 波动率特征\n    features['volatility_10'] = data['close'].rolling(10).std() / data['close'].rolling(10).mean()\n    features['volatility_20'] = data['close'].rolling(20).std() / data['close'].rolling(20).mean()\n    \n    # 趋势特征\n    features['trend_5'] = (data['close'] - data['close'].shift(5)) / data['close'].shift(5)\n    features['trend_10'] = (data['close'] - data['close'].shift(10)) / data['close'].shift(10)\n    \n    # 价格位置特征\n    features['price_position_20'] = (data['close'] - data['low'].rolling(20).min()) / (data['high'].rolling(20).max() - data['low'].rolling(20).min())\n    \n    # 移动平均特征\n    features['ma_5'] = data['close'] / data['close'].rolling(5).mean() - 1\n    features['ma_10'] = data['close'] / data['close'].rolling(10).mean() - 1\n    features['ma_20'] = data['close'] / data['close'].rolling(20).mean() - 1\n    \n    return features\n",
+    "entry_point": "calculate",
+    "imports": []
   },
   "parameters": {},
   "dependencies": [],
   "output_type": "series",
   "metadata": {
-    "checksum": "76d09731",
-    "created_at": "2025-08-19T13:56:39.158563"
+    "checksum": "57bbe1e1",
+    "created_at": "2025-08-20T09:12:34.040510"
   }
 }
