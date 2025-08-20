@@ -110,8 +110,41 @@
                         <div class="row mt-3">
                             <div class="col-12">
                                 <div class="card">
+                                    <div class="card-header">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-6">
+                                                <h6 class="mb-0">📈 K线图</h6>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="d-flex gap-2 justify-content-end">
+                                                    <select class="form-select form-select-sm" id="factorSelect" style="max-width: 200px;">
+                                                        <option value="">选择因子...</option>
+                                                    </select>
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="addFactor()">
+                                                        ➕ 添加因子
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-secondary" onclick="clearFactors()">
+                                                        🗑️ 清空因子
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div class="card-body p-3" style="min-height: 560px;">
                                         <div id="klineChart" style="width: 100% !important; height: 540px; max-height: 540px; overflow: hidden; border: 1px solid #e9ecef; border-radius: 4px; min-width: 100%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 已选因子列表 -->
+                        <div class="row mt-2" id="selectedFactorsRow" style="display: none;">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex flex-wrap gap-2" id="selectedFactorsList">
+                                            <!-- 已选因子标签将在这里显示 -->
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -185,6 +218,10 @@
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
 <script>
+// 全局变量
+let selectedFactors = []; // 存储已选择的因子
+let availableFactors = []; // 存储可用的因子列表
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('数据查看页面初始化');
     
@@ -203,6 +240,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     loadLocalData();
+    loadAvailableFactors(); // 加载可用因子列表
     
     // 添加筛选器事件监听器
     document.getElementById('filterExchange').addEventListener('change', function() {
@@ -215,6 +253,132 @@ document.addEventListener('DOMContentLoaded', function() {
         displayData(window.currentData || []);
     });
 });
+
+// 加载可用因子列表
+async function loadAvailableFactors() {
+    try {
+        const response = await fetch('/api/factors/list');
+        const result = await response.json();
+        
+        if (result.success) {
+            availableFactors = result.factors || [];
+            updateFactorSelect();
+        } else {
+            console.error('加载因子列表失败:', result.error);
+        }
+    } catch (error) {
+        console.error('加载因子列表失败:', error);
+    }
+}
+
+// 更新因子选择器
+function updateFactorSelect() {
+    const factorSelect = document.getElementById('factorSelect');
+    if (!factorSelect) return;
+    
+    // 清空现有选项
+    factorSelect.innerHTML = '<option value="">选择因子...</option>';
+    
+    // 添加可用因子
+    availableFactors.forEach(factor => {
+        const option = document.createElement('option');
+        option.value = factor.id;
+        option.textContent = `${factor.name} (${factor.type || '未知类型'})`;
+        factorSelect.appendChild(option);
+    });
+}
+
+// 添加因子到图表
+function addFactor() {
+    const factorSelect = document.getElementById('factorSelect');
+    const factorId = factorSelect.value;
+    
+    if (!factorId) {
+        alert('请先选择一个因子');
+        return;
+    }
+    
+    // 检查是否已经添加
+    if (selectedFactors.find(f => f.id === factorId)) {
+        alert('该因子已经添加过了');
+        return;
+    }
+    
+    // 找到因子信息
+    const factor = availableFactors.find(f => f.id === factorId);
+    if (!factor) {
+        alert('找不到因子信息');
+        return;
+    }
+    
+    // 添加到已选列表
+    selectedFactors.push({
+        id: factorId,
+        name: factor.name,
+        type: factor.type || '未知类型'
+    });
+    
+    // 更新UI
+    updateSelectedFactorsUI();
+    
+    // 重新绘制图表
+    if (window.currentOHLCVData) {
+        renderKlineChart(window.currentOHLCVData);
+    }
+    
+    // 清空选择器
+    factorSelect.value = '';
+}
+
+// 从图表中移除因子
+function removeFactor(factorId) {
+    selectedFactors = selectedFactors.filter(f => f.id !== factorId);
+    updateSelectedFactorsUI();
+    
+    // 重新绘制图表
+    if (window.currentOHLCVData) {
+        renderKlineChart(window.currentOHLCVData);
+    }
+}
+
+// 清空所有因子
+function clearFactors() {
+    selectedFactors = [];
+    updateSelectedFactorsUI();
+    
+    // 重新绘制图表
+    if (window.currentOHLCVData) {
+        renderKlineChart(window.currentOHLCVData);
+    }
+}
+
+// 更新已选因子UI
+function updateSelectedFactorsUI() {
+    const selectedFactorsRow = document.getElementById('selectedFactorsRow');
+    const selectedFactorsList = document.getElementById('selectedFactorsList');
+    
+    if (!selectedFactorsRow || !selectedFactorsList) return;
+    
+    if (selectedFactors.length === 0) {
+        selectedFactorsRow.style.display = 'none';
+        return;
+    }
+    
+    selectedFactorsRow.style.display = 'block';
+    selectedFactorsList.innerHTML = '';
+    
+    selectedFactors.forEach(factor => {
+        const factorTag = document.createElement('span');
+        factorTag.className = 'badge bg-primary me-2 mb-1';
+        factorTag.innerHTML = `
+            ${factor.name}
+            <button type="button" class="btn-close btn-close-white ms-2" 
+                    onclick="removeFactor('${factor.id}')" 
+                    style="font-size: 0.5rem;"></button>
+        `;
+        selectedFactorsList.appendChild(factorTag);
+    });
+}
 
 // 动态加载Plotly的函数
 function loadPlotly() {
@@ -455,8 +619,8 @@ function displayDataInModal(data) {
     renderMetaInfo(data);
 }
 
-// 渲染K线图 - 使用Plotly创建真正的K线图
-function renderKlineChart(ohlcvData) {
+// 渲染K线图 - 使用Plotly创建真正的K线图，支持因子叠加
+async function renderKlineChart(ohlcvData) {
     console.log('🔍 renderKlineChart 开始执行');
     console.log('📊 接收到的数据:', ohlcvData);
     console.log('📊 数据类型:', typeof ohlcvData);
@@ -471,6 +635,9 @@ function renderKlineChart(ohlcvData) {
         console.warn('⚠️ ohlcvData 长度为0');
         return;
     }
+    
+    // 保存数据到全局变量，供因子计算使用
+    window.currentOHLCVData = ohlcvData;
     
     // 检查第一条数据的结构
     console.log('🔍 第一条数据结构:', ohlcvData[0]);
@@ -555,8 +722,11 @@ function renderKlineChart(ohlcvData) {
         opacity: 0.8
     }];
     
-    // 合并数据
-    const allData = [...candlestickData, ...volumeData];
+    // 准备因子数据
+    const factorData = await prepareFactorData(ohlcvData);
+    
+    // 合并所有数据
+    const allData = [...candlestickData, ...volumeData, ...factorData];
     
     // 图表布局配置
     const layout = {
@@ -572,17 +742,25 @@ function renderKlineChart(ohlcvData) {
         yaxis: {
             title: '价格',
             side: 'left',
-            domain: [0.3, 1]  // K线图占据70%的高度
+            domain: [0.4, 1]  // K线图占据60%的高度
         },
         yaxis2: {
             title: '成交量',
             side: 'left',
-            domain: [0, 0.25],  // 成交量占据25%的高度，不重叠
+            domain: [0.2, 0.35],  // 成交量占据15%的高度
             overlaying: false    // 不重叠，独立显示
+        },
+        yaxis3: {
+            title: '因子值',
+            side: 'right',
+            domain: [0.4, 1],  // 因子值与K线图共享高度，但使用右侧y轴
+            overlaying: 'y',    // 与主y轴重叠
+            anchor: 'x',
+            position: 1
         },
         height: null, // 让高度自动适应容器
         width: null, // 让宽度自动适应容器
-        margin: { l: 40, r: 40, t: 40, b: 40 },
+        margin: { l: 40, r: 60, t: 40, b: 40 }, // 右侧留更多空间给因子y轴
         showlegend: true,
         legend: { x: 0, y: 1 },
         autosize: true,
@@ -634,6 +812,99 @@ function renderKlineChart(ohlcvData) {
                 <p>请检查数据格式是否正确</p>
             </div>
         `;
+    }
+}
+
+// 准备因子数据
+async function prepareFactorData(ohlcvData) {
+    if (!selectedFactors || selectedFactors.length === 0) {
+        return [];
+    }
+    
+    const factorData = [];
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+    
+    for (let i = 0; i < selectedFactors.length; i++) {
+        const factor = selectedFactors[i];
+        const color = colors[i % colors.length];
+        
+        try {
+            console.log(`🔍 开始计算因子: ${factor.name}`);
+            // 计算因子值
+            const factorValues = await calculateFactor(factor.id, ohlcvData);
+            console.log(`🔍 因子 ${factor.name} 计算结果:`, factorValues ? factorValues.length : 'null');
+            
+            if (factorValues && factorValues.length > 0) {
+                console.log(`🔍 创建因子线图: ${factor.name}`);
+                // 创建因子线图
+                const factorTrace = {
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: ohlcvData.map(item => item.timestamp),
+                    y: factorValues,
+                    name: factor.name,
+                    line: {
+                        color: color,
+                        width: 2
+                    },
+                    opacity: 0.8,
+                    yaxis: 'y3', // 使用第三个y轴，避免与价格和成交量重叠
+                    showlegend: true
+                };
+                
+                factorData.push(factorTrace);
+                console.log(`✅ 因子 ${factor.name} 线图创建成功`);
+            } else {
+                console.warn(`⚠️ 因子 ${factor.name} 没有有效数据`);
+            }
+        } catch (error) {
+            console.error(`❌ 计算因子 ${factor.name} 失败:`, error);
+        }
+    }
+    
+    return factorData;
+}
+
+// 计算单个因子的值
+async function calculateFactor(factorId, ohlcvData) {
+    try {
+        // 准备数据格式 - 直接使用正确的格式
+        const marketData = {
+            open: ohlcvData.map(item => item.open),
+            high: ohlcvData.map(item => item.high),
+            low: ohlcvData.map(item => item.low),
+            close: ohlcvData.map(item => item.close),
+            volume: ohlcvData.map(item => item.volume)
+        };
+        
+        console.log(`🔍 发送市场数据: ${marketData.close.length} 个收盘价`);
+        
+        // 调用因子计算API
+        const response = await fetch('/api/factors/calculate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                factor_id: factorId,
+                data: marketData,
+                parameters: {}
+            })
+        });
+        
+        const result = await response.json();
+        console.log(`🔍 API响应:`, result);
+        
+        if (result.success) {
+            console.log(`✅ 因子计算成功，返回 ${result.factor_values.length} 个值`);
+            return result.factor_values;
+        } else {
+            console.error(`❌ 因子 ${factorId} 计算失败:`, result.error);
+            return null;
+        }
+    } catch (error) {
+        console.error(`计算因子 ${factorId} 时出错:`, error);
+        return null;
     }
 }
 

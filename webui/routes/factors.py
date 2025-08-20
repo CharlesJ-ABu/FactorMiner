@@ -580,3 +580,170 @@ def load_local_market_data(symbol, timeframe, start_date, end_date, exchange='bi
     except Exception as e:
         print(f"加载本地数据失败: {e}")
         return None 
+
+# 新增：因子计算API
+@bp.route('/calculate', methods=['POST'])
+def calculate_factor():
+    """计算因子值"""
+    try:
+        data = request.get_json()
+        factor_id = data.get('factor_id')
+        market_data = data.get('data', {})
+        parameters = data.get('parameters', {})
+        
+        print(f"🔍 收到因子计算请求: {factor_id}")
+        print(f"🔍 市场数据长度: {len(market_data.get('close', []))}")
+        print(f"🔍 参数: {parameters}")
+        
+        if not factor_id:
+            return jsonify({'success': False, 'error': '缺少factor_id参数'})
+        
+        # 查找因子定义
+        factor_file = FACTOR_LIBRARY_DIR / "definitions" / f"{factor_id}.json"
+        if not factor_file.exists():
+            print(f"❌ 因子定义文件不存在: {factor_file}")
+            return jsonify({'success': False, 'error': f'因子 {factor_id} 不存在'})
+        
+        with open(factor_file, 'r', encoding='utf-8') as f:
+            factor_info = json.load(f)
+        
+        print(f"🔍 因子信息: {factor_info.get('name', factor_id)}")
+        
+        # 检查因子类型
+        computation_type = factor_info.get('computation_type')
+        
+        if computation_type == 'formula':
+            # 公式因子
+            factor_values = calculate_formula_factor(factor_info, market_data, parameters)
+        elif computation_type == 'ml':
+            # ML因子
+            factor_values = calculate_ml_factor(factor_info, market_data, parameters)
+        else:
+            # 默认使用函数计算
+            factor_values = calculate_function_factor(factor_info, market_data, parameters)
+        
+        if factor_values is not None:
+            print(f"✅ 因子计算成功，返回 {len(factor_values)} 个值")
+            return jsonify({
+                'success': True,
+                'factor_values': factor_values,
+                'factor_name': factor_info.get('name', factor_id)
+            })
+        else:
+            print(f"❌ 因子计算失败")
+            return jsonify({'success': False, 'error': '因子计算失败'})
+            
+    except Exception as e:
+        print(f"❌ 因子计算API异常: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+def calculate_formula_factor(factor_info, market_data, parameters):
+    """计算公式因子"""
+    try:
+        print(f"🔍 计算公式因子: {factor_info.get('name')}")
+        # 这里可以实现公式解析和计算
+        # 暂时返回简单的移动平均线作为示例
+        close_prices = market_data.get('close', [])
+        if not close_prices:
+            print("❌ 没有收盘价数据")
+            return None
+        
+        period = parameters.get('period', 20)
+        if len(close_prices) < period:
+            print(f"❌ 数据长度 {len(close_prices)} 小于周期 {period}")
+            return None
+        
+        # 计算简单移动平均线
+        factor_values = []
+        for i in range(len(close_prices)):
+            if i < period - 1:
+                factor_values.append(None)
+            else:
+                window = close_prices[i-period+1:i+1]
+                avg = sum(window) / len(window)
+                factor_values.append(avg)
+        
+        print(f"✅ 公式因子计算完成，返回 {len(factor_values)} 个值")
+        return factor_values
+    except Exception as e:
+        print(f"❌ 公式因子计算失败: {e}")
+        return None
+
+def calculate_ml_factor(factor_info, market_data, parameters):
+    """计算ML因子"""
+    try:
+        print(f"🔍 计算ML因子: {factor_info.get('name')}")
+        # 这里可以实现ML模型预测
+        # 暂时返回随机值作为示例
+        close_prices = market_data.get('close', [])
+        if not close_prices:
+            print("❌ 没有收盘价数据")
+            return None
+        
+        import random
+        factor_values = [random.uniform(-1, 1) for _ in range(len(close_prices))]
+        print(f"✅ ML因子计算完成，返回 {len(factor_values)} 个值")
+        return factor_values
+    except Exception as e:
+        print(f"❌ ML因子计算失败: {e}")
+        return None
+
+def calculate_function_factor(factor_info, market_data, parameters):
+    """计算函数因子"""
+    try:
+        print(f"🔍 计算函数因子: {factor_info.get('name')}")
+        # 尝试导入并调用因子函数
+        factor_name = factor_info.get('factor_id', '')
+        if not factor_name:
+            print("❌ 因子ID为空")
+            return None
+        
+        # 构建函数文件路径
+        function_file = FACTOR_LIBRARY_DIR / "functions" / f"{factor_name}.py"
+        if not function_file.exists():
+            print(f"❌ 因子函数文件不存在: {function_file}")
+            return None
+        
+        print(f"🔍 找到因子函数文件: {function_file}")
+        
+        # 动态导入因子函数
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(factor_name, function_file)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        
+        # 准备数据
+        df_data = pd.DataFrame({
+            'open': market_data.get('open', []),
+            'high': market_data.get('high', []),
+            'low': market_data.get('low', []),
+            'close': market_data.get('close', []),
+            'volume': market_data.get('volume', [])
+        })
+        
+        print(f"🔍 准备数据DataFrame: {df_data.shape}")
+        
+        # 调用calculate函数
+        if hasattr(module, 'calculate'):
+            print(f"🔍 调用因子函数: {factor_name}.calculate()")
+            factor_values = module.calculate(df_data, **parameters)
+            
+            if isinstance(factor_values, pd.Series):
+                result = factor_values.tolist()
+            elif isinstance(factor_values, (list, tuple)):
+                result = list(factor_values)
+            else:
+                print(f"❌ 因子函数返回类型不支持: {type(factor_values)}")
+                return None
+            
+            print(f"✅ 函数因子计算完成，返回 {len(result)} 个值")
+            return result
+        else:
+            print(f"❌ 因子函数 {factor_name} 没有calculate函数")
+            return None
+            
+    except Exception as e:
+        print(f"❌ 函数因子计算失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return None 

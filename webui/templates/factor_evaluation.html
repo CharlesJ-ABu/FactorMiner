@@ -22,10 +22,33 @@
             </div>
             <div class="card-body">
                 <form id="evaluationForm">
-                    <div class="mb-3">
-                        <label class="form-label">因子（可多选）</label>
-                        <select class="form-select" id="factorSelect" multiple size="8"></select>
+                                    <div class="mb-3">
+                    <label class="form-label">因子（可多选）</label>
+                    <div class="mb-2">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" id="factorSearch" placeholder="搜索因子名称、描述或类型..." />
+                            <select class="form-select" id="factorSort" style="max-width: 150px;">
+                                <option value="name">按名称排序</option>
+                                <option value="type">按类型排序</option>
+                                <option value="created">按创建时间排序</option>
+                            </select>
+                        </div>
+                        <div class="form-text small">
+                            💡 支持按因子名称、描述或类型进行搜索，实时过滤结果
+                        </div>
                     </div>
+                    <select class="form-select" id="factorSelect" multiple size="8"></select>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="form-text">
+                            <span id="factorCount">0</span> 个因子可用
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectAllFactors()">全选</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearFactorSelection()">清空</button>
+                        </div>
+                    </div>
+                </div>
                     <div class="mb-3">
                         <label class="form-label">交易所 / 类型</label>
                         <div class="d-flex gap-2">
@@ -142,6 +165,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     await refreshLocalMeta();
 });
 
+// 全局变量存储所有因子数据
+let allFactors = [];
+let filteredFactors = [];
+let searchTimeout = null; // 用于防抖
+
 async function loadFactors() {
     const sel = document.getElementById('factorSelect');
     sel.innerHTML = '';
@@ -149,14 +177,161 @@ async function loadFactors() {
         const res = await fetch('/api/factors/list');
         const data = await res.json();
         if (data.success) {
-            (data.factors || []).forEach(f => {
-                const opt = document.createElement('option');
-                opt.value = f.id; opt.textContent = f.name;
-                sel.appendChild(opt);
-            });
+            allFactors = data.factors || [];
+            // 初始化时按名称排序
+            filteredFactors = [...allFactors].sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+            updateFactorDisplay();
+            updateFactorCount();
         }
-    } catch {}
+    } catch (error) {
+        console.error('加载因子失败:', error);
+    }
 }
+
+// 更新因子显示
+function updateFactorDisplay() {
+    const sel = document.getElementById('factorSelect');
+    sel.innerHTML = '';
+    
+    // 按类型分组
+    const groupedFactors = {};
+    filteredFactors.forEach(f => {
+        const type = f.type || '其他';
+        if (!groupedFactors[type]) {
+            groupedFactors[type] = [];
+        }
+        groupedFactors[type].push(f);
+    });
+    
+    // 按类型排序，然后按名称排序
+    const sortedTypes = Object.keys(groupedFactors).sort();
+    
+    sortedTypes.forEach(type => {
+        // 添加分组标签
+        const groupOpt = document.createElement('option');
+        groupOpt.value = `group_${type}`;
+        groupOpt.textContent = `━━━ ${type} (${groupedFactors[type].length}) ━━━`;
+        groupOpt.disabled = true;
+        groupOpt.style.fontWeight = 'bold';
+        groupOpt.style.backgroundColor = '#e9ecef';
+        groupOpt.style.color = '#495057';
+        groupOpt.style.borderTop = '1px solid #dee2e6';
+        sel.appendChild(groupOpt);
+        
+        // 添加该类型下的因子
+        groupedFactors[type].forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f.id;
+            opt.textContent = `  ${f.name}`; // 添加缩进
+            opt.style.paddingLeft = '20px';
+            sel.appendChild(opt);
+        });
+    });
+}
+
+// 更新因子计数
+function updateFactorCount() {
+    const countElement = document.getElementById('factorCount');
+    if (countElement) {
+        countElement.textContent = filteredFactors.length;
+    }
+}
+
+// 搜索和过滤因子
+function filterFactors() {
+    const searchTerm = document.getElementById('factorSearch').value.toLowerCase();
+    const sortBy = document.getElementById('factorSort').value;
+    
+    // 过滤
+    if (searchTerm) {
+        filteredFactors = allFactors.filter(f => 
+            f.name.toLowerCase().includes(searchTerm) ||
+            (f.description && f.description.toLowerCase().includes(searchTerm)) ||
+            (f.type && f.type.toLowerCase().includes(searchTerm))
+        );
+    } else {
+        // 如果没有搜索词，显示所有因子
+        filteredFactors = [...allFactors];
+    }
+    
+    // 排序
+    switch (sortBy) {
+        case 'name':
+            filteredFactors.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+            break;
+        case 'type':
+            filteredFactors.sort((a, b) => {
+                const typeA = a.type || '';
+                const typeB = b.type || '';
+                if (typeA === typeB) {
+                    return a.name.localeCompare(b.name, 'zh-CN');
+                }
+                return typeA.localeCompare(typeB, 'zh-CN');
+            });
+            break;
+        case 'created':
+            filteredFactors.sort((a, b) => {
+                const dateA = new Date(a.created_at || 0);
+                const dateB = new Date(b.created_at || 0);
+                if (dateA.getTime() === dateB.getTime()) {
+                    return a.name.localeCompare(b.name, 'zh-CN');
+                }
+                return dateB.getTime() - dateA.getTime(); // 最新的在前
+            });
+            break;
+    }
+    
+    updateFactorDisplay();
+    updateFactorCount();
+}
+
+// 全选因子
+function selectAllFactors() {
+    const factorSelect = document.getElementById('factorSelect');
+    Array.from(factorSelect.options).forEach(option => {
+        if (!option.disabled && !option.value.startsWith('group_')) {
+            option.selected = true;
+        }
+    });
+}
+
+// 清空因子选择
+function clearFactorSelection() {
+    const factorSelect = document.getElementById('factorSelect');
+    Array.from(factorSelect.options).forEach(option => {
+        option.selected = false;
+    });
+}
+
+// 添加搜索和排序事件监听器
+document.getElementById('factorSearch').addEventListener('input', function() {
+    // 防抖处理，300ms 后执行搜索
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(filterFactors, 300);
+});
+document.getElementById('factorSort').addEventListener('change', filterFactors);
+
+// 添加键盘快捷键支持
+document.getElementById('factorSearch').addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        // ESC 键清空搜索
+        this.value = '';
+        filterFactors();
+        this.focus();
+    } else if (e.key === 'Enter') {
+        // Enter 键聚焦到因子选择框
+        document.getElementById('factorSelect').focus();
+    }
+});
+
+// 为因子选择框添加键盘导航
+document.getElementById('factorSelect').addEventListener('keydown', function(e) {
+    if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
+        // Ctrl+A 全选
+        e.preventDefault();
+        selectAllFactors();
+    }
+});
 
 document.getElementById('exchangeSelect').addEventListener('change', refreshLocalMeta);
 document.getElementById('tradeTypeSelect').addEventListener('change', refreshLocalMeta);
