@@ -75,15 +75,44 @@ def calculate(data: pd.DataFrame, **kwargs) -> pd.Series:
         
         # 清洗与标准化
         X = X.replace([np.inf, -np.inf], np.nan)
-        X = X.fillna(method='ffill').fillna(method='bfill')
+        
+        # 处理NaN值 - PCA不接受NaN值
+        # 方法1：前向填充，然后后向填充
+        X_cleaned = X.fillna(method='ffill').fillna(method='bfill')
+        
+        # 方法2：如果仍有NaN值，用0填充
+        if X_cleaned.isna().any().any():
+            print(f"警告：仍有NaN值，用0填充")
+            X_cleaned = X_cleaned.fillna(0)
+        
+        # 方法3：如果某行全是NaN，删除该行
+        valid_rows = ~X_cleaned.isna().all(axis=1)
+        if not valid_rows.all():
+            print(f"删除包含全NaN的行，从{len(X_cleaned)}行减少到{valid_rows.sum()}行")
+            X_cleaned = X_cleaned[valid_rows]
+            # 同时更新索引
+            data = data.loc[valid_rows]
         
         if scaler is not None:
-            X_scaled = scaler.transform(X)
+            X_scaled = scaler.transform(X_cleaned)
         else:
-            X_scaled = X.values
+            X_scaled = X_cleaned.values
         
-        # 预测
-        y_pred = model.predict(X_scaled)
+        # PCA转换（降维）
+        # PCA不是预测模型，而是降维工具，使用transform方法
+        try:
+            X_transformed = model.transform(X_scaled)
+            
+            # 取第3个主成分（索引为2，因为从0开始）
+            # 如果n_components < 3，则取最后一个
+            component_index = min(2, model.n_components_ - 1)
+            y_pred = X_transformed[:, component_index]
+            
+        except Exception as e:
+            print(f"PCA转换失败: {e}")
+            # 如果PCA转换失败，返回NaN序列
+            return pd.Series(index=data.index, dtype=float)
+        
         return pd.Series(y_pred, index=data.index)
         
     except Exception as e:

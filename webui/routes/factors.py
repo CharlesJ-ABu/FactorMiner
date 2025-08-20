@@ -414,13 +414,13 @@ def load_local_market_data(symbol, timeframe, start_date, end_date, exchange='bi
             if len(parts) >= 2:
                 # 如果输入是 BTC_USDT，我们需要构建 BTC_USDT_USDT
                 base_symbol = parts[0]  # BTC
-                filename = f"{base_symbol}_USDT_USDT-{timeframe}-futures.feather"
+                filename = f"{base_symbol}_USDT_USDT-{timeframe}-{trade_type}.feather"
             else:
                 base_symbol = symbol
-                filename = f"{base_symbol}_USDT_USDT-{timeframe}-futures.feather"
+                filename = f"{base_symbol}_USDT_USDT-{timeframe}-{trade_type}.feather"
         else:
             base_symbol = symbol
-            filename = f"{base_symbol}_USDT_USDT-{timeframe}-futures.feather"
+            filename = f"{base_symbol}_USDT_USDT-{timeframe}-{trade_type}.feather"
             
         print(f"解析交易对: {symbol} -> {base_symbol}")
         print(f"时间框架参数: {timeframe}")
