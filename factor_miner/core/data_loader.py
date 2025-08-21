@@ -103,7 +103,8 @@ class DataLoader:
         """
         try:
             # 构建本地文件路径
-            data_dir = Path("data/binance/futures")
+            data_dir = Path(__file__).parent.parent.parent  / "data" / "binance" / "futures"
+            # data_dir = Path("data/binance/futures")
             if not data_dir.exists():
                 print(f"数据目录不存在: {data_dir}")
                 return pd.DataFrame()
