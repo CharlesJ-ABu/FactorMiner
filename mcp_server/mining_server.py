@@ -29,7 +29,7 @@ async def list_tools():
     return [
         Tool(
             name="run_mining",
-            description="启动挖矿任务",
+            description="启动挖掘任务",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -44,7 +44,7 @@ async def list_tools():
         ),
         Tool(
             name="get_mining_progress",
-            description="获取挖矿任务进度",
+            description="获取挖掘任务进度",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -55,7 +55,7 @@ async def list_tools():
         ),
         Tool(
             name="get_mining_result",
-            description="获取挖矿任务结果",
+            description="获取挖掘任务结果",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -87,7 +87,7 @@ async def call_tool(name: str, arguments: dict):
 
         return [TextContent(
             type="text",
-            text=f"挖矿任务已启动，任务ID: {mining_result}"
+            text=f"挖掘任务已启动，任务ID: {mining_result}"
         )]
 
     raise ValueError(f"未知的工具: {name}")
