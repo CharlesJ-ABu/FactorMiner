@@ -1,0 +1,20 @@
+{
+  "factor_id": "q75_10",
+  "name": "q75_10",
+  "description": "自动生成的q75_10因子",
+  "category": "statistical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/q75_10.txt",
+    "formula": "# q75_10 因子的计算公式\n# 类型: statistical\n# 自动生成于 2025-09-01 15:38:18.634272",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "7382c837",
+    "created_at": "2025-09-01T15:38:18.634368"
+  }
+}

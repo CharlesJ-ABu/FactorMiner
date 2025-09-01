@@ -1,0 +1,20 @@
+{
+  "factor_id": "stoch_oversold",
+  "name": "stoch_oversold",
+  "description": "自动生成的stoch_oversold因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/stoch_oversold.txt",
+    "formula": "# stoch_oversold 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.613656",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "4d866b7c",
+    "created_at": "2025-09-01T15:38:18.613748"
+  }
+}

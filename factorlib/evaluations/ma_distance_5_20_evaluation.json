@@ -1,0 +1,439 @@
+{
+  "factor_id": "ma_distance_5_20",
+  "evaluations": [
+    {
+      "metadata": {
+        "mining_session": true,
+        "mining_config": {
+          "factor_types": [
+            "technical",
+            "statistical",
+            "crypto",
+            "pattern",
+            "composite",
+            "sentiment"
+          ],
+          "optimization": {
+            "method": "greedy",
+            "max_factors": 15,
+            "min_ic": 0.02,
+            "min_ir": 0.1
+          },
+          "evaluation": {
+            "min_sample_size": 30,
+            "metrics": [
+              "ic_pearson",
+              "ic_spearman",
+              "sharpe_ratio",
+              "win_rate",
+              "factor_decay"
+            ]
+          }
+        },
+        "factor_type": [
+          "technical",
+          "statistical",
+          "crypto",
+          "pattern",
+          "composite",
+          "sentiment"
+        ],
+        "symbols": [],
+        "timeframes": []
+      },
+      "results": {
+        "factor_name": "ma_distance_5_20",
+        "data_length": 156385,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.07416741337598556,
+        "ic_spearman": 0.043726138371280816,
+        "ic_kendall": 0.0303749336054341,
+        "mutual_information": 0.013676835388286847,
+        "long_short_return": 0.0005556092871206971,
+        "long_return": 0.00030815057355050335,
+        "short_return": -0.00024745871357019375,
+        "returns_std": 0.0028362828272566576,
+        "sharpe_ratio": 0.19589347077142513,
+        "group_returns": {
+          "0": -0.00024745871357019375,
+          "1": -7.829140583182112e-05,
+          "2": -3.1315619607877744e-06,
+          "3": 6.995440604907594e-05,
+          "4": 0.00030815057355050335
+        },
+        "skewness": 0.5887036916047703,
+        "kurtosis": 16.959391159193373,
+        "turnover": 0.0007130952351237663,
+        "win_rate": 0.4576653771141734,
+        "autocorr_lag_1": 0.9798077818093841,
+        "autocorr_lag_2": 0.9283213615797181,
+        "autocorr_lag_3": 0.8544167493077311,
+        "autocorr_lag_4": 0.7666267534926715,
+        "autocorr_lag_5": 0.6736194067699894,
+        "autocorr_lag_6": 0.5842346206028195,
+        "autocorr_lag_7": 0.49891799971661593,
+        "autocorr_lag_8": 0.41821458447452897,
+        "autocorr_lag_9": 0.3427688561511391,
+        "autocorr_lag_10": 0.27329308583146866
+      },
+      "evaluated_at": "2025-08-25T14:48:19.911195"
+    },
+    {
+      "metadata": {
+        "mining_session": true,
+        "mining_config": {
+          "factor_types": [
+            "technical",
+            "statistical",
+            "crypto",
+            "pattern",
+            "composite",
+            "sentiment"
+          ],
+          "optimization": {
+            "method": "greedy",
+            "max_factors": 15,
+            "min_ic": 0.02,
+            "min_ir": 0.1
+          },
+          "evaluation": {
+            "min_sample_size": 30,
+            "metrics": [
+              "ic_pearson",
+              "ic_spearman",
+              "sharpe_ratio",
+              "win_rate",
+              "factor_decay"
+            ]
+          }
+        },
+        "factor_type": [
+          "technical",
+          "statistical",
+          "crypto",
+          "pattern",
+          "composite",
+          "sentiment"
+        ],
+        "symbols": [],
+        "timeframes": []
+      },
+      "results": {
+        "factor_name": "ma_distance_5_20",
+        "data_length": 14401,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.06193634827018462,
+        "ic_spearman": 0.06402479029699516,
+        "ic_kendall": 0.04490405033175982,
+        "mutual_information": 0.01822688090746464,
+        "long_short_return": 0.00011605429953347028,
+        "long_return": 6.918918604971585e-05,
+        "short_return": -4.686511348375443e-05,
+        "returns_std": 0.0007530187398886649,
+        "sharpe_ratio": 0.1541187401931446,
+        "group_returns": {
+          "0": -4.686511348375443e-05,
+          "1": -3.455646062512926e-05,
+          "2": -2.3112875810824503e-05,
+          "3": 3.1681508869170906e-05,
+          "4": 6.918918604971585e-05
+        },
+        "skewness": -0.12946490109903844,
+        "kurtosis": 4.367734887736397,
+        "turnover": 0.00020063680321425666,
+        "win_rate": 0.4945489896534963,
+        "autocorr_lag_1": 0.9786686100665942,
+        "autocorr_lag_2": 0.9247998408165975,
+        "autocorr_lag_3": 0.8477415761651894,
+        "autocorr_lag_4": 0.756686552736179,
+        "autocorr_lag_5": 0.6606201988568142,
+        "autocorr_lag_6": 0.5688217477838827,
+        "autocorr_lag_7": 0.48116993071185094,
+        "autocorr_lag_8": 0.39803502782857336,
+        "autocorr_lag_9": 0.3202143597520607,
+        "autocorr_lag_10": 0.24872499018654182
+      },
+      "evaluated_at": "2025-08-25T15:41:15.536537"
+    },
+    {
+      "metadata": {
+        "mining_session": true,
+        "mining_config": {
+          "factor_types": [
+            "technical",
+            "statistical",
+            "advanced",
+            "ml"
+          ],
+          "optimization": {
+            "method": "greedy",
+            "max_factors": 15,
+            "min_ic": 0.02,
+            "min_ir": 0.1
+          },
+          "evaluation": {
+            "min_sample_size": 30,
+            "metrics": [
+              "ic_pearson",
+              "ic_spearman",
+              "sharpe_ratio",
+              "win_rate",
+              "factor_decay"
+            ]
+          }
+        },
+        "factor_type": [
+          "technical",
+          "statistical",
+          "advanced",
+          "ml"
+        ],
+        "symbols": [],
+        "timeframes": []
+      },
+      "results": {
+        "factor_name": "ma_distance_5_20",
+        "data_length": 14401,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.06193634827018462,
+        "ic_spearman": 0.06402479029699516,
+        "ic_kendall": 0.04490405033175982,
+        "mutual_information": 0.01822688090746464,
+        "long_short_return": 0.00011605429953347028,
+        "long_return": 6.918918604971585e-05,
+        "short_return": -4.686511348375443e-05,
+        "returns_std": 0.0007530187398886649,
+        "sharpe_ratio": 0.1541187401931446,
+        "group_returns": {
+          "0": -4.686511348375443e-05,
+          "1": -3.455646062512926e-05,
+          "2": -2.3112875810824503e-05,
+          "3": 3.1681508869170906e-05,
+          "4": 6.918918604971585e-05
+        },
+        "skewness": -0.12946490109903844,
+        "kurtosis": 4.367734887736397,
+        "turnover": 0.00020063680321425666,
+        "win_rate": 0.4945489896534963,
+        "autocorr_lag_1": 0.9786686100665942,
+        "autocorr_lag_2": 0.9247998408165975,
+        "autocorr_lag_3": 0.8477415761651894,
+        "autocorr_lag_4": 0.756686552736179,
+        "autocorr_lag_5": 0.6606201988568142,
+        "autocorr_lag_6": 0.5688217477838827,
+        "autocorr_lag_7": 0.48116993071185094,
+        "autocorr_lag_8": 0.39803502782857336,
+        "autocorr_lag_9": 0.3202143597520607,
+        "autocorr_lag_10": 0.24872499018654182
+      },
+      "evaluated_at": "2025-08-29T16:19:53.090947"
+    },
+    {
+      "metadata": {
+        "mining_session": true,
+        "mining_config": {
+          "factor_types": [
+            "technical",
+            "statistical"
+          ],
+          "optimization": {
+            "method": "greedy",
+            "max_factors": 15,
+            "min_ic": 0.02,
+            "min_ir": 0.1
+          },
+          "evaluation": {
+            "min_sample_size": 30,
+            "metrics": [
+              "ic_pearson",
+              "ic_spearman",
+              "sharpe_ratio",
+              "win_rate",
+              "factor_decay"
+            ]
+          }
+        },
+        "factor_type": [
+          "technical",
+          "statistical"
+        ],
+        "symbols": [],
+        "timeframes": []
+      },
+      "results": {
+        "factor_name": "ma_distance_5_20",
+        "data_length": 53185,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.07899030577817585,
+        "ic_spearman": 0.040284858114180346,
+        "ic_kendall": 0.027589835652965414,
+        "mutual_information": 0.007245678554825526,
+        "long_short_return": 0.0010198822442489812,
+        "long_return": 0.0005845422347185039,
+        "short_return": -0.0004353400095304773,
+        "returns_std": 0.00483337838237605,
+        "sharpe_ratio": 0.21100815280007423,
+        "group_returns": {
+          "0": -0.0004353400095304773,
+          "1": -0.00017679259727400385,
+          "2": 2.302333895943612e-05,
+          "3": 0.00014740953668722375,
+          "4": 0.0005845422347185039
+        },
+        "skewness": 0.7659195478360021,
+        "kurtosis": 13.602937425202757,
+        "turnover": 0.001243112599454753,
+        "win_rate": 0.4679890946695497,
+        "autocorr_lag_1": 0.9801908241767981,
+        "autocorr_lag_2": 0.9296262960079831,
+        "autocorr_lag_3": 0.856962105797716,
+        "autocorr_lag_4": 0.7708436521753048,
+        "autocorr_lag_5": 0.6797118027229302,
+        "autocorr_lag_6": 0.592196039102965,
+        "autocorr_lag_7": 0.5086183337292289,
+        "autocorr_lag_8": 0.4293504087861366,
+        "autocorr_lag_9": 0.3548298535323213,
+        "autocorr_lag_10": 0.2856364619840733
+      },
+      "evaluated_at": "2025-09-01T15:24:11.865774"
+    },
+    {
+      "metadata": {
+        "mining_session": true,
+        "mining_config": {
+          "factor_types": [
+            "technical",
+            "statistical"
+          ],
+          "optimization": {
+            "method": "greedy",
+            "max_factors": 15,
+            "min_ic": 0.02,
+            "min_ir": 0.1
+          },
+          "evaluation": {
+            "min_sample_size": 30,
+            "metrics": [
+              "ic_pearson",
+              "ic_spearman",
+              "sharpe_ratio",
+              "win_rate",
+              "factor_decay"
+            ]
+          }
+        },
+        "factor_type": [
+          "technical",
+          "statistical"
+        ],
+        "symbols": [],
+        "timeframes": []
+      },
+      "results": {
+        "factor_name": "ma_distance_5_20",
+        "data_length": 53185,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.07899030577817585,
+        "ic_spearman": 0.040284858114180346,
+        "ic_kendall": 0.027589835652965414,
+        "mutual_information": 0.007245678554825526,
+        "long_short_return": 0.0010198822442489812,
+        "long_return": 0.0005845422347185039,
+        "short_return": -0.0004353400095304773,
+        "returns_std": 0.00483337838237605,
+        "sharpe_ratio": 0.21100815280007423,
+        "group_returns": {
+          "0": -0.0004353400095304773,
+          "1": -0.00017679259727400385,
+          "2": 2.302333895943612e-05,
+          "3": 0.00014740953668722375,
+          "4": 0.0005845422347185039
+        },
+        "skewness": 0.7659195478360021,
+        "kurtosis": 13.602937425202757,
+        "turnover": 0.001243112599454753,
+        "win_rate": 0.4679890946695497,
+        "autocorr_lag_1": 0.9801908241767981,
+        "autocorr_lag_2": 0.9296262960079831,
+        "autocorr_lag_3": 0.856962105797716,
+        "autocorr_lag_4": 0.7708436521753048,
+        "autocorr_lag_5": 0.6797118027229302,
+        "autocorr_lag_6": 0.592196039102965,
+        "autocorr_lag_7": 0.5086183337292289,
+        "autocorr_lag_8": 0.4293504087861366,
+        "autocorr_lag_9": 0.3548298535323213,
+        "autocorr_lag_10": 0.2856364619840733
+      },
+      "evaluated_at": "2025-09-01T15:31:29.209203"
+    },
+    {
+      "metadata": {
+        "mining_session": true,
+        "mining_config": {
+          "factor_types": [
+            "technical",
+            "statistical"
+          ],
+          "optimization": {
+            "method": "greedy",
+            "max_factors": 15,
+            "min_ic": 0.02,
+            "min_ir": 0.1
+          },
+          "evaluation": {
+            "min_sample_size": 30,
+            "metrics": [
+              "ic_pearson",
+              "ic_spearman",
+              "sharpe_ratio",
+              "win_rate",
+              "factor_decay"
+            ]
+          }
+        },
+        "factor_type": [
+          "technical",
+          "statistical"
+        ],
+        "symbols": [],
+        "timeframes": []
+      },
+      "results": {
+        "factor_name": "ma_distance_5_20",
+        "data_length": 156385,
+        "missing_ratio": 0.0,
+        "ic_pearson": 0.07416741337598556,
+        "ic_spearman": 0.043726138371280816,
+        "ic_kendall": 0.0303749336054341,
+        "mutual_information": 0.013676835388286847,
+        "long_short_return": 0.0005556092871206971,
+        "long_return": 0.00030815057355050335,
+        "short_return": -0.00024745871357019375,
+        "returns_std": 0.0028362828272566576,
+        "sharpe_ratio": 0.19589347077142513,
+        "group_returns": {
+          "0": -0.00024745871357019375,
+          "1": -7.829140583182112e-05,
+          "2": -3.1315619607877744e-06,
+          "3": 6.995440604907594e-05,
+          "4": 0.00030815057355050335
+        },
+        "skewness": 0.5887036916047703,
+        "kurtosis": 16.959391159193373,
+        "turnover": 0.0007130952351237663,
+        "win_rate": 0.4576653771141734,
+        "autocorr_lag_1": 0.9798077818093841,
+        "autocorr_lag_2": 0.9283213615797181,
+        "autocorr_lag_3": 0.8544167493077311,
+        "autocorr_lag_4": 0.7666267534926715,
+        "autocorr_lag_5": 0.6736194067699894,
+        "autocorr_lag_6": 0.5842346206028195,
+        "autocorr_lag_7": 0.49891799971661593,
+        "autocorr_lag_8": 0.41821458447452897,
+        "autocorr_lag_9": 0.3427688561511391,
+        "autocorr_lag_10": 0.27329308583146866
+      },
+      "evaluated_at": "2025-09-01T15:37:34.222254"
+    }
+  ]
+}

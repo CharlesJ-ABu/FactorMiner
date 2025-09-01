@@ -1,0 +1,20 @@
+{
+  "factor_id": "vol_ratio_20_5",
+  "name": "vol_ratio_20_5",
+  "description": "自动生成的vol_ratio_20_5因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/vol_ratio_20_5.txt",
+    "formula": "# vol_ratio_20_5 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.615501",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "507dd514",
+    "created_at": "2025-09-01T15:38:18.615595"
+  }
+}

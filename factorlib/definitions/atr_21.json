@@ -1,0 +1,20 @@
+{
+  "factor_id": "atr_21",
+  "name": "atr_21",
+  "description": "自动生成的atr_21因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/atr_21.txt",
+    "formula": "# atr_21 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.616979",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "d86c92e7",
+    "created_at": "2025-09-01T15:38:18.617071"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "factor_id": "returns_skew_50",
+  "name": "returns_skew_50",
+  "description": "自动生成的returns_skew_50因子",
+  "category": "statistical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/returns_skew_50.txt",
+    "formula": "# returns_skew_50 因子的计算公式\n# 类型: statistical\n# 自动生成于 2025-09-01 15:38:18.645830",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "ad0d8119",
+    "created_at": "2025-09-01T15:38:18.645949"
+  }
+}

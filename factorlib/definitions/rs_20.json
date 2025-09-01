@@ -1,0 +1,20 @@
+{
+  "factor_id": "rs_20",
+  "name": "rs_20",
+  "description": "自动生成的rs_20因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/rs_20.txt",
+    "formula": "# rs_20 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.608884",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "34efa52f",
+    "created_at": "2025-09-01T15:38:18.608972"
+  }
+}

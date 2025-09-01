@@ -1,0 +1,20 @@
+{
+  "factor_id": "di_plus_20",
+  "name": "di_plus_20",
+  "description": "自动生成的di_plus_20因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/di_plus_20.txt",
+    "formula": "# di_plus_20 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.605248",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "72e3e0a1",
+    "created_at": "2025-09-01T15:38:18.605332"
+  }
+}

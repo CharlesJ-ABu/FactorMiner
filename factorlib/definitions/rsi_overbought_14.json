@@ -1,0 +1,22 @@
+{
+  "factor_id": "rsi_overbought_14",
+  "name": "rsi_overbought_14",
+  "description": "自动生成的rsi_overbought_14因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/rsi_overbought_14.txt",
+    "formula": "# rsi_overbought_14 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.610809",
+    "language": "pandas"
+  },
+  "parameters": {
+    "period": 14
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "3c9d2f51",
+    "created_at": "2025-09-01T15:38:18.610896"
+  }
+}

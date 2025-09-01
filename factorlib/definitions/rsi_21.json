@@ -1,0 +1,22 @@
+{
+  "factor_id": "rsi_21",
+  "name": "rsi_21",
+  "description": "自动生成的rsi_21因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/rsi_21.txt",
+    "formula": "# rsi_21 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.611191",
+    "language": "pandas"
+  },
+  "parameters": {
+    "period": 21
+  },
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "90bf4c43",
+    "created_at": "2025-09-01T15:38:18.611299"
+  }
+}

@@ -1026,15 +1026,23 @@ def _build_features(data: pd.DataFrame) -> pd.DataFrame:
         # 从因子名称中提取参数
         params = {}
         
+        # 安全解析尾部数字作为period，仅当确为数字时转换
+        def _parse_trailing_period(name: str):
+            segment = name.split('_')[-1]
+            return int(segment) if segment.isdigit() else None
+
         if 'sma_' in factor_name:
-            period = factor_name.split('_')[-1]
-            params['period'] = int(period)
+            period = _parse_trailing_period(factor_name)
+            if period is not None:
+                params['period'] = period
         elif 'rsi_' in factor_name:
-            period = factor_name.split('_')[-1]
-            params['period'] = int(period)
+            period = _parse_trailing_period(factor_name)
+            if period is not None:
+                params['period'] = period
         elif 'bb_' in factor_name:
-            period = factor_name.split('_')[-1]
-            params['period'] = int(period)
+            period = _parse_trailing_period(factor_name)
+            # 对无数字后缀的布林带名称使用安全默认值
+            params['period'] = period if period is not None else 20
             params['std_dev'] = 2
         
         return params

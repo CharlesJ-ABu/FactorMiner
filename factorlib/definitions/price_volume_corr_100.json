@@ -1,0 +1,20 @@
+{
+  "factor_id": "price_volume_corr_100",
+  "name": "price_volume_corr_100",
+  "description": "自动生成的price_volume_corr_100因子",
+  "category": "statistical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/price_volume_corr_100.txt",
+    "formula": "# price_volume_corr_100 因子的计算公式\n# 类型: statistical\n# 自动生成于 2025-09-01 15:38:18.653730",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "fa420d30",
+    "created_at": "2025-09-01T15:38:18.653851"
+  }
+}

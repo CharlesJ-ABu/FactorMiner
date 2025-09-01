@@ -1,0 +1,20 @@
+{
+  "factor_id": "trend_consistency_50",
+  "name": "trend_consistency_50",
+  "description": "自动生成的trend_consistency_50因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/trend_consistency_50.txt",
+    "formula": "# trend_consistency_50 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.606296",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "d7d4ec10",
+    "created_at": "2025-09-01T15:38:18.606382"
+  }
+}

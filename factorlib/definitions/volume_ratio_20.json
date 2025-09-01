@@ -1,0 +1,20 @@
+{
+  "factor_id": "volume_ratio_20",
+  "name": "volume_ratio_20",
+  "description": "自动生成的volume_ratio_20因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/volume_ratio_20.txt",
+    "formula": "# volume_ratio_20 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.619766",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "12e14fde",
+    "created_at": "2025-09-01T15:38:18.619941"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "factor_id": "vol_price_corr_20",
+  "name": "vol_price_corr_20",
+  "description": "自动生成的vol_price_corr_20因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/vol_price_corr_20.txt",
+    "formula": "# vol_price_corr_20 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.620034",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "1de76e82",
+    "created_at": "2025-09-01T15:38:18.620121"
+  }
+}

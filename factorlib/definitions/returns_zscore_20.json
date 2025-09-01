@@ -1,0 +1,20 @@
+{
+  "factor_id": "returns_zscore_20",
+  "name": "returns_zscore_20",
+  "description": "自动生成的returns_zscore_20因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/returns_zscore_20.txt",
+    "formula": "# returns_zscore_20 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.628014",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "b5b9eb2e",
+    "created_at": "2025-09-01T15:38:18.628355"
+  }
+}

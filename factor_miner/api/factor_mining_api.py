@@ -330,7 +330,12 @@ class FactorMiningAPI:
             # 批量评估因子
             for i, factor_name in enumerate(factors_df.columns):
                 try:
-                    factor_series = factors_df[factor_name].dropna()
+                    factor_series = factors_df[factor_name]
+                    # 兼容重复列名导致的DataFrame选择结果
+                    if isinstance(factor_series, pd.DataFrame):
+                        # 优先采用最后一列（保持与 keep='last' 一致的语义）
+                        factor_series = factor_series.iloc[:, -1]
+                    factor_series = factor_series.dropna()
                     
                     if len(factor_series) < 30:
                         print(f"⚠️ 因子 {factor_name} 数据不足，跳过评估")

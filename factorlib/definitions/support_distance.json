@@ -1,0 +1,20 @@
+{
+  "factor_id": "support_distance",
+  "name": "support_distance",
+  "description": "自动生成的support_distance因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/support_distance.txt",
+    "formula": "# support_distance 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.623651",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "c880f7b1",
+    "created_at": "2025-09-01T15:38:18.624232"
+  }
+}

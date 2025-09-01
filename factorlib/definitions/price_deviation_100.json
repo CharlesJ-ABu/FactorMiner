@@ -1,0 +1,20 @@
+{
+  "factor_id": "price_deviation_100",
+  "name": "price_deviation_100",
+  "description": "自动生成的price_deviation_100因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/price_deviation_100.txt",
+    "formula": "# price_deviation_100 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.604784",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "ee77415a",
+    "created_at": "2025-09-01T15:38:18.604874"
+  }
+}

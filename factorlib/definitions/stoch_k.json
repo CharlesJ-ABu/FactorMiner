@@ -1,0 +1,20 @@
+{
+  "factor_id": "stoch_k",
+  "name": "stoch_k",
+  "description": "自动生成的stoch_k因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/stoch_k.txt",
+    "formula": "# stoch_k 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.612924",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "87876597",
+    "created_at": "2025-09-01T15:38:18.613012"
+  }
+}

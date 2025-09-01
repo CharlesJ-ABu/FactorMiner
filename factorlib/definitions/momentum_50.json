@@ -1,0 +1,20 @@
+{
+  "factor_id": "momentum_50",
+  "name": "momentum_50",
+  "description": "自动生成的momentum_50因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/momentum_50.txt",
+    "formula": "# momentum_50 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.609060",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "16b169f3",
+    "created_at": "2025-09-01T15:38:18.609146"
+  }
+}

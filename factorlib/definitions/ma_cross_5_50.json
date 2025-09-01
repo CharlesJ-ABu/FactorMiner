@@ -1,0 +1,20 @@
+{
+  "factor_id": "ma_cross_5_50",
+  "name": "ma_cross_5_50",
+  "description": "自动生成的ma_cross_5_50因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/ma_cross_5_50.txt",
+    "formula": "# ma_cross_5_50 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.601515",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "c8e191d8",
+    "created_at": "2025-09-01T15:38:18.601822"
+  }
+}

@@ -498,8 +498,15 @@ def start_mining():
                                     statistical_df = statistical_builder.calculate_all_factors(data_result['data'])
                                 else:
                                     statistical_df = statistical_builder.build_all_factors(data_result['data'])
-                                
-                                if not statistical_df.empty:
+
+                                # 兼容返回 dict 的情形，统一转换为 DataFrame
+                                try:
+                                    if isinstance(statistical_df, dict):
+                                        statistical_df = pd.DataFrame(statistical_df)
+                                except Exception:
+                                    pass
+
+                                if isinstance(statistical_df, pd.DataFrame) and not statistical_df.empty:
                                     all_factors = pd.concat([all_factors, statistical_df], axis=1)
                                     print(f"✓ 成功构建统计因子: {len(statistical_df.columns)} 个")
                                     update_session_progress(session_id, 'factor_building', progress_percent + 20, f'统计因子构建完成: {len(statistical_df.columns)} 个')
@@ -610,8 +617,13 @@ def start_mining():
                 # 检查数据质量
                 print(f"因子缺失值统计:")
                 for col in factors_df_aligned.columns:
-                    missing_count = factors_df_aligned[col].isna().sum()
-                    missing_ratio = missing_count / len(factors_df_aligned)
+                    col_values = factors_df_aligned[col]
+                    # 兼容重复列名导致的DataFrame返回
+                    if isinstance(col_values, pd.DataFrame):
+                        missing_count = int(col_values.isna().sum().sum())
+                    else:
+                        missing_count = int(col_values.isna().sum())
+                    missing_ratio = float(missing_count) / float(len(factors_df_aligned)) if len(factors_df_aligned) > 0 else 0.0
                     print(f"  {col}: {missing_count} ({missing_ratio:.2%})")
                 
                 # 填充缺失值（使用前向填充）
@@ -737,15 +749,30 @@ def start_mining():
                     
                     # 构建因子数据字典，格式与原来的_save_factors_to_storage方法一致
                     built_factors = {}
+                    def _to_series_dict(obj):
+                        if isinstance(obj, pd.DataFrame):
+                            return {col: obj[col] for col in obj.columns}
+                        if isinstance(obj, dict):
+                            return {k: (v if isinstance(v, pd.Series) else pd.Series(v)) for k, v in obj.items()}
+                        return {}
+
                     for factor_type in data.get('factor_types', []):
                         if factor_type == 'ml' and 'ml_factors' in locals():
-                            built_factors['ml'] = {col: ml_factors[col] for col in ml_factors.columns}
+                            d = _to_series_dict(ml_factors)
+                            if d:
+                                built_factors['ml'] = d
                         elif factor_type == 'technical' and 'technical_factors' in locals():
-                            built_factors['technical'] = {col: technical_factors[col] for col in technical_factors.columns}
+                            d = _to_series_dict(technical_factors)
+                            if d:
+                                built_factors['technical'] = d
                         elif factor_type == 'statistical' and 'statistical_df' in locals():
-                            built_factors['statistical'] = {col: statistical_df[col] for col in statistical_df.columns}
+                            d = _to_series_dict(statistical_df)
+                            if d:
+                                built_factors['statistical'] = d
                         elif factor_type == 'advanced' and 'advanced_factors' in locals():
-                            built_factors['advanced'] = {col: advanced_factors[col] for col in advanced_factors.columns}
+                            d = _to_series_dict(advanced_factors)
+                            if d:
+                                built_factors['advanced'] = d
                     
                     # 调用保存方法
                     if built_factors:
@@ -1009,8 +1036,12 @@ def start_ml_mining():
                 # 检查数据质量
                 print(f"ML因子缺失值统计:")
                 for col in ml_factors_aligned.columns:
-                    missing_count = ml_factors_aligned[col].isna().sum()
-                    missing_ratio = missing_count / len(ml_factors_aligned)
+                    col_values = ml_factors_aligned[col]
+                    if isinstance(col_values, pd.DataFrame):
+                        missing_count = int(col_values.isna().sum().sum())
+                    else:
+                        missing_count = int(col_values.isna().sum())
+                    missing_ratio = float(missing_count) / float(len(ml_factors_aligned)) if len(ml_factors_aligned) > 0 else 0.0
                     print(f"  {col}: {missing_count} ({missing_ratio:.2%})")
                 
                 # 填充缺失值（使用前向填充）

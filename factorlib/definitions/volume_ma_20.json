@@ -1,0 +1,20 @@
+{
+  "factor_id": "volume_ma_20",
+  "name": "volume_ma_20",
+  "description": "自动生成的volume_ma_20因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/volume_ma_20.txt",
+    "formula": "# volume_ma_20 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.619481",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "277c0e21",
+    "created_at": "2025-09-01T15:38:18.619658"
+  }
+}

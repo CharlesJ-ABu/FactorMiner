@@ -1,0 +1,20 @@
+{
+  "factor_id": "doji",
+  "name": "doji",
+  "description": "自动生成的doji因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/doji.txt",
+    "formula": "# doji 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.622902",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "d8c2d411",
+    "created_at": "2025-09-01T15:38:18.622988"
+  }
+}

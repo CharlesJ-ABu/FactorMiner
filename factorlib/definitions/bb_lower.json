@@ -1,18 +1,14 @@
 {
   "factor_id": "bb_lower",
-  "name": "布林带下轨",
-  "description": "Bollinger Band Lower - 价格下方的动态支撑位",
-  "category": "volatility",
+  "name": "bb_lower",
+  "description": "自动生成的bb_lower因子",
+  "category": "technical",
   "subcategory": "",
-  "computation_type": "function",
+  "computation_type": "formula",
   "computation_data": {
-    "function_file": "functions/bb_lower.py",
-    "function_code": "def calculate(data, period=20, std_dev=2, **kwargs):\n    sma = data['close'].rolling(window=period).mean()\n    std = data['close'].rolling(window=period).std()\n    return sma - std*std_dev\n",
-    "entry_point": "calculate",
-    "imports": [
-      "import pandas as pd",
-      "import numpy as np"
-    ]
+    "formula_file": "formulas/bb_lower.txt",
+    "formula": "# bb_lower 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.618221",
+    "language": "pandas"
   },
   "parameters": {
     "period": 20,
@@ -21,6 +17,7 @@
   "dependencies": [],
   "output_type": "series",
   "metadata": {
-    "created_at": "2025-08-09T23:35:39.308557"
+    "checksum": "4f8ed9a9",
+    "created_at": "2025-09-01T15:38:18.618345"
   }
 }

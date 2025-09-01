@@ -1,0 +1,20 @@
+{
+  "factor_id": "vol_change_50",
+  "name": "vol_change_50",
+  "description": "自动生成的vol_change_50因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "formula",
+  "computation_data": {
+    "formula_file": "formulas/vol_change_50.txt",
+    "formula": "# vol_change_50 因子的计算公式\n# 类型: technical\n# 自动生成于 2025-09-01 15:38:18.616440",
+    "language": "pandas"
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "252e2bb3",
+    "created_at": "2025-09-01T15:38:18.616533"
+  }
+}
