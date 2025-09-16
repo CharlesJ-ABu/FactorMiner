@@ -1,6 +1,22 @@
 """
 统一因子构建器 V4.0
 纯调度器，所有算法从 user_algo 目录动态加载
+
+版本历史：
+- V1.0: 基础因子构建功能
+- V2.0: 添加多种因子类型支持
+- V3.0: 整合所有因子构建功能，与透明因子存储系统完全兼容
+- V4.0: 重构为纯调度器，支持用户自定义算法
+  * 将具体算法实现提取到 user_algo 目录
+  * 支持动态加载和热插拔算法
+  * 保持向后兼容性
+  * 代码从1000+行精简到275行
+
+主要变更：
+- 移除所有 _build_*_factors 方法
+- 添加动态算法加载机制
+- 支持用户自定义算法接口
+- 保持原有API接口不变
 """
 
 import pandas as pd
@@ -18,6 +34,24 @@ class FactorBuilder:
     """
     统一因子构建器 V4.0
     纯调度器，所有算法从 user_algo 目录动态加载
+    
+    演进历程：
+    - V1.0: 基础技术指标因子构建
+    - V2.0: 添加统计、高级、ML等因子类型
+    - V3.0: 整合所有因子类型，支持透明存储
+    - V4.0: 重构为纯调度器，支持用户自定义算法
+    
+    核心功能：
+    - 动态扫描和加载 user_algo 目录中的算法
+    - 支持算法缓存和热插拔
+    - 统一的算法执行接口
+    - 自动因子存储和管理
+    
+    使用方式：
+    1. 在 user_algo 目录添加算法文件
+    2. 实现 calculate_factors(data, **kwargs) 函数
+    3. 可选添加 ALGORITHM_INFO 元信息
+    4. 通过 build_all_factors() 调用算法
     """
     
     def __init__(self, config: Optional[Dict] = None):
@@ -44,7 +78,13 @@ class FactorBuilder:
                          progress_callback: Optional[callable] = None,
                          **kwargs) -> pd.DataFrame:
         """
-        构建所有类型的因子
+        构建所有类型的因子 (V4.0 重构版本)
+        
+        相比V3.0版本的主要变化：
+        - 不再使用内置的 _build_*_factors 方法
+        - 改为动态加载 user_algo 目录中的算法
+        - 支持用户自定义算法选择
+        - 保持原有API接口兼容性
         
         Args:
             data: 市场数据
