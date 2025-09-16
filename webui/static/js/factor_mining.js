@@ -556,7 +556,6 @@ function getMiningFormData() {
     const tradeType = document.getElementById('tradeTypeSelect').value;
     const symbols = Array.from(document.getElementById('symbolsSelect').selectedOptions).map(opt => opt.value);
     const timeframes = Array.from(document.getElementById('timeframesSelect').selectedOptions).map(opt => opt.value);
-    const factorTypes = getSelectedFactorTypes();
     const maxFactors = parseInt(document.getElementById('maxFactors').value) || 15;
     const startDate = document.getElementById('startDate').value;
     const endDate = document.getElementById('endDate').value;
@@ -566,7 +565,6 @@ function getMiningFormData() {
         trade_type: tradeType,
         symbols: symbols,
         timeframes: timeframes,
-        factor_types: factorTypes,
         max_factors: maxFactors,
         start_date: startDate,
         end_date: endDate,
@@ -574,13 +572,6 @@ function getMiningFormData() {
     };
 }
 
-/**
- * 获取选中的因子类型
- */
-function getSelectedFactorTypes() {
-    const checkboxes = document.querySelectorAll('input[name="factorType"]:checked');
-    return Array.from(checkboxes).map(cb => cb.value);
-}
 
 /**
  * 开始因子挖掘
@@ -2156,8 +2147,7 @@ function collectMiningParams() {
     const params = {
         symbols: getSelectedSymbols(),
         timeframes: getSelectedTimeframes(),
-        factor_types: getSelectedFactorTypes(),
-        selected_algorithms: getSelectedAlgorithms(), // 新增
+        selected_algorithms: getSelectedAlgorithms(),
         start_date: document.getElementById('start_date').value,
         end_date: document.getElementById('end_date').value,
         max_factors: parseInt(document.getElementById('max_factors').value) || 15,

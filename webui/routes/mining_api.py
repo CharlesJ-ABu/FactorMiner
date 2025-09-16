@@ -226,7 +226,7 @@ def start_mining():
         data = request.get_json()
         
         # 验证必要参数
-        required_fields = ['symbols', 'timeframes', 'factor_types', 'start_date', 'end_date']
+        required_fields = ['symbols', 'timeframes', 'selected_algorithms', 'start_date', 'end_date']
         for field in required_fields:
             if field not in data:
                 return jsonify({
