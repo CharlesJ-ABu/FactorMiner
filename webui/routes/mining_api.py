@@ -1973,3 +1973,26 @@ def save_session_to_history(session_id, results, config):
         import traceback
         traceback.print_exc()
         raise
+
+@bp.route('/algorithms', methods=['GET'])
+def get_algorithms():
+    """获取所有算法列表"""
+    try:
+        mining_api = get_mining_api()
+        algorithms = mining_api.factor_builder.scan_all_algorithms()
+        return jsonify({'success': True, 'algorithms': algorithms})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@bp.route('/algorithms/<algorithm_id>', methods=['GET'])
+def get_algorithm_info(algorithm_id):
+    """获取特定算法信息"""
+    try:
+        mining_api = get_mining_api()
+        algorithm_info = mining_api.factor_builder.get_algorithm_info(algorithm_id)
+        if algorithm_info:
+            return jsonify({'success': True, 'algorithm': algorithm_info})
+        else:
+            return jsonify({'success': False, 'error': '算法未找到'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})

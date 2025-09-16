@@ -31,6 +31,7 @@ const STEP_DISPLAY_NAMES = {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('因子挖掘页面初始化');
     initializePage();
+    loadAlgorithms();
 });
 
 // 子进度统计（前端自估计）
@@ -2050,4 +2051,136 @@ function resetSubProgress() {
             }
         }
     });
+}
+
+/**
+ * 加载算法列表
+ */
+async function loadAlgorithms() {
+    try {
+        console.log('开始加载算法列表...');
+        const response = await fetch('/api/mining/algorithms');
+        const result = await response.json();
+        
+        if (result.success) {
+            console.log(`成功加载 ${result.algorithms.length} 个算法`);
+            renderAlgorithmSelector(result.algorithms);
+        } else {
+            console.error('加载算法失败:', result.error);
+            showNotification('加载算法失败: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('加载算法异常:', error);
+        showNotification('加载算法异常: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 渲染算法选择器
+ */
+function renderAlgorithmSelector(algorithms) {
+    const container = document.getElementById('algorithm_selector');
+    if (!container) {
+        console.warn('算法选择器容器不存在');
+        return;
+    }
+    
+    // 按分类组织算法
+    const algorithmsByCategory = {};
+    algorithms.forEach(algo => {
+        const category = algo.category || 'other';
+        if (!algorithmsByCategory[category]) {
+            algorithmsByCategory[category] = [];
+        }
+        algorithmsByCategory[category].push(algo);
+    });
+    
+    // 清空容器
+    container.innerHTML = '';
+    
+    // 创建分类标题和算法列表
+    Object.keys(algorithmsByCategory).forEach(category => {
+        const categoryDiv = document.createElement('div');
+        categoryDiv.className = 'algorithm-category mb-3';
+        
+        const categoryTitle = document.createElement('h6');
+        categoryTitle.className = 'text-primary mb-2';
+        categoryTitle.textContent = category.toUpperCase();
+        categoryDiv.appendChild(categoryTitle);
+        
+        const algorithmList = document.createElement('div');
+        algorithmList.className = 'algorithm-list';
+        
+        algorithmsByCategory[category].forEach(algo => {
+            const algoDiv = document.createElement('div');
+            algoDiv.className = 'form-check algorithm-item';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'form-check-input algorithm-checkbox';
+            checkbox.id = `algo_${algo.id}`;
+            checkbox.value = algo.id;
+            
+            const label = document.createElement('label');
+            label.className = 'form-check-label';
+            label.htmlFor = `algo_${algo.id}`;
+            label.innerHTML = `
+                <strong>${algo.name}</strong>
+                <small class="text-muted d-block">${algo.description || '无描述'}</small>
+            `;
+            
+            algoDiv.appendChild(checkbox);
+            algoDiv.appendChild(label);
+            algorithmList.appendChild(algoDiv);
+        });
+        
+        categoryDiv.appendChild(algorithmList);
+        container.appendChild(categoryDiv);
+    });
+    
+    console.log('算法选择器渲染完成');
+}
+
+/**
+ * 获取选中的算法
+ */
+function getSelectedAlgorithms() {
+    const checkboxes = document.querySelectorAll('.algorithm-checkbox:checked');
+    return Array.from(checkboxes).map(checkbox => checkbox.value);
+}
+
+/**
+ * 更新挖掘参数收集，包含算法选择
+ */
+function collectMiningParams() {
+    const params = {
+        symbols: getSelectedSymbols(),
+        timeframes: getSelectedTimeframes(),
+        factor_types: getSelectedFactorTypes(),
+        selected_algorithms: getSelectedAlgorithms(), // 新增
+        start_date: document.getElementById('start_date').value,
+        end_date: document.getElementById('end_date').value,
+        max_factors: parseInt(document.getElementById('max_factors').value) || 15,
+        optimization_method: document.getElementById('optimization_method').value || 'greedy'
+    };
+    
+    // 收集算法参数
+    const selectedAlgos = getSelectedAlgorithms();
+    selectedAlgos.forEach(algoId => {
+        const algoParams = collectAlgorithmParams(algoId);
+        if (Object.keys(algoParams).length > 0) {
+            params[`${algoId}_params`] = algoParams;
+        }
+    });
+    
+    return params;
+}
+
+/**
+ * 收集特定算法的参数（可扩展）
+ */
+function collectAlgorithmParams(algoId) {
+    // 这里可以根据算法ID收集特定参数
+    // 目前返回空对象，后续可以扩展
+    return {};
 }
