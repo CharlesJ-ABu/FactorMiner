@@ -42,69 +42,102 @@ ALPHA101_FORMULAS = {
 # API路由
 @bp.route('/list')
 def list_factors():
-    """获取因子列表（V3：从 definitions 读取）"""
+    """获取因子列表（V4：从新的文件夹结构读取）"""
     try:
-        definitions_dir = FACTOR_LIBRARY_DIR / "definitions"
+        # 检查两个文件夹：technicals 和 minactors
+        technicals_dir = FACTOR_LIBRARY_DIR / "technicals" / "definitions"
+        minactors_dir = FACTOR_LIBRARY_DIR / "minactors" / "definitions"
+        
         factors = []
-        if definitions_dir.exists():
-            for file in definitions_dir.glob("*.json"):
+        
+        # 读取 technicals 文件夹
+        if technicals_dir.exists():
+            for file in technicals_dir.glob("*.json"):
                 try:
                     with open(file, 'r', encoding='utf-8') as f:
                         data = json.load(f)
-                    comp = data.get('computation_data', {})
-                    formula_preview = None
-                    if data.get('computation_type') == 'formula':
-                        formula_preview = (comp.get('formula') or '').split('\n')[0][:120]
-                    # 聚合评估均值（核心IO）
-                    evaluated = False
-                    eval_count = 0
-                    avg_metrics = {}
-                    last_evaluated_at = None
-                    try:
-                        eval_payload = core_load_evaluations(data.get('factor_id'))
-                        evaluations = (eval_payload or {}).get('evaluations') or []
-                        eval_count = len(evaluations)
-                        if eval_count > 0:
-                            evaluated = True
-                            keys = ['ic_pearson', 'ic_spearman', 'win_rate', 'sharpe_ratio', 'long_short_return']
-                            sums = {k: 0.0 for k in keys}
-                            counts = {k: 0 for k in keys}
-                            for ev in evaluations:
-                                res = (ev or {}).get('results') or {}
-                                for k in keys:
-                                    v = res.get(k)
-                                    if isinstance(v, (int, float)):
-                                        sums[k] += float(v)
-                                        counts[k] += 1
-                                last_evaluated_at = (ev or {}).get('evaluated_at') or last_evaluated_at
-                            for k in keys:
-                                avg_metrics[k] = (sums[k] / counts[k]) if counts[k] > 0 else None
-                    except Exception:
-                        pass
-                    # 数值安全处理，避免NaN进入JSON
-                    def _safe_num(x):
-                        return float(x) if isinstance(x, (int, float)) and math.isfinite(x) else None
-                    avg_metrics_clean = {}
-                    for k, v in (avg_metrics or {}).items():
-                        avg_metrics_clean[k] = _safe_num(v)
-                    factors.append({
-                        'id': data.get('factor_id'),
-                        'name': data.get('name'),
-                        'description': data.get('description'),
-                        'type': data.get('category'),
-                        'created_at': data.get('metadata', {}).get('created_at'),
-                        'computation_type': data.get('computation_type'),
-                        'formula': formula_preview,
-                        'evaluated': evaluated,
-                        'evaluations_count': eval_count,
-                        'avg_metrics': avg_metrics_clean,
-                        'last_evaluated_at': last_evaluated_at,
-                        'ic': _safe_num((avg_metrics or {}).get('ic_pearson')),
-                        'ir': _safe_num((avg_metrics or {}).get('sharpe_ratio')),
-                    })
-                except Exception:
+                    data['source'] = 'technicals'  # 标记来源
+                    factors.append(data)
+                except Exception as e:
+                    print(f"❌ 读取因子文件失败 {file}: {e}")
                     continue
-        return jsonify({'success': True, 'factors': factors, 'total': len(factors)})
+        
+        # 读取 minactors 文件夹
+        if minactors_dir.exists():
+            for file in minactors_dir.glob("*.json"):
+                try:
+                    with open(file, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    data['source'] = 'minactors'  # 标记来源
+                    factors.append(data)
+                except Exception as e:
+                    print(f"❌ 读取因子文件失败 {file}: {e}")
+                    continue
+        
+        # 处理因子数据
+        processed_factors = []
+        for data in factors:
+            try:
+                comp = data.get('computation_data', {})
+                formula_preview = None
+                if data.get('computation_type') == 'formula':
+                    formula_preview = (comp.get('formula') or '').split('\n')[0][:120]
+                
+                # 聚合评估均值（核心IO）
+                evaluated = False
+                eval_count = 0
+                avg_metrics = {}
+                last_evaluated_at = None
+                try:
+                    eval_payload = core_load_evaluations(data.get('factor_id'))
+                    evaluations = (eval_payload or {}).get('evaluations') or []
+                    eval_count = len(evaluations)
+                    if eval_count > 0:
+                        evaluated = True
+                        keys = ['ic_pearson', 'ic_spearman', 'win_rate', 'sharpe_ratio', 'long_short_return']
+                        sums = {k: 0.0 for k in keys}
+                        counts = {k: 0 for k in keys}
+                        for ev in evaluations:
+                            res = (ev or {}).get('results') or {}
+                            for k in keys:
+                                v = res.get(k)
+                                if isinstance(v, (int, float)):
+                                    sums[k] += float(v)
+                                    counts[k] += 1
+                            last_evaluated_at = (ev or {}).get('evaluated_at') or last_evaluated_at
+                        for k in keys:
+                            avg_metrics[k] = (sums[k] / counts[k]) if counts[k] > 0 else None
+                except Exception:
+                    pass
+                
+                # 数值安全处理，避免NaN进入JSON
+                def _safe_num(x):
+                    return float(x) if isinstance(x, (int, float)) and math.isfinite(x) else None
+                avg_metrics_clean = {}
+                for k, v in (avg_metrics or {}).items():
+                    avg_metrics_clean[k] = _safe_num(v)
+                
+                processed_factors.append({
+                    'id': data.get('factor_id'),
+                    'name': data.get('name'),
+                    'description': data.get('description'),
+                    'type': data.get('category'),
+                    'source': data.get('source'),  # 添加来源信息
+                    'created_at': data.get('metadata', {}).get('created_at'),
+                    'computation_type': data.get('computation_type'),
+                    'formula': formula_preview,
+                    'evaluated': evaluated,
+                    'evaluations_count': eval_count,
+                    'avg_metrics': avg_metrics_clean,
+                    'last_evaluated_at': last_evaluated_at,
+                    'ic': _safe_num((avg_metrics or {}).get('ic_pearson')),
+                    'ir': _safe_num((avg_metrics or {}).get('sharpe_ratio')),
+                })
+            except Exception as e:
+                print(f"❌ 处理因子数据失败 {data.get('factor_id', 'unknown')}: {e}")
+                continue
+        
+        return jsonify({'success': True, 'factors': processed_factors, 'total': len(processed_factors)})
     except Exception as e:
         return jsonify({'success': False, 'message': f'获取因子列表失败: {str(e)}'})
 
@@ -237,12 +270,18 @@ def get_factor_detail(factor_id):
 def export_factor(factor_id):
     """导出因子"""
     try:
-        # V3导出：仅导出定义
-        export_dir = FACTOR_LIBRARY_DIR / "exports"
+        # V4导出：从新的文件夹结构导出
+        export_dir = FACTOR_LIBRARY_DIR / "minactors"  # 导出到minactors目录
         export_dir.mkdir(parents=True, exist_ok=True)
-        definition_file = FACTOR_LIBRARY_DIR / "definitions" / f"{factor_id}.json"
+        
+        # 先在minactors中查找
+        definition_file = FACTOR_LIBRARY_DIR / "minactors" / "definitions" / f"{factor_id}.json"
         if not definition_file.exists():
-            return jsonify({'success': False, 'message': '因子定义不存在'})
+            # 再在technicals中查找
+            definition_file = FACTOR_LIBRARY_DIR / "technicals" / "definitions" / f"{factor_id}.json"
+            if not definition_file.exists():
+                return jsonify({'success': False, 'message': '因子定义不存在'})
+        
         export_path = export_dir / f"{factor_id}_definition.json"
         with open(definition_file, 'r', encoding='utf-8') as src, open(export_path, 'w', encoding='utf-8') as dst:
             dst.write(src.read())
@@ -386,7 +425,7 @@ def get_factor_detail_info(factor_info):
 
 def export_factor_data(factor_info):
     """导出因子数据"""
-    export_dir = FACTOR_LIBRARY_DIR / "exports"
+    export_dir = FACTOR_LIBRARY_DIR / "minactors"  # 导出到minactors目录
     export_dir.mkdir(parents=True, exist_ok=True)
     
     identifier = factor_info.get('identifier') or factor_info.get('id') or 'factor'
@@ -598,11 +637,13 @@ def calculate_factor():
         if not factor_id:
             return jsonify({'success': False, 'error': '缺少factor_id参数'})
         
-        # 查找因子定义
-        factor_file = FACTOR_LIBRARY_DIR / "definitions" / f"{factor_id}.json"
+        # 查找因子定义（先在minactors中查找，再在technicals中查找）
+        factor_file = FACTOR_LIBRARY_DIR / "minactors" / "definitions" / f"{factor_id}.json"
         if not factor_file.exists():
-            print(f"❌ 因子定义文件不存在: {factor_file}")
-            return jsonify({'success': False, 'error': f'因子 {factor_id} 不存在'})
+            factor_file = FACTOR_LIBRARY_DIR / "technicals" / "definitions" / f"{factor_id}.json"
+            if not factor_file.exists():
+                print(f"❌ 因子定义文件不存在: {factor_id}")
+                return jsonify({'success': False, 'error': f'因子 {factor_id} 不存在'})
         
         with open(factor_file, 'r', encoding='utf-8') as f:
             factor_info = json.load(f)
@@ -698,11 +739,13 @@ def calculate_function_factor(factor_info, market_data, parameters):
             print("❌ 因子ID为空")
             return None
         
-        # 构建函数文件路径
-        function_file = FACTOR_LIBRARY_DIR / "functions" / f"{factor_name}.py"
+        # 构建函数文件路径（先在technicals中查找，再在minactors中查找）
+        function_file = FACTOR_LIBRARY_DIR / "technicals" / "functions" / f"{factor_name}.py"
         if not function_file.exists():
-            print(f"❌ 因子函数文件不存在: {function_file}")
-            return None
+            function_file = FACTOR_LIBRARY_DIR / "minactors" / "functions" / f"{factor_name}.py"
+            if not function_file.exists():
+                print(f"❌ 因子函数文件不存在: {factor_name}")
+                return None
         
         print(f"🔍 找到因子函数文件: {function_file}")
         

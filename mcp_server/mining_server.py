@@ -15,12 +15,12 @@ project_root = current_dir.parent
 # 将项目根目录添加到 Python 模块搜索路径
 sys.path.append(str(project_root))
 
-# 现在再导入 webui
-from webui.service.mining_service import MiningService
+# 现在再导入新的API
+from factor_miner.api.factor_mining_api import FactorMiningAPI
 
 # 创建MCP服务器实例
 server = Server("mining-server")
-mining_service = MiningService()
+mining_api = FactorMiningAPI()
 
 # 定义一个获取当前时间的工具
 @server.list_tools()
@@ -76,14 +76,14 @@ async def call_tool(name: str, arguments: dict):
         factor_types = arguments.get("factor_types")
         start_date = arguments.get("start_date")
         end_date = arguments.get("end_date")
-        # 调用mining_server的start_mining方法
-        mining_result = mining_service.start_mining({
-            "symbols": [symbol],
-            "timeframes": [timeframe],
-            "factor_types": factor_types,
-            "start_date": start_date,
-            "end_date": end_date
-            })
+        # 调用新的API方法
+        mining_result = mining_api.run_complete_mining(
+            symbol=symbol,
+            timeframe=timeframe,
+            factor_types=factor_types,
+            start_date=start_date,
+            end_date=end_date
+        )
 
         return [TextContent(
             type="text",

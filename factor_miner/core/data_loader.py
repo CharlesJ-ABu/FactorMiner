@@ -145,9 +145,11 @@ class DataLoader:
             
             # 过滤日期范围
             if start_date:
-                data = data[data.index >= start_date]
+                start_dt = pd.to_datetime(start_date)
+                data = data[data.index >= start_dt]
             if end_date:
-                data = data[data.index <= end_date]
+                end_dt = pd.to_datetime(end_date)
+                data = data[data.index <= end_dt]
             
             print(f"成功加载数据: {data.shape[0]} 条记录")
             return data

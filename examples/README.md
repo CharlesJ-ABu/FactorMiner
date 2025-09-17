@@ -1,12 +1,36 @@
 # 📚 FactorMiner 示例文件
 
+> 🚀 **项目状态**: 当前重构因子挖掘模块中，bug 很多，需要测试的同学可以找到 9 月份之前的版本进行测试
+
 本文件夹包含了 FactorMiner 平台的各种使用示例，帮助用户快速上手和理解平台功能。
+
+**⚠️ 重要提醒**: 当前项目正在进行大规模重构，部分示例可能无法正常运行。建议使用稳定版本进行测试。
 
 ## 🎯 示例文件说明
 
+### 🔄 重构相关示例
+
+#### 1. **user_algorithm_template.py** - 用户算法模板
+- **用途**: 展示新的用户算法开发范式
+- **功能**:
+  - ALGORITHM_INFO 结构示例
+  - calculate_factors 函数实现
+  - calculate_single_factor 函数实现
+  - 数据验证和错误处理
+- **适用场景**: 学习如何编写符合新范式的算法
+
+#### 2. **storage_api_usage.py** - 存储API使用示例
+- **用途**: 演示新的简化存储API
+- **功能**:
+  - save_technical_factor 使用
+  - save_minactor_factor 使用
+  - save_model 和 load_model 使用
+  - save_evaluation 使用
+- **适用场景**: 学习新的存储API
+
 ### 核心功能示例
 
-#### 1. **factor_mining_workflow.py** - 因子挖掘工作流
+#### 3. **factor_mining_workflow.py** - 因子挖掘工作流
 - **用途**: 演示完整的因子挖掘流程
 - **功能**: 
   - 初始化核心组件
@@ -122,4 +146,4 @@ A: 检查数据格式是否正确，确保包含必要的OHLCV列
 
 ---
 
-*最后更新: 2025年8月*
+*最后更新: 2025年9月*

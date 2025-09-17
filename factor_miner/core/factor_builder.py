@@ -10,7 +10,7 @@
   * 将具体算法实现提取到 user_algo 目录
   * 支持动态加载和热插拔算法
   * 保持向后兼容性
-  * 代码从1000+行精简到275行
+  * 代码从1000+行精简到200行
 
 主要变更：
 - 移除所有 _build_*_factors 方法
@@ -24,10 +24,11 @@ from typing import Dict, List, Optional, Callable
 from pathlib import Path
 import importlib.util
 import warnings
-warnings.filterwarnings('ignore')
 
 from .factor_storage import TransparentFactorStorage
 from .factor_engine import FactorEngine
+
+warnings.filterwarnings('ignore')
 
 
 class FactorBuilder:
@@ -48,65 +49,45 @@ class FactorBuilder:
     - 自动因子存储和管理
     
     使用方式：
-    1. 在 user_algo 目录添加算法文件
-    2. 实现 calculate_factors(data, **kwargs) 函数
-    3. 可选添加 ALGORITHM_INFO 元信息
-    4. 通过 build_all_factors() 调用算法
+    ```python
+    builder = FactorBuilder()
+    factors = builder.build_all_factors(data, selected_algorithms=['ml_momentum'])
+    ```
     """
     
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, storage: TransparentFactorStorage = None):
         """
         初始化因子构建器
         
         Args:
-            config: 配置字典
+            storage: 因子存储实例，如果为None则创建新实例
         """
-        self.config = config or {}
-        self.storage = TransparentFactorStorage()
-        self.engine = FactorEngine()
+        self.storage = storage or TransparentFactorStorage()
+        self.engine = FactorEngine(self.storage)
+        self._algorithm_cache = {}
+        self._user_algo_dir = Path(__file__).parent.parent.parent / "user_algo"
         
-        # 用户算法目录
-        self.user_algo_dir = Path(__file__).parent.parent.parent / "user_algo"
-        
-        # 算法缓存
-        self.algorithm_cache = {}
-        
-    def build_all_factors(self, data: pd.DataFrame, 
-                         factor_types: Optional[List[str]] = None,
-                         selected_algorithms: Optional[List[str]] = None,
-                         save_to_storage: bool = True,
-                         progress_callback: Optional[callable] = None,
-                         **kwargs) -> pd.DataFrame:
+        print("🚀 因子构建器 V4.0 已初始化")
+        print(f"📁 用户算法目录: {self._user_algo_dir}")
+    
+    def build_all_factors(self, data: pd.DataFrame, selected_algorithms: List[str], 
+                         save_to_storage: bool = True, **kwargs) -> Dict:
         """
-        构建所有类型的因子 (V4.0 重构版本)
-        
-        相比V3.0版本的主要变化：
-        - 不再使用内置的 _build_*_factors 方法
-        - 改为动态加载 user_algo 目录中的算法
-        - 支持用户自定义算法选择
-        - 保持原有API接口兼容性
+        构建所有因子（主要接口）
         
         Args:
             data: 市场数据
-            factor_types: 因子类型列表 (technical, statistical, ml, etc.)
-            selected_algorithms: 选中的具体算法列表
+            selected_algorithms: 选中的算法列表
             save_to_storage: 是否保存到存储系统
-            progress_callback: 进度回调函数
             **kwargs: 其他参数
             
         Returns:
-            因子DataFrame
+            Dict: 包含成功状态、因子数据、统计信息等
         """
-        if factor_types is None:
-            factor_types = self._get_available_categories()
-        
-        if selected_algorithms is None:
-            selected_algorithms = self._get_algorithms_by_categories(factor_types)
+        print(f"🚀 开始构建因子，算法: {', '.join(selected_algorithms)}")
         
         all_factors = {}
         built_factors = {}
-        
-        print(f"🚀 开始构建因子，算法: {', '.join(selected_algorithms)}")
         
         for algo_id in selected_algorithms:
             try:
@@ -129,144 +110,168 @@ class FactorBuilder:
         print(f"🎉 因子构建完成，总共 {len(factors_df.columns)} 个因子")
         
         # 保存到存储系统
-        if save_to_storage:
+        if save_to_storage and built_factors:
             self._save_factors_to_storage(built_factors, data, **kwargs)
         
-        return factors_df
+        return {
+            'success': True,
+            'factors': all_factors,
+            'factors_df': factors_df,
+            'total_factors': len(factors_df.columns),
+            'algorithms_used': selected_algorithms
+        }
     
     def _execute_algorithm(self, algo_id: str, data: pd.DataFrame, **kwargs) -> Dict[str, pd.Series]:
-        """执行指定算法"""
-        # 检查缓存
-        if algo_id in self.algorithm_cache:
-            module = self.algorithm_cache[algo_id]
+        """
+        执行单个算法
+        
+        Args:
+            algo_id: 算法ID
+            data: 市场数据
+            **kwargs: 算法参数
+            
+        Returns:
+            Dict[str, pd.Series]: 因子名称到因子值的映射
+        """
+        # 加载算法模块
+        algorithm_module = self._load_algorithm_module(algo_id)
+        if not algorithm_module:
+            raise ValueError(f"无法加载算法: {algo_id}")
+        
+        # 调用算法的 calculate_factors 函数
+        if hasattr(algorithm_module, 'calculate_factors'):
+            return algorithm_module.calculate_factors(data, **kwargs)
         else:
-            # 动态加载算法
-            module = self._load_algorithm(algo_id)
-            if module is None:
-                raise ImportError(f"无法加载算法: {algo_id}")
-            self.algorithm_cache[algo_id] = module
-        
-        # 获取算法参数
-        algo_params = kwargs.get(f'{algo_id}_params', {})
-        
-        # 执行算法
-        return module.calculate_factors(data, **algo_params)
+            raise ValueError(f"算法 {algo_id} 缺少 calculate_factors 函数")
     
-    def _load_algorithm(self, algo_id: str):
+    def _load_algorithm_module(self, algo_id: str):
         """动态加载算法模块"""
-        # 支持多种路径格式
-        possible_paths = [
-            self.user_algo_dir / f"{algo_id}.py",
-        ]
+        if algo_id in self._algorithm_cache:
+            return self._algorithm_cache[algo_id]
         
-        for file_path in possible_paths:
-            if file_path.exists():
-                try:
-                    spec = importlib.util.spec_from_file_location(algo_id, file_path)
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-                    return module
-                except Exception as e:
-                    print(f"⚠️ 加载算法 {file_path} 失败: {e}")
-                    continue
-        
-        return None
+        try:
+            # 查找算法文件
+            algo_file = self._user_algo_dir / f"{algo_id}.py"
+            if not algo_file.exists():
+                print(f"❌ 算法文件不存在: {algo_file}")
+                return None
+            
+            # 动态导入
+            spec = importlib.util.spec_from_file_location(algo_id, algo_file)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            
+            # 缓存模块
+            self._algorithm_cache[algo_id] = module
+            print(f"✅ 算法模块已加载: {algo_id}")
+            return module
+            
+        except Exception as e:
+            print(f"❌ 加载算法模块失败 {algo_id}: {e}")
+            return None
     
     def scan_all_algorithms(self) -> List[Dict]:
         """扫描所有可用算法"""
         algorithms = []
         
-        if not self.user_algo_dir.exists():
+        if not self._user_algo_dir.exists():
+            print(f"❌ 用户算法目录不存在: {self._user_algo_dir}")
             return algorithms
         
-        # 扫描 user_algo 目录
-        for file_path in self.user_algo_dir.glob("*.py"):
-            if file_path.name == "__init__.py":
+        # 扫描所有Python文件
+        for algo_file in self._user_algo_dir.glob("*.py"):
+            if algo_file.name.startswith("__"):
                 continue
                 
+            algo_id = algo_file.stem
             try:
-                # 动态导入算法文件
-                spec = importlib.util.spec_from_file_location(
-                    file_path.stem, file_path
-                )
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-                
-                # 检查是否有 calculate_factors 函数
-                if hasattr(module, 'calculate_factors'):
-                    algo_info = {
-                        'id': file_path.stem,
-                        'name': file_path.stem,
-                        'description': '算法',
-                        'file_path': str(file_path),
-                        'category': 'custom'
-                    }
-                    
-                    # 如果有算法信息，使用它
-                    if hasattr(module, 'ALGORITHM_INFO'):
-                        algo_info.update(module.ALGORITHM_INFO)
-                    
-                    algorithms.append(algo_info)
+                # 加载模块获取信息
+                module = self._load_algorithm_module(algo_id)
+                if module and hasattr(module, 'ALGORITHM_INFO'):
+                    info = module.ALGORITHM_INFO
+                    algorithms.append({
+                        'id': algo_id,
+                        'name': info.get('name', algo_id),
+                        'description': info.get('description', ''),
+                        'category': info.get('category', 'other'),
+                        'version': info.get('version', '1.0.0'),
+                        'file_path': str(algo_file)
+                    })
+                else:
+                    # 默认信息
+                    algorithms.append({
+                        'id': algo_id,
+                        'name': algo_id,
+                        'description': '用户自定义算法',
+                        'category': 'custom',
+                        'version': '1.0.0',
+                        'file_path': str(algo_file)
+                    })
                     
             except Exception as e:
-                print(f"⚠️ 加载算法 {file_path.name} 失败: {e}")
+                print(f"❌ 扫描算法失败 {algo_id}: {e}")
                 continue
         
+        print(f"📋 扫描完成，找到 {len(algorithms)} 个算法")
         return algorithms
     
-    def _get_available_categories(self) -> List[str]:
-        """获取可用算法分类"""
-        algorithms = self.scan_all_algorithms()
-        categories = set(algo.get('category', 'unknown') for algo in algorithms)
-        return sorted(list(categories))
-    
-    def _get_algorithms_by_categories(self, categories: List[str]) -> List[str]:
-        """根据分类获取算法列表"""
-        algorithms = self.scan_all_algorithms()
-        return [algo['id'] for algo in algorithms if algo.get('category') in categories]
-    
-    def get_algorithm_info(self, algorithm_id: str) -> Optional[Dict]:
+    def get_algorithm_info(self, algo_id: str) -> Optional[Dict]:
         """获取算法信息"""
         algorithms = self.scan_all_algorithms()
         for algo in algorithms:
-            if algo['id'] == algorithm_id:
+            if algo['id'] == algo_id:
                 return algo
         return None
+    
+    def _save_factors_to_storage(self, built_factors: Dict, data: pd.DataFrame, **kwargs):
+        """将构建的因子保存到存储系统（简化版：只保存定义和模型）"""
+        print("💾 开始保存因子到存储系统...")
+        
+        for algo_id, factors in built_factors.items():
+            try:
+                # 获取算法信息
+                algo_info = self.get_algorithm_info(algo_id)
+                if not algo_info:
+                    print(f"❌ 无法获取算法 {algo_id} 的信息")
+                    continue
+                
+                print(f"📖 处理算法: {algo_id}")
+                
+                # 为每个因子保存定义
+                for factor_name, factor_series in factors.items():
+                    try:
+                        # 创建因子定义
+                        factor_id = f"{algo_id}_{factor_name}"
+                        
+                        # 保存因子定义（包含算法信息）
+                        success = self.storage.save_minactor_factor(
+                            factor_id=factor_id,
+                            name=factor_name,
+                            algorithm_name=algo_id,
+                            description=f"由 {algo_id} 算法生成的 {factor_name} 因子",
+                            category=algo_id.split('_')[0] if '_' in algo_id else 'ml',
+                            model_file=f"{algo_id}_{factor_name}.pkl",  # 假设模型文件
+                            performance_metrics={}  # 稍后填充
+                        )
+                        
+                        if success:
+                            print(f"✅ 因子定义 {factor_id} 保存成功")
+                        else:
+                            print(f"❌ 因子定义 {factor_id} 保存失败")
+                        
+                    except Exception as e:
+                        print(f"❌ 保存因子 {factor_name} 时出错: {e}")
+                        continue
+                    
+            except Exception as e:
+                print(f"❌ 处理算法 {algo_id} 时出错: {e}")
+                continue
+        
+        print("💾 因子定义保存完成")
     
     def list_algorithms(self) -> List[Dict]:
         """列出所有算法"""
         return self.scan_all_algorithms()
-    
-    def _save_factors_to_storage(self, built_factors: Dict, data: pd.DataFrame, **kwargs):
-        """将构建的因子保存到存储系统"""
-        print("💾 开始保存因子到存储系统...")
-        
-        for algo_id, factors in built_factors.items():
-            for factor_name, factor_series in factors.items():
-                try:
-                    # 创建因子定义
-                    factor_id = f"{algo_id}_{factor_name}"
-                    
-                    # 保存为公式类型
-                    success = self.storage.save_formula_factor(
-                        factor_id=factor_id,
-                        name=factor_name,
-                        formula=f"# {algo_id} 算法生成的 {factor_name} 因子",
-                        description=f"由 {algo_id} 算法生成的 {factor_name} 因子",
-                        category=algo_id.split('_')[0] if '_' in algo_id else 'custom',
-                        parameters={}
-                    )
-                    
-                    if success:
-                        print(f"✅ 因子 {factor_id} 保存成功")
-                    else:
-                        print(f"❌ 因子 {factor_id} 保存失败")
-                        
-                except Exception as e:
-                    print(f"❌ 保存因子 {factor_name} 时出错: {e}")
-                    continue
-        
-        print("💾 因子保存完成")
     
     def get_available_factors(self) -> Dict[str, List[str]]:
         """获取所有可用因子的信息（兼容性方法）"""

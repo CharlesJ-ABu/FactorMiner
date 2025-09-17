@@ -5,7 +5,11 @@ FactorMiner WebUI 启动脚本
 """
 
 import sys
+import os
 from pathlib import Path
+
+# 禁用Flask文件监控，避免因factorlib文件更新而重启
+os.environ['FLASK_ENV'] = 'development'
 
 # 添加项目根目录到路径
 project_root = Path(__file__).parent
@@ -27,7 +31,8 @@ def main():
         app.run(
             host=WEBUI_CONFIG['host'],
             port=WEBUI_CONFIG['port'],
-            debug=WEBUI_CONFIG['debug']
+            debug=WEBUI_CONFIG['debug'],
+            use_reloader=False  # 禁用自动重载
         )
     except KeyboardInterrupt:
         print("\n服务已停止")

@@ -393,7 +393,7 @@ async function handleMiningSubmit(event) {
         const miningData = {
             symbols: getSelectedValues('symbolsSelect'),
             timeframes: getSelectedValues('timeframesSelect'),
-            factor_types: getSelectedValues('factorTypes'),
+            selected_algorithms: getSelectedAlgorithms(),
             start_date: formData.get('startDate'),
             end_date: formData.get('endDate'),
             optimization_method: formData.get('optimizationMethod'),
@@ -416,8 +416,8 @@ async function handleMiningSubmit(event) {
             return;
         }
         
-        if (miningData.factor_types.length === 0) {
-            showAlert('error', '请选择至少一种因子类型');
+        if (miningData.selected_algorithms.length === 0) {
+            showAlert('error', '请选择至少一个算法');
             return;
         }
         
@@ -489,7 +489,7 @@ async function handleMiningSubmit(event) {
  */
 function getSelectedValues(selectId) {
     if (selectId === 'factorTypes') {
-        // 特殊处理因子类型复选框
+        // 特殊处理因子类型复选框（已废弃，保留兼容性）
         const checkboxes = document.querySelectorAll('input[name="factorType"]:checked');
         return Array.from(checkboxes).map(cb => cb.value);
     }
@@ -507,7 +507,7 @@ function getSelectedValues(selectId) {
 function validateMiningForm() {
     const symbols = getSelectedValues('symbolsSelect');
     const timeframes = getSelectedValues('timeframesSelect');
-    const factorTypes = getSelectedValues('factorTypes');
+    const selectedAlgorithms = getSelectedAlgorithms();
     
     if (symbols.length === 0) {
         showAlert('error', '请选择至少一个交易对');
@@ -519,8 +519,8 @@ function validateMiningForm() {
         return false;
     }
     
-    if (factorTypes.length === 0) {
-        showAlert('error', '请选择至少一种因子类型');
+    if (selectedAlgorithms.length === 0) {
+        showAlert('error', '请选择至少一个算法');
         return false;
     }
     
@@ -608,6 +608,10 @@ async function startMining(formData) {
             showAlert('success', '因子挖掘已启动，正在监控进度...');
             console.log('挖掘会话ID:', result.session_id);
             
+            // 添加调试信息
+            addDebugInfo('挖掘任务已启动', 'success');
+            addDebugInfo(`会话ID: ${result.session_id}`, 'info');
+            
             // 重置进度步骤
             resetProgressSteps();
             
@@ -615,6 +619,7 @@ async function startMining(formData) {
             startProgressMonitoring(result.session_id);
         } else {
             // 挖掘失败
+            addDebugInfo(`挖掘启动失败: ${result.error || '未知错误'}`, 'error');
             showAlert('error', result.error || '挖掘启动失败');
         }
         
@@ -714,14 +719,18 @@ function startProgressMonitoring(sessionId) {
                 } else if (data.status === 'error') {
                     handleMiningError(data.error);
                 }
+            } else {
+                addDebugInfo(`进度更新失败: ${data.error || '未知错误'}`, 'error');
             }
         } catch (error) {
             console.error('解析进度数据失败:', error);
+            addDebugInfo(`解析进度数据失败: ${error.message}`, 'error');
         }
     };
     
     progressEventSource.onerror = function(error) {
         console.error('进度流错误:', error);
+        addDebugInfo('SSE连接失败，切换到轮询模式', 'warning');
         // 如果SSE失败，回退到轮询
         fallbackToPolling(sessionId);
     };
@@ -732,6 +741,7 @@ function startProgressMonitoring(sessionId) {
  */
 function fallbackToPolling(sessionId) {
     console.log('回退到轮询方式');
+    addDebugInfo('开始轮询模式监控进度', 'info');
     
     if (progressEventSource) {
         progressEventSource.close();
@@ -752,222 +762,111 @@ function fallbackToPolling(sessionId) {
                     } else if (data.status === 'error') {
                         handleMiningError(data.error);
                     }
+                } else {
+                    addDebugInfo(`轮询获取状态失败: ${data.error || '未知错误'}`, 'error');
                 }
+            } else {
+                addDebugInfo(`轮询HTTP错误: ${response.status}`, 'error');
             }
         } catch (error) {
             console.error('获取进度失败:', error);
+            addDebugInfo(`轮询获取进度失败: ${error.message}`, 'error');
         }
     }, 1000); // 每秒更新一次
 }
 
 /**
- * 更新进度显示
+ * 更新进度显示（简化版）
  */
 function updateProgressDisplay(data) {
-    const { progress, current_step, messages, time_info, progress_info, system_info } = data;
-    console.log('更新进度显示:', { progress, current_step, messages, time_info, progress_info, system_info });
-    
-    // 计算总体进度
-    let overallProgress = 0;
-    let completedSteps = 0;
-    const totalSteps = Object.keys(progress).length;
-    
-    // 更新每个步骤的进度
-    Object.keys(progress).forEach(stepKey => {
-        const stepProgress = progress[stepKey];
-        const frontendStepId = STEP_MAPPING[stepKey];
-        
-        if (!frontendStepId) {
-            console.warn(`未知的步骤名称: ${stepKey}`);
-            return;
-        }
-        
-        const stepElement = document.getElementById(frontendStepId);
-        console.log(`步骤 ${stepKey} -> ${frontendStepId}, 进度: ${stepProgress}%, 元素:`, stepElement);
-        
-        if (stepElement) {
-            const progressBar = stepElement.querySelector('.progress-fill');
-            const stepIcon = stepElement.querySelector('.step-icon');
-            const stepDetails = stepElement.querySelector('.step-details');
-            const stepTime = stepElement.querySelector('.step-time');
-            
-            // 更新进度条
-            if (progressBar) {
-                progressBar.style.width = `${stepProgress}%`;
-                console.log(`更新进度条 ${frontendStepId}: ${stepProgress}%`);
-            }
-            
-            // 更新图标和状态
-            if (stepIcon) {
-                if (stepProgress === 100) {
-                    stepIcon.className = 'step-icon completed';
-                    stepIcon.innerHTML = '<i class="fas fa-check"></i>';
-                    completedSteps++;
-                    console.log(`步骤 ${frontendStepId} 完成`);
-                } else if (stepKey === current_step) {
-                    stepIcon.className = 'step-icon running';
-                    stepIcon.innerHTML = '<i class="fas fa-cog fa-spin"></i>';
-                    console.log(`步骤 ${frontendStepId} 运行中`);
-                }
-            }
-
-            // 无论是否有新消息，统一基于 progress_info 更新子进度（因子构建阶段）
-            if (stepKey === 'factor_building') {
-                try {
-                    const subBox = document.getElementById('subProgressContainer');
-                    if (subBox) subBox.style.display = 'block';
-                    const mlBox = document.getElementById('mlSubProgress');
-                    const mlFill = document.getElementById('mlProgress');
-                    const mlDetails = document.getElementById('mlDetails');
-                    const sp = (progress_info && progress_info.sub_progress) ? progress_info.sub_progress : null;
-                    // 调试信息
-                    console.log('ML Sub Progress:', {
-                        'sp.ml': sp ? sp.ml : 'N/A',
-                        'sp.ml type': sp ? typeof sp.ml : 'N/A',
-                        'sub_messages.ml': (progress_info && progress_info.sub_messages) ? progress_info.sub_messages.ml : 'N/A'
-                    });
-                    
-                    // 更宽松的类型检查：接受数字或可转换为数字的字符串
-                    if (sp && (typeof sp.ml === 'number' || (typeof sp.ml === 'string' && !isNaN(sp.ml)))) {
-                        const val = Math.max(0, Math.min(100, Number(sp.ml)));
-                        if (mlBox) mlBox.style.display = 'block';
-                        if (mlFill) mlFill.style.width = `${val}%`;
-                        // 前端自行估算时间与速度
-                        const now = Date.now() / 1000;
-                        // 修复：即使val=0也要初始化时间戳，以便后续计算
-                        if (!__mlSubStartTs) __mlSubStartTs = now;
-                        const elapsed = __mlSubStartTs ? (now - __mlSubStartTs) : 0;
-                        const dPct = Math.max(0, val - (__mlLastPct || 0));
-                        const dT = Math.max(0.001, now - (__mlLastTs || now));
-                        const ratePctPerSec = dPct / dT; // %/s
-                        const eta = ratePctPerSec > 0 ? (100 - val) / ratePctPerSec : 0;
-                        __mlLastPct = val;
-                        __mlLastTs = now;
-                        if (mlDetails) {
-                            let label = '算法执行进度';
-                            const serverMsg = (progress_info.sub_messages && progress_info.sub_messages.ml) ? progress_info.sub_messages.ml : '';
-                            if (serverMsg.includes('特征选择')) label = '特征选择';
-                            else if (serverMsg.includes('滚动') || serverMsg.toLowerCase().includes('rolling')) label = '滚动ML';
-                            else if (serverMsg.includes('自适应') || serverMsg.toLowerCase().includes('adaptive')) label = '自适应ML训练';
-                            else if (serverMsg.includes('PCA')) label = 'PCA 降维';
-                            else if (serverMsg.includes('训练') || serverMsg.toLowerCase().includes('ensemble')) label = '集成模型训练';
-                            const msgSuffix = serverMsg ? ` | ${serverMsg}` : '';
-                            mlDetails.textContent = `${label} | 进度: ${val}% | 已用: ${elapsed.toFixed(1)}s | 预计: ${eta > 0 ? eta.toFixed(1)+'s' : '—'} | 速度: ${ratePctPerSec.toFixed(2)}%/s${msgSuffix}`;
-                        }
-                    } else {
-                        // 调试：如果条件不满足，显示原因
-                        console.log('ML Sub Progress Update Skipped:', {
-                            'sp exists': !!sp,
-                            'sp.ml': sp ? sp.ml : 'N/A',
-                            'sp.ml type': sp ? typeof sp.ml : 'N/A',
-                            'isNaN check': sp && typeof sp.ml === 'string' ? isNaN(sp.ml) : 'N/A'
-                        });
-                    }
-                } catch (e) { /* ignore */ }
-            }
-            
-            // 更新详细信息
-            if (stepDetails && messages && messages.length > 0) {
-                const stepMessages = messages.filter(msg => msg.step === stepKey);
-                if (stepMessages.length > 0) {
-                    const lastMessage = stepMessages[stepMessages.length - 1];
-                    stepDetails.textContent = lastMessage.message || `进度: ${stepProgress}%`;
-                    console.log(`更新步骤详情 ${frontendStepId}:`, lastMessage.message);
-                }
-            }
-            
-            // 更新时间信息
-            if (stepTime && progress_info && progress_info[stepKey]) {
-                const stepInfo = progress_info[stepKey];
-                if (stepKey === current_step && stepInfo.current_step_start) {
-                    const elapsed = stepInfo.current_step_elapsed || 0;
-                    const estimated = stepInfo.estimated_time || 0;
-                    const remaining = stepInfo.current_step_remaining || 0;
-                    
-                    if (remaining > 0) {
-                        stepTime.textContent = `已用: ${elapsed}s | 剩余: ${remaining}s`;
-                    } else {
-                        stepTime.textContent = `已用: ${elapsed}s | 预计: ${estimated}s`;
-                    }
-                } else if (stepProgress === 100) {
-                    const estimated = stepInfo.estimated_time || 0;
-                    stepTime.textContent = `完成 | 用时: ${estimated}s`;
-                } else {
-                    const estimated = stepInfo.estimated_time || 0;
-                    stepTime.textContent = `预计: ${estimated}s`;
-                }
-            }
-        } else {
-            console.error(`找不到步骤元素: ${frontendStepId}`);
-        }
-    });
+    const { progress, current_step, messages } = data;
+    console.log('更新进度显示:', { progress, current_step, messages });
     
     // 更新总体进度
-    if (totalSteps > 0) {
-        overallProgress = Math.round((completedSteps / totalSteps) * 100);
-    }
+    const overallProgress = progress || 0;
+    updateOverallProgress(overallProgress, current_step, messages);
     
-    updateOverallProgress(overallProgress, current_step, messages, time_info, system_info);
+    // 添加调试信息
+    addDebugInfo(`[${new Date().toLocaleTimeString()}] 进度更新: ${overallProgress}% - ${current_step || '未知步骤'}`);
+    
+    // 如果有消息，添加到调试信息
+    if (messages && messages.length > 0) {
+        messages.forEach(msg => {
+            addDebugInfo(`[${new Date().toLocaleTimeString()}] ${msg.message || msg}`);
+        });
+    }
 }
 
 /**
- * 更新总体进度
+ * 更新总体进度（简化版）
  */
-function updateOverallProgress(progress, currentStep, messages, timeInfo, systemInfo) {
+function updateOverallProgress(progress, currentStep, messages) {
     const overallProgressBar = document.getElementById('overallProgress');
-    const overallDetails = document.getElementById('overallDetails');
-    const timeDisplay = document.getElementById('timeDisplay');
-    const systemDisplay = document.getElementById('systemDisplay');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressBadge = document.getElementById('progressBadge');
     
     if (overallProgressBar) {
         overallProgressBar.style.width = `${progress}%`;
-        console.log(`更新总体进度: ${progress}%`);
     }
     
-    if (overallDetails) {
+    if (progressPercent) {
+        progressPercent.textContent = `${progress}%`;
+    }
+    
+    if (progressBadge) {
         if (progress === 0) {
-            overallDetails.textContent = '准备开始...';
+            progressBadge.textContent = '准备中';
+            progressBadge.className = 'badge bg-secondary ms-2';
         } else if (progress === 100) {
-            overallDetails.textContent = '挖掘完成！';
+            progressBadge.textContent = '完成';
+            progressBadge.className = 'badge bg-success ms-2';
         } else {
-            // 根据当前步骤生成状态描述
-            const stepNames = {
-                'data_loading': '数据加载中',
-                'factor_building': '因子构建中',
-                'factor_evaluation': '因子评估中',
-                'factor_optimization': '因子优化中',
-                'result_saving': '结果保存中'
-            };
-            
-            const currentStepName = stepNames[currentStep] || '处理中';
-            overallDetails.textContent = `${currentStepName}... (${progress}%)`;
+            progressBadge.textContent = '运行中';
+            progressBadge.className = 'badge bg-primary ms-2';
         }
     }
+}
+
+/**
+ * 添加调试信息
+ */
+function addDebugInfo(message, type = 'info') {
+    const debugInfo = document.getElementById('debugInfo');
+    if (!debugInfo) return;
     
-    // 更新时间信息显示
-    if (timeDisplay && timeInfo) {
-        const elapsed = timeInfo.elapsed_time || 0;
-        const remaining = timeInfo.estimated_remaining || 0;
-        const total = timeInfo.estimated_total || 0;
-        
-        let timeText = `已用时间: ${formatTime(elapsed)}`;
-        if (remaining > 0) {
-            timeText += ` | 预计剩余: ${formatTime(remaining)}`;
-        }
-        if (total > 0) {
-            timeText += ` | 总预计: ${formatTime(total)}`;
-        }
-        
-        timeDisplay.textContent = timeText;
+    const debugItem = document.createElement('div');
+    debugItem.className = `debug-item ${type}`;
+    
+    const time = new Date().toLocaleTimeString();
+    debugItem.innerHTML = `
+        <span class="debug-time">[${time}]</span>
+        <span class="debug-message">${message}</span>
+    `;
+    
+    debugInfo.appendChild(debugItem);
+    
+    // 限制调试信息数量，避免过多
+    const items = debugInfo.querySelectorAll('.debug-item');
+    if (items.length > 50) {
+        items[0].remove();
     }
     
-    // 更新系统信息显示
-    if (systemDisplay && systemInfo) {
-        const cpuCount = systemInfo.cpu_count || 0;
-        const memoryGB = systemInfo.memory_gb || 0;
-        const memoryPercent = systemInfo.memory_percent || 0;
-        
-        systemDisplay.textContent = `CPU: ${cpuCount}核 | 内存: ${memoryGB}GB (${memoryPercent}%)`;
+    // 自动滚动到底部
+    debugInfo.scrollTop = debugInfo.scrollHeight;
+}
+
+/**
+ * 清空调试信息
+ */
+function clearDebugInfo() {
+    const debugInfo = document.getElementById('debugInfo');
+    if (debugInfo) {
+        debugInfo.innerHTML = `
+            <div class="debug-item">
+                <span class="debug-time">[${new Date().toLocaleTimeString()}]</span>
+                <span class="debug-message">调试信息已清空</span>
+            </div>
+        `;
     }
 }
 
@@ -994,6 +893,9 @@ function formatTime(seconds) {
 async function handleMiningCompleted(sessionId) {
     console.log('挖掘完成，会话ID:', sessionId);
     
+    // 添加调试信息
+    addDebugInfo('挖掘任务完成！', 'success');
+    
     // 停止进度监控
     if (progressInterval) {
         clearInterval(progressInterval);
@@ -1013,6 +915,7 @@ async function handleMiningCompleted(sessionId) {
     
     try {
         // 获取完整的挖掘结果
+        addDebugInfo('正在获取挖掘结果...', 'info');
         console.log('获取完整挖掘结果...');
         const response = await fetch(`/api/mining/result/${sessionId}`);
         if (response.ok) {
@@ -1031,6 +934,7 @@ async function handleMiningCompleted(sessionId) {
             } catch (parseError) {
                 console.error('JSON解析失败:', parseError);
                 console.error('清理后的响应文本:', cleanedText);
+                addDebugInfo(`JSON解析失败: ${parseError.message}`, 'error');
                 throw new Error(`JSON解析失败: ${parseError.message}`);
             }
             
@@ -1038,18 +942,22 @@ async function handleMiningCompleted(sessionId) {
             
             if (resultData.success !== false) {
                 // 显示结果
+                addDebugInfo('挖掘结果获取成功，正在显示...', 'success');
                 showMiningResults(resultData);
                 // 追加加载对比报告
                 loadDiffReport(sessionId);
             } else {
                 console.error('获取挖掘结果失败:', resultData.error);
+                addDebugInfo(`获取挖掘结果失败: ${resultData.error}`, 'error');
                 showAlert('error', `获取挖掘结果失败: ${resultData.error}`);
             }
         } else {
+            addDebugInfo(`HTTP错误: ${response.status}`, 'error');
             throw new Error(`HTTP error! status: ${response.status}`);
         }
     } catch (error) {
         console.error('获取挖掘结果失败:', error);
+        addDebugInfo(`获取挖掘结果失败: ${error.message}`, 'error');
         showAlert('error', `获取挖掘结果失败: ${error.message}`);
     }
     
@@ -1062,6 +970,9 @@ async function handleMiningCompleted(sessionId) {
  */
 function handleMiningError(error) {
     console.error('挖掘错误:', error);
+    
+    // 添加调试信息
+    addDebugInfo(`挖掘任务失败: ${error}`, 'error');
     
     // 停止进度监控
     if (progressInterval) {
@@ -1296,8 +1207,8 @@ function updateResultsOverview(data) {
     try {
         // 更新总因子数
         const totalFactorsElement = document.getElementById('totalFactors');
-        if (totalFactorsElement && data.factors_info) {
-            totalFactorsElement.textContent = data.factors_info.total_factors || 0;
+        if (totalFactorsElement) {
+            totalFactorsElement.textContent = data.factor_count || data.factors_info?.total_factors || 0;
         }
         
         // 更新选中因子数
@@ -1308,24 +1219,33 @@ function updateResultsOverview(data) {
         
         // 更新平均IC
         const avgICElement = document.getElementById('avgIC');
-        if (avgICElement && data.evaluation) {
-            const factors = Object.values(data.evaluation);
-            if (factors.length > 0) {
-                const avgIC = factors.reduce((sum, factor) => {
-                    const ic = factor.ic_pearson || factor.ic_spearman || 0;
-                    return sum + ic;
-                }, 0) / factors.length;
-                avgICElement.textContent = avgIC.toFixed(4);
+        if (avgICElement) {
+            const evaluationData = data.evaluation?.evaluation || data.evaluation;
+            if (evaluationData) {
+                const factors = Object.values(evaluationData);
+                if (factors.length > 0) {
+                    const avgIC = factors.reduce((sum, factor) => {
+                        const ic = factor.ic_pearson || factor.ic_spearman || 0;
+                        return sum + ic;
+                    }, 0) / factors.length;
+                    avgICElement.textContent = avgIC.toFixed(4);
+                }
             }
         }
         
-        // 更新执行时间
-        const executionTimeElement = document.getElementById('executionTime');
-        if (executionTimeElement && data.start_time && data.end_time) {
-            const startTime = new Date(data.start_time);
-            const endTime = new Date(data.end_time);
-            const duration = Math.round((endTime - startTime) / 1000);
-            executionTimeElement.textContent = `${duration}s`;
+        // 更新平均多空收益
+        const avgReturnElement = document.getElementById('avgReturn');
+        if (avgReturnElement) {
+            const evaluationData = data.evaluation?.evaluation || data.evaluation;
+            if (evaluationData) {
+                const factors = Object.values(evaluationData);
+                if (factors.length > 0) {
+                    const avgReturn = factors.reduce((sum, factor) => {
+                        return sum + (factor.long_short_return || 0);
+                    }, 0) / factors.length;
+                    avgReturnElement.textContent = `${(avgReturn * 100).toFixed(2)}%`;
+                }
+            }
         }
         
         console.log('结果概览更新完成');
@@ -1351,7 +1271,9 @@ function updateResultsTable(data) {
         // 清空现有内容
         resultsTableContainer.innerHTML = '';
         
-        if (!data.evaluation || Object.keys(data.evaluation).length === 0) {
+        // 获取实际的评估数据（支持嵌套结构）
+        const evaluationData = data.evaluation?.evaluation || data.evaluation;
+        if (!evaluationData || Object.keys(evaluationData).length === 0) {
             resultsTableContainer.innerHTML = '<div class="alert alert-warning">暂无挖掘结果</div>';
             return;
         }
@@ -1365,12 +1287,12 @@ function updateResultsTable(data) {
         thead.innerHTML = `
             <tr>
                 <th>因子名称</th>
-                <th>类型</th>
+                <th>多空收益</th>
                 <th>IC (Pearson)</th>
                 <th>IC (Spearman)</th>
                 <th>胜率</th>
-                <th>数据长度</th>
-                <th>缺失率</th>
+                <th>夏普比率</th>
+                <th>类型</th>
             </tr>
         `;
         table.appendChild(thead);
@@ -1378,20 +1300,36 @@ function updateResultsTable(data) {
         // 创建表体
         const tbody = document.createElement('tbody');
         
-        // 获取因子类型信息
-        const factorTypes = data.factors_info?.factor_types || [];
-        const factorType = factorTypes.length > 0 ? factorTypes[0] : '未知';
+        // 获取算法信息（兼容旧格式）
+        let algorithmType = '未知';
+        if (data.config?.selected_algorithms && data.config.selected_algorithms.length > 0) {
+            algorithmType = data.config.selected_algorithms[0];
+        } else if (data.factors_info?.factor_types && data.factors_info.factor_types.length > 0) {
+            // 兼容旧格式，从factor_types获取
+            algorithmType = data.factors_info.factor_types[0];
+        }
         
-        Object.entries(data.evaluation).forEach(([factorName, factorData]) => {
+        // 按多空收益排序（降序）
+        const sortedFactors = Object.entries(evaluationData).sort(([,a], [,b]) => {
+            const returnA = a.long_short_return || 0;
+            const returnB = b.long_short_return || 0;
+            return returnB - returnA;
+        });
+        
+        sortedFactors.forEach(([factorName, factorData]) => {
             const row = document.createElement('tr');
+            // 计算多空收益率（百分比）
+            const longShortReturn = (factorData.long_short_return || 0) * 100;
+            // 根据多空收益设置行样式
+            const returnClass = longShortReturn > 0 ? 'text-success' : longShortReturn < 0 ? 'text-danger' : '';
             row.innerHTML = `
                 <td>${factorName}</td>
-                <td>${factorType}</td>
+                <td class="${returnClass}"><strong>${longShortReturn.toFixed(2)}%</strong></td>
                 <td>${(factorData.ic_pearson || 0).toFixed(4)}</td>
                 <td>${(factorData.ic_spearman || 0).toFixed(4)}</td>
-                <td>${(factorData.win_rate || 0).toFixed(2)}</td>
-                <td>${factorData.data_length || 0}</td>
-                <td>${((factorData.missing_ratio || 0) * 100).toFixed(2)}%</td>
+                <td>${((factorData.win_rate || 0) * 100).toFixed(1)}%</td>
+                <td>${(factorData.sharpe_ratio || 0).toFixed(2)}</td>
+                <td><span class="badge bg-secondary">${algorithmType}</span></td>
             `;
             tbody.appendChild(row);
         });
@@ -1439,13 +1377,18 @@ function updateTypeChart(data) {
             return;
         }
         
-        // 获取因子类型信息
-        const factorTypes = data.factors_info?.factor_types || [];
-        const factorType = factorTypes.length > 0 ? factorTypes[0] : '未知';
+        // 获取算法信息（兼容旧格式）
+        let algorithmType = '未知';
+        if (data.config?.selected_algorithms && data.config.selected_algorithms.length > 0) {
+            algorithmType = data.config.selected_algorithms[0];
+        } else if (data.factors_info?.factor_types && data.factors_info.factor_types.length > 0) {
+            // 兼容旧格式，从factor_types获取
+            algorithmType = data.factors_info.factor_types[0];
+        }
         
-        // 统计各类型的因子数量
+        // 统计各算法的因子数量
         const typeCounts = {};
-        typeCounts[factorType] = Object.keys(data.evaluation || {}).length;
+        typeCounts[algorithmType] = Object.keys(data.evaluation || {}).length;
         
         // 销毁旧图表
         if (canvas._chartInstance) {
@@ -1749,7 +1692,7 @@ function updateHistoryTable(sessions) {
             const config = session.config || {};
             const symbols = Array.isArray(config.symbols) ? config.symbols : [];
             const timeframes = Array.isArray(config.timeframes) ? config.timeframes : [];
-            const factorTypes = Array.isArray(config.factor_types) ? config.factor_types : [];
+            const selectedAlgorithms = Array.isArray(config.selected_algorithms) ? config.selected_algorithms : [];
             
             // 调试配置信息
             console.log('会话配置:', {
@@ -1757,16 +1700,16 @@ function updateHistoryTable(sessions) {
                 config: config,
                 symbols: symbols,
                 timeframes: timeframes,
-                factorTypes: factorTypes
+                selectedAlgorithms: selectedAlgorithms
             });
             
-            // 详细调试因子类型
-            console.log('因子类型调试:', {
+            // 详细调试算法信息
+            console.log('算法调试:', {
                 rawConfig: session.config,
-                factorTypes: factorTypes,
-                factorTypesLength: factorTypes.length,
-                factorTypesType: typeof factorTypes,
-                factorTypesIsArray: Array.isArray(factorTypes)
+                selectedAlgorithms: selectedAlgorithms,
+                selectedAlgorithmsLength: selectedAlgorithms.length,
+                selectedAlgorithmsType: typeof selectedAlgorithms,
+                selectedAlgorithmsIsArray: Array.isArray(selectedAlgorithms)
             });
             
             // 安全地获取结果信息
@@ -1774,7 +1717,7 @@ function updateHistoryTable(sessions) {
             let factorsCount = 0;
             
             try {
-                factorsCount = session.factors_count || results.factors_info?.total_factors || 0;
+                factorsCount = session.factors_count || results.total_factors || results.factors_info?.total_factors || 0;
                 // 确保是数字
                 factorsCount = parseInt(factorsCount) || 0;
             } catch (countError) {
@@ -1788,7 +1731,7 @@ function updateHistoryTable(sessions) {
             const safeTimeStr = timeStr.replace(/[<>]/g, '');
             const safeSymbols = symbols.map(s => String(s || '').replace(/[<>]/g, '')).join(', ') || '未知';
             const safeTimeframes = timeframes.map(t => String(t || '').replace(/[<>]/g, '')).join(', ') || '未知';
-            const safeFactorTypes = factorTypes.map(f => String(f || '').replace(/[<>]/g, '')).join(', ') || '未知';
+            const safeSelectedAlgorithms = selectedAlgorithms.map(a => String(a || '').replace(/[<>]/g, '')).join(', ') || '未知';
             const safeFactorsCount = String(factorsCount);
             const safeStatus = String(session.status || '未知').replace(/[<>]/g, '');
             
@@ -1796,7 +1739,7 @@ function updateHistoryTable(sessions) {
                 <td>${safeTimeStr}</td>
                 <td>${safeSymbols}</td>
                 <td>${safeTimeframes}</td>
-                <td>${safeFactorTypes}</td>
+                <td>${safeSelectedAlgorithms}</td>
                 <td>${safeFactorsCount}</td>
                 <td>
                     <span class="badge bg-${session.status === 'completed' ? 'success' : session.status === 'running' ? 'warning' : 'secondary'}">

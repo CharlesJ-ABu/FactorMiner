@@ -158,166 +158,41 @@
     <!-- 挖掘进度 -->
     <div id="miningProgress" class="row mt-4" style="display: none;">
         <div class="col-12">
-            <div class="progress-container">
-                <h4 class="text-center mb-4">
-                    <i class="fas fa-cogs me-2"></i>挖掘进度
-                </h4>
-                
-                <!-- 步骤1: 数据加载 -->
-                <div class="progress-step" id="step1">
-                    <div class="step-icon pending" id="step1Icon">
-                        <i class="fas fa-database"></i>
-                    </div>
-                    <div class="step-content">
-                        <div class="step-title">数据加载</div>
-                        <div class="step-description">从本地数据源加载市场数据</div>
-                        <div class="step-progress">
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="step1Progress" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        <div class="step-details" id="step1Details">等待开始...</div>
-                        <div class="step-time" id="step1Time">预计: 5秒</div>
-                    </div>
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-cogs me-2"></i>挖掘进度
+                        <span class="badge bg-primary ms-2" id="progressBadge">准备中</span>
+                    </h4>
                 </div>
-                
-                <!-- 步骤2: 因子构建 -->
-                <div class="progress-step" id="step2">
-                    <div class="step-icon pending" id="step2Icon">
-                        <i class="fas fa-cogs"></i>
-                    </div>
-                    <div class="step-content">
-                        <div class="step-title">因子构建</div>
-                        <div class="step-description">根据选择的类型构建量化因子</div>
-                        <div class="step-progress">
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="step2Progress" style="width: 0%"></div>
-                            </div>
+                <div class="card-body">
+                    <!-- 简单进度条 -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold">总体进度</span>
+                            <span id="progressPercent">0%</span>
                         </div>
-                        <div class="step-details" id="step2Details">等待数据加载完成...</div>
-                        <div class="step-time" id="step2Time">预计: 15秒</div>
-                        
-                        <!-- 子进度条区域 -->
-                        <div id="subProgressContainer" class="sub-progress-container" style="display: none;">
-                            <div class="sub-progress-title">算法执行进度</div>
-                            
-                            <!-- ML因子子进度 -->
-                            <div id="mlSubProgress" class="sub-progress-item" style="display: none;">
-                                <div class="sub-progress-header">
-                                    <span class="sub-progress-name">机器学习因子</span>
-                                    <span class="sub-progress-status" id="mlStatus">准备中...</span>
-                                </div>
-                                <div class="sub-progress-bar">
-                                    <div class="sub-progress-fill" id="mlProgress" style="width: 0%"></div>
-                                </div>
-                                <div class="sub-progress-details" id="mlDetails">初始化...</div>
-                            </div>
-                            
-                            <!-- 技术因子子进度 -->
-                            <div id="technicalSubProgress" class="sub-progress-item" style="display: none;">
-                                <div class="sub-progress-header">
-                                    <span class="sub-progress-name">技术因子</span>
-                                    <span class="sub-progress-status" id="technicalStatus">准备中...</span>
-                                </div>
-                                <div class="sub-progress-bar">
-                                    <div class="sub-progress-fill" id="technicalProgress" style="width: 0%"></div>
-                                </div>
-                                <div class="sub-progress-details" id="technicalDetails">初始化...</div>
-                            </div>
-                            
-                            <!-- 统计因子子进度 -->
-                            <div id="statisticalSubProgress" class="sub-progress-item" style="display: none;">
-                                <div class="sub-progress-header">
-                                    <span class="sub-progress-name">统计因子</span>
-                                    <span class="sub-progress-status" id="statisticalStatus">准备中...</span>
-                                </div>
-                                <div class="sub-progress-bar">
-                                    <div class="sub-progress-fill" id="statisticalProgress" style="width: 0%"></div>
-                                </div>
-                                <div class="sub-progress-details" id="statisticalDetails">初始化...</div>
-                            </div>
-                            
-                            <!-- 高级因子子进度 -->
-                            <div id="advancedSubProgress" class="sub-progress-item" style="display: none;">
-                                <div class="sub-progress-header">
-                                    <span class="sub-progress-name">高级因子</span>
-                                    <span class="sub-progress-status" id="advancedStatus">准备中...</span>
-                                </div>
-                                <div class="sub-progress-bar">
-                                    <div class="sub-progress-fill" id="advancedProgress" style="width: 0%"></div>
-                                </div>
-                                <div class="sub-progress-details" id="advancedDetails">初始化...</div>
-                            </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" id="overallProgress" style="width: 0%"></div>
                         </div>
                     </div>
-                </div>
-                
-                <!-- 步骤3: 因子评估 -->
-                <div class="progress-step" id="step3">
-                    <div class="step-icon pending" id="step3Icon">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <div class="step-content">
-                        <div class="step-title">因子评估</div>
-                        <div class="step-description">计算因子的IC、IR、胜率等指标</div>
-                        <div class="step-progress">
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="step3Progress" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        <div class="step-details" id="step3Details">等待因子构建完成...</div>
-                        <div class="step-time" id="step3Time">预计: 20秒</div>
-                    </div>
-                </div>
-                
-                <!-- 步骤4: 因子优化 -->
-                <div class="progress-step" id="step4">
-                    <div class="step-icon pending" id="step4Icon">
-                        <i class="fas fa-filter"></i>
-                    </div>
-                    <div class="step-content">
-                        <div class="step-title">因子优化</div>
-                        <div class="step-description">选择最优因子组合</div>
-                        <div class="step-progress">
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="step4Progress" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        <div class="step-details" id="step4Details">等待因子评估完成...</div>
-                        <div class="step-time" id="step4Time">预计: 10秒</div>
-                    </div>
-                </div>
-                
-                <!-- 步骤5: 结果保存 -->
-                <div class="progress-step" id="step5">
-                    <div class="step-icon pending" id="step5Icon">
-                        <i class="fas fa-save"></i>
-                    </div>
-                    <div class="step-content">
-                        <div class="step-title">结果保存</div>
-                        <div class="step-description">保存挖掘结果和历史记录</div>
-                        <div class="step-progress">
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="step5Progress" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        <div class="step-details" id="step5Details">等待优化完成...</div>
-                        <div class="step-time" id="step5Time">预计: 3秒</div>
-                    </div>
-                </div>
-                
-                <!-- 总体进度 -->
-                <div class="text-center mt-4">
-                    <div class="h5 mb-2">总体进度</div>
-                    <div class="progress" style="height: 10px;">
-                        <div class="progress-bar bg-success" id="overallProgress" style="width: 0%"></div>
-                    </div>
-                    <div class="mt-2" id="overallDetails">准备开始...</div>
                     
-                    <!-- 时间信息 -->
-                    <div class="mt-3">
-                        <div class="text-muted small" id="timeDisplay">预计总时间: 计算中...</div>
-                        <div class="text-muted small" id="systemDisplay">系统信息: 加载中...</div>
+                    <!-- 调试信息展示区域 -->
+                    <div class="debug-info-container">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">
+                                <i class="fas fa-terminal me-1"></i>调试信息
+                            </h6>
+                            <button class="btn btn-sm btn-outline-secondary" id="clearDebugBtn" onclick="clearDebugInfo()">
+                                <i class="fas fa-trash me-1"></i>清空
+                            </button>
+                        </div>
+                        <div id="debugInfo" class="debug-info-content">
+                            <div class="debug-item">
+                                <span class="debug-time">[准备中]</span>
+                                <span class="debug-message">等待挖掘任务启动...</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -383,8 +258,8 @@
                         <div class="col-md-3">
                             <div class="card bg-warning text-white">
                                 <div class="card-body text-center">
-                                    <h4 id="executionTime">0s</h4>
-                                    <p class="mb-0">执行时间</p>
+                                    <h4 id="avgReturn">0.00%</h4>
+                                    <p class="mb-0">平均多空收益</p>
                                 </div>
                             </div>
                         </div>

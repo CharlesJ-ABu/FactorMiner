@@ -56,47 +56,57 @@ def main():
         print("使用模拟数据...")
         data = create_sample_data()
     
-    # 3. 构建技术因子
-    print("\n3. 构建技术因子...")
+    # 3. 使用技术指标挖掘算法
+    print("\n3. 使用技术指标挖掘算法...")
     try:
-        from factor_miner.factors.technical import TechnicalFactorBuilder
+        from factor_miner.core.factor_builder import FactorBuilder
         
-        technical_builder = TechnicalFactorBuilder()
-        technical_factors = technical_builder.calculate_all_factors(data)
+        factor_builder = FactorBuilder()
         
-        print(f"✅ 技术因子构建成功")
-        print(f"   因子数量: {len(technical_factors.columns)}")
-        print(f"   因子列表: {list(technical_factors.columns)}")
+        # 使用技术指标挖掘算法
+        mining_result = factor_builder.build_all_factors(
+            data=data,
+            selected_algorithms=['technical_mining'],
+            save_to_storage=True
+        )
         
-        # 保存技术因子
-        for factor_name in technical_factors.columns:
-            factor_data = technical_factors[factor_name].dropna()
-            if len(factor_data) > 0:
-                storage.save_formula_factor(
-                    factor_id=f"demo_{factor_name}",
-                    name=f"Demo {factor_name}",
-                    formula=f"# 技术因子: {factor_name}",
-                    description=f"演示用技术因子: {factor_name}",
-                    category="technical"
-                )
-        
+        if mining_result['success']:
+            technical_factors = pd.DataFrame(mining_result['factors'])
+            print(f"✅ 技术因子挖掘成功")
+            print(f"   因子数量: {len(technical_factors.columns)}")
+            print(f"   因子列表: {list(technical_factors.columns)}")
+        else:
+            print(f"❌ 技术因子挖掘失败: {mining_result.get('error', '未知错误')}")
+            technical_factors = pd.DataFrame()
     except Exception as e:
-        print(f"❌ 技术因子构建失败: {e}")
+        print(f"❌ 技术因子挖掘失败: {e}")
+        technical_factors = pd.DataFrame()
     
-    # 4. 构建统计因子
-    print("\n4. 构建统计因子...")
+    # 4. 使用新的挖掘算法
+    print("\n4. 使用新的挖掘算法...")
     try:
-        from factor_miner.factors.statistical import StatisticalFactorBuilder
+        from factor_miner.core.factor_builder import FactorBuilder
         
-        statistical_builder = StatisticalFactorBuilder()
-        statistical_factors = statistical_builder.calculate_all_factors(data)
+        factor_builder = FactorBuilder()
         
-        print(f"✅ 统计因子构建成功")
-        print(f"   因子数量: {len(statistical_factors.columns)}")
-        print(f"   因子列表: {list(statistical_factors.columns)}")
+        # 使用统计挖掘算法
+        mining_result = factor_builder.build_all_factors(
+            data=data,
+            selected_algorithms=['statistical_mining'],
+            save_to_storage=True
+        )
         
+        if mining_result['success']:
+            statistical_factors = pd.DataFrame(mining_result['factors'])
+            print(f"✅ 统计因子挖掘成功")
+            print(f"   因子数量: {len(statistical_factors.columns)}")
+            print(f"   因子列表: {list(statistical_factors.columns)}")
+        else:
+            print(f"❌ 统计因子挖掘失败: {mining_result.get('error', '未知错误')}")
+            statistical_factors = pd.DataFrame()
     except Exception as e:
-        print(f"❌ 统计因子构建失败: {e}")
+        print(f"❌ 统计因子挖掘失败: {e}")
+        statistical_factors = pd.DataFrame()
     
     # 5. 因子评估
     print("\n5. 因子评估...")

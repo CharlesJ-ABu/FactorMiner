@@ -61,6 +61,10 @@ value_series = engine.compute_single_factor('sma_v3', data)
 ```
 
 ## ✅ 原则
-- 不需要导入任何“注册器”或“实时引擎”；一切来自 JSON
+- 不需要导入任何"注册器"或"实时引擎"；一切来自 JSON
 - 因子逻辑以文本/源码保存，严禁二进制黑盒
 - 统一使用 `factor_miner.core.factor_engine` 与 `factor_miner.core.factor_storage`
+
+---
+
+*最后更新: 2025年9月*

@@ -1,0 +1,20 @@
+{
+  "factor_id": "technical_mining_bb_upper_20",
+  "name": "bb_upper_20",
+  "description": "由 technical_mining 算法生成的 bb_upper_20 因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "ml_model",
+  "computation_data": {
+    "algorithm_name": "technical_mining",
+    "model_file": "technical_mining_bb_upper_20.pkl",
+    "performance_metrics": {}
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "a648ed98",
+    "created_at": "2025-09-17T09:31:55.399066"
+  }
+}

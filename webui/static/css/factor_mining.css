@@ -365,3 +365,103 @@
         gap: 5px;
     }
 }
+
+/* 调试信息展示区域样式 */
+.debug-info-container {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.debug-info-content {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border-radius: 6px;
+    padding: 12px;
+    font-family: 'Courier New', 'Monaco', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #333;
+}
+
+.debug-item {
+    margin-bottom: 4px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.debug-time {
+    color: #569cd6;
+    font-weight: 600;
+    min-width: 80px;
+    flex-shrink: 0;
+}
+
+.debug-message {
+    color: #d4d4d4;
+    flex: 1;
+    word-break: break-word;
+}
+
+.debug-item.info .debug-message {
+    color: #4ec9b0;
+}
+
+.debug-item.success .debug-message {
+    color: #4fc1ff;
+}
+
+.debug-item.warning .debug-message {
+    color: #dcdcaa;
+}
+
+.debug-item.error .debug-message {
+    color: #f44747;
+}
+
+/* 调试信息滚动条样式 */
+.debug-info-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.debug-info-content::-webkit-scrollbar-track {
+    background: #2d2d2d;
+    border-radius: 3px;
+}
+
+.debug-info-content::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 3px;
+}
+
+.debug-info-content::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
+
+/* 进度徽章样式 */
+#progressBadge {
+    font-size: 12px;
+    padding: 4px 8px;
+}
+
+#progressBadge.pending {
+    background-color: #6c757d !important;
+}
+
+#progressBadge.running {
+    background-color: #0d6efd !important;
+    animation: pulse 2s infinite;
+}
+
+#progressBadge.completed {
+    background-color: #198754 !important;
+}
+
+#progressBadge.error {
+    background-color: #dc3545 !important;
+}

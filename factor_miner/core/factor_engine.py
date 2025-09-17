@@ -28,7 +28,7 @@ class FactorEngine:
     
     def compute_single_factor(self, factor_id: str, data: pd.DataFrame, **kwargs) -> Optional[pd.Series]:
         """
-        计算单个因子
+        计算单个因子（直接调用user_algo中的函数）
         
         Args:
             factor_id: 因子ID
@@ -40,7 +40,28 @@ class FactorEngine:
         """
         try:
             logger.debug(f"开始计算因子: {factor_id}")
-            result = self.storage.compute_factor(factor_id, data, **kwargs)
+            
+            # 从因子定义中获取算法信息
+            factor_def = self.storage.load_factor_definition(factor_id)
+            if not factor_def:
+                logger.error(f"找不到因子定义: {factor_id}")
+                return None
+            
+            # 获取算法名称
+            algorithm_name = factor_def.computation_data.get('algorithm_name')
+            if not algorithm_name:
+                logger.error(f"因子定义中缺少算法名称: {factor_id}")
+                return None
+            
+            # 动态导入算法模块
+            algorithm_module = self._load_algorithm_module(algorithm_name)
+            if not algorithm_module:
+                logger.error(f"无法加载算法模块: {algorithm_name}")
+                return None
+            
+            # 调用算法的calculate_single_factor函数
+            factor_name = factor_def.name
+            result = algorithm_module.calculate_single_factor(data, factor_name)
             
             if result is not None:
                 logger.debug(f"因子计算成功: {factor_id}")
@@ -52,6 +73,35 @@ class FactorEngine:
         except Exception as e:
             logger.error(f"计算因子失败 {factor_id}: {e}")
             raise
+    
+    def _load_algorithm_module(self, algorithm_name: str):
+        """动态加载算法模块"""
+        try:
+            import sys
+            import importlib.util
+            from pathlib import Path
+            
+            # 添加user_algo目录到路径
+            algo_dir = Path(__file__).parent.parent.parent / "user_algo"
+            if str(algo_dir) not in sys.path:
+                sys.path.insert(0, str(algo_dir))
+            
+            # 查找算法文件
+            algo_file = algo_dir / f"{algorithm_name}.py"
+            if not algo_file.exists():
+                logger.error(f"算法文件不存在: {algo_file}")
+                return None
+            
+            # 动态导入
+            spec = importlib.util.spec_from_file_location(algorithm_name, algo_file)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            
+            return module
+            
+        except Exception as e:
+            logger.error(f"加载算法模块失败 {algorithm_name}: {e}")
+            return None
     
     def compute_multiple_factors(self, factor_ids: List[str], data: pd.DataFrame, 
                                 **kwargs) -> pd.DataFrame:

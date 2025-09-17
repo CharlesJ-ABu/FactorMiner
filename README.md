@@ -6,12 +6,21 @@
 [![Maintenance](https://img.shields.io/badge/Maintenance-Actively%20Maintained-green.svg)](https://github.com/CharlesJ-ABu/FactorMiner)
 [![GitHub](https://img.shields.io/badge/GitHub-CharlesJ--ABu-blue.svg)](https://github.com/CharlesJ-ABu)
 
-> 🚀 **项目状态**: 积极维护中，定期更新功能和修复问题  
+> 🚀 **项目状态**: 当前重构因子挖掘模块中，bug 很多，需要测试的同学可以找到 9 月份之前的版本进行测试  
 > 👨‍💻 **维护者**: [@CharlesJ-ABu](https://github.com/CharlesJ-ABu)  
-> 📅 **最后更新**: 2025年8月  
+> 📅 **最后更新**: 2025年9月  
 > 🎯 **目标**: 构建最先进的量化因子挖掘平台
 
 专业的量化因子挖掘、评估和优化平台，基于V3架构设计，帮助量化交易者和研究人员构建高质量的量化因子。
+
+**⚠️ 重要提醒**: 当前项目正在进行大规模重构，包括：
+- 因子存储架构重新设计 (technicals/minactors 分离)
+- 用户算法范式统一 (ALGORITHM_INFO, calculate_factors, calculate_single_factor)
+- 存储API简化 (save_technical_factor, save_minactor_factor)
+- 前端后端接口优化
+- 代码结构简化和清理
+
+建议在生产环境中使用稳定版本。
 
 ## 📋 目录
 
@@ -107,6 +116,9 @@ python run_webui.py
 
 ### 🎯 核心功能
 - **V3架构设计**: 全新的透明因子存储系统，支持多种计算类型
+- **重构存储架构**: 分离传统因子(technicals)和挖掘因子(minactors)，优化存储结构
+- **统一算法范式**: 标准化的用户算法开发规范，支持ALGORITHM_INFO元数据
+- **简化存储API**: 提供save_technical_factor和save_minactor_factor等简化接口
 - **稳定数据系统**: 修复核心下载问题，支持现货/期货数据完整获取和智能合并
 - **数据质量管理**: 新增健康度检查、自动修复和断层填充功能，确保数据完整性
 - **智能去重系统**: 统一按时间点去重逻辑，避免数据重复和间隙问题
@@ -728,4 +740,4 @@ FactorMiner 将继续在以下方向发展：
 
 **注意**：本项目仅供学习和研究使用，不构成投资建议。使用本软件进行实际交易的风险由用户自行承担。
 
-*最后更新: 2025年8月*
+*最后更新: 2025年9月*

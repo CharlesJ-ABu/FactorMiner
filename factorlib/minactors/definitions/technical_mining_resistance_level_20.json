@@ -1,0 +1,20 @@
+{
+  "factor_id": "technical_mining_resistance_level_20",
+  "name": "resistance_level_20",
+  "description": "由 technical_mining 算法生成的 resistance_level_20 因子",
+  "category": "technical",
+  "subcategory": "",
+  "computation_type": "ml_model",
+  "computation_data": {
+    "algorithm_name": "technical_mining",
+    "model_file": "technical_mining_resistance_level_20.pkl",
+    "performance_metrics": {}
+  },
+  "parameters": {},
+  "dependencies": [],
+  "output_type": "series",
+  "metadata": {
+    "checksum": "47a6a7bb",
+    "created_at": "2025-09-17T09:31:55.398826"
+  }
+}

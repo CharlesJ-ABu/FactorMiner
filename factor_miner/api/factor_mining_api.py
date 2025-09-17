@@ -580,7 +580,7 @@ class FactorMiningAPI:
         """
         try:
             # 创建结果目录
-            results_dir = Path("factorlib") / "mining_history" / "factor_mining" / symbol
+            results_dir = Path("factorlib") / "minactors" / "mining_history" / "factor_mining" / symbol
             results_dir.mkdir(parents=True, exist_ok=True)
             
             # 保存完整结果
@@ -620,7 +620,7 @@ class FactorMiningAPI:
             挖掘历史列表
         """
         try:
-            results_dir = Path("factorlib") / "mining_history" / "factor_mining"
+            results_dir = Path("factorlib") / "minactors" / "mining_history" / "factor_mining"
             if not results_dir.exists():
                 return []
             

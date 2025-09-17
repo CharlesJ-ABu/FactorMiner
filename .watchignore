@@ -1,0 +1,8 @@
+# 忽略这些目录和文件的变化，避免WebUI重启
+factorlib/
+*.pyc
+__pycache__/
+*.log
+*.feather
+*.pkl
+*.json
