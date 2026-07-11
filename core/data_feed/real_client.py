@@ -152,9 +152,11 @@ class RealDataClient:
                 
         if sliced_dfs:
             final_df = pd.concat(sliced_dfs)
-            # 添加基础的返回率列
+            # 添加 Forward Return（下一根 K 线的收益率）作为因子评估标签
+            # ⚠️ 必须使用 shift(-1)：因子只能用当期的 OHLCV，而 returns 必须是「下一期」的涨跌幅
+            # 若使用同期 pct_change()，因子中的 close_t 与 returns_t 天然相关，导致 IC 虚高（数据穿越）
             if 'close' in final_df.columns:
-                final_df['returns'] = final_df['close'].pct_change().fillna(0)
+                final_df['returns'] = final_df['close'].pct_change().shift(-1).fillna(0)
             return final_df
             
         return pd.DataFrame()

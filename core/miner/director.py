@@ -132,7 +132,7 @@ class FactorMinerDirector:
                 ic = f"{metrics.get('IC', 0):.4f}"
                 rank_ic = f"{metrics.get('RankIC', 0):.4f}"
                 paradigm = self.config.get("paradigm")
-                logic = cand.to_display_string(max_length=60)
+                logic = cand.to_display_string(max_length=None)
                 complexity = cand.get_complexity()
                 
                 if mining_mode == "sequential_single":

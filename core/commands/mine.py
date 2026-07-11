@@ -106,7 +106,7 @@ def run_miner(args):
                             fitness = f"{metrics.get('fitness_score', 0):.4f}"
                             ic = f"{metrics.get('IC', 0):.4f}"
                             paradigm = args.miner
-                            logic = cand.to_display_string(max_length=60)
+                            logic = cand.to_display_string(max_length=None)
                             
                             table.add_row(str(idx + 1), f_id, paradigm, logic, fitness, ic)
                             
@@ -151,7 +151,7 @@ def run_miner(args):
                     fitness = f"{metrics.get('fitness_score', 0):.4f}"
                     ic = f"{metrics.get('IC', 0):.4f}"
                     paradigm = args.miner
-                    logic = cand.to_display_string(max_length=60)
+                    logic = cand.to_display_string(max_length=None)
                     
                     table.add_row(str(idx + 1), f_id, paradigm, logic, fitness, ic)
                     

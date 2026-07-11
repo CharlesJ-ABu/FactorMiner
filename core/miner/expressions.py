@@ -82,13 +82,13 @@ class FactorExpressionAST(FactorExpression, LineageTrackableMixIn):
             return 1 + max(left_depth, right_depth)
         return f"Depth: {get_depth(self.ast_dict)}"
         
-    def to_display_string(self, max_length: int = 50) -> str:
+    def to_display_string(self, max_length: int = None) -> str:
         def to_str(node):
             if not isinstance(node, dict) or 'op' not in node:
                 return str(node)
             return f"{node['op']}({to_str(node.get('left'))}, {to_str(node.get('right'))})"
         s = to_str(self.ast_dict)
-        if len(s) > max_length:
+        if max_length is not None and len(s) > max_length:
             return s[:max_length-3] + "..."
         return s
 
@@ -116,9 +116,9 @@ class FactorExpressionCode(FactorExpression, LineageTrackableMixIn, LLMReflectab
         loc = len([line for line in self.code_str.split('\n') if line.strip()])
         return f"LoC: {loc}"
         
-    def to_display_string(self, max_length: int = 50) -> str:
+    def to_display_string(self, max_length: int = None) -> str:
         s = self.code_str.replace('\n', ' ').strip()
-        if len(s) > max_length:
+        if max_length is not None and len(s) > max_length:
             return s[:max_length-3] + "..."
         return s
 
@@ -148,9 +148,9 @@ class FactorExpressionTensor(FactorExpression):
             params = sum(p.numel() for p in self.model_instance.parameters() if p.requires_grad)
         return f"Params: {params}"
         
-    def to_display_string(self, max_length: int = 50) -> str:
+    def to_display_string(self, max_length: int = None) -> str:
         s = f"NNModel(v={self.model_version_id}) [Ch: {self.channel_idx}]"
-        if len(s) > max_length:
+        if max_length is not None and len(s) > max_length:
             return s[:max_length-3] + "..."
         return s
 
@@ -170,8 +170,8 @@ class FactorExpressionAction(FactorExpression):
     def get_complexity(self) -> str:
         return f"Depth: {len(self.action_sequence)}"
         
-    def to_display_string(self, max_length: int = 50) -> str:
+    def to_display_string(self, max_length: int = None) -> str:
         s = " -> ".join(self.action_sequence)
-        if len(s) > max_length:
+        if max_length is not None and len(s) > max_length:
             return s[:max_length-3] + "..."
         return s
