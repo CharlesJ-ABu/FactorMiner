@@ -18,9 +18,9 @@ plotly>=5.10.0
 pyarrow>=8.0.0
 feather-format>=0.4.1
 
-# Web框架
-flask>=2.2.0
-flask-cors>=3.0.10
+# Web框架 (V4 升级为 Streamlit)
+streamlit>=1.30.0
+graphviz
 
 # 其他工具
 tqdm>=4.64.0

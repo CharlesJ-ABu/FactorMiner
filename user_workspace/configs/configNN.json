@@ -1,0 +1,24 @@
+{
+    "_comment_universe": "CRYPTO_PERP_TOP50 (目前仅作为元数据备注，实际下载和回测数据由下方 data_feeds.pairs 决定)",
+    "population_size": 1, 
+    "_comment_pop": "在 DL 中，一个模型就可以吐出隐层大小个数的因子，所以 population_size=1 代表一个模型实例，但它的多通道其实等价于多个候选因子",
+    "hidden_dim": 8,
+    "max_iterations": 5,
+    "learning_rate": 0.01,
+    "data_feeds": {
+        "required_streams": ["close", "volume"],
+        "exchange": "binance",
+        "instrument_type": "futures",
+        "timeframe": "1m",
+        "pairs": ["BTC_USDT", "SUI_USDT"],
+        "mine_period": [["2025-07-20", "2025-08-01"]],
+        "test_period": [["2025-08-02", "2025-08-15"]],
+        "mining_mode": "sequential_single"
+    },
+    "fitness": {
+        "hook": "my_bear_market_hunter"
+    },
+    "storage": {
+        "db_root": "factor_db"
+    }
+}

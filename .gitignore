@@ -90,3 +90,15 @@ dmypy.json
 *.bak
 *.backup
 *~
+
+# FactorMiner V4 Specifics
+data/
+factor_db/
+web/node_modules/
+web/dist/
+.env
+
+# Scratch and test files
+test_*.py
+demo_v4_script.py
+implementation_plan.md

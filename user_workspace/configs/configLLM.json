@@ -1,0 +1,29 @@
+{
+    "_comment_universe": "CRYPTO_PERP_TOP50 (目前仅作为元数据备注，实际下载和回测数据由下方 data_feeds.pairs 决定)",
+    "population_size": 3,
+    "max_iterations": 3,
+    "data_feeds": {
+        "required_streams": ["close", "volume"],
+        "exchange": "binance",
+        "instrument_type": "futures",
+        "timeframe": "1m",
+        "pairs": ["BTC_USDT", "SUI_USDT"],
+        "mine_period": [["2025-07-20", "2025-08-01"]],
+        "test_period": [["2025-08-02", "2025-08-15"]],
+        "mining_mode": "sequential_single"
+    },
+    "llm_api_config": {
+        "keys": ["sk-dummy_api_key_for_testing"], 
+        "base_url": "https://api.openai.com/v1/chat/completions",
+        "model": "gpt-4",
+        "max_concurrency": 2,
+        "max_retries": 1,
+        "timeout_seconds": 10
+    },
+    "fitness": {
+        "hook": "my_bear_market_hunter"
+    },
+    "storage": {
+        "db_root": "factor_db"
+    }
+}
