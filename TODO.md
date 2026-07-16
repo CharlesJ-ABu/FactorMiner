@@ -10,12 +10,31 @@
 - [x] **可视化 Config 生成**: 在前端增加配置面板，支持用户点选 Universe、Mine Period、Test Period 以及所需的行情特征列 (Features)。(通过直接解析工作区 Config JSON 实现)
 - [x] **范式动态切换**: 允许用户在界面上选择 `MyCustomGP` 或 `MyCustomRL`，并自动呈现对应的参数表单。
 - [x] **启停控制与后台任务池**: 将前端表单序列化下发至后台 `/api/launch`，后端以异步线程启动 `FactorMinerDirector`，并通过 WebSocket 将挖掘进度实时广播至前端 Drawer。
+- [x] **Research Dashboard 重构**: 首页改为由 `/api/dashboard` 驱动的研究指挥台，聚合真实任务状态、因子归档/审查覆盖、最高 fitness 候选、Miner 构成和近期执行记录，并提供至 Launchpad、Inspector 的行动跳转。
+- [x] **三语界面框架（第一批）**: 提供浏览器语言识别和本地偏好持久化，支持中文、English、Deutsch；已覆盖全局导航、Research Dashboard 与 Factor Inspector，研究工件保持原始文本。
+- [x] **README WebUI、概览与扩展教程**: 以当前实现重写项目简介、核心能力和目录地图；补充 Research Dashboard、Factor Inspector 的实机截图，并记录四大范式的结果契约、自定义算子接入方式和 Fitness Hook 配置范式。
+- [ ] **三语界面扩展（第二批）**: 将 Launchpad、Data Downloader 的配置表单、实时日志周边提示和后端错误消息映射补齐，继续保持 API 枚举及因子内容不随语言变化。
 
 ### 2. **算子与计算引擎扩展** (进行中)
-**优先级**: 中  
+**优先级**: 中
 **说明**: 扩展现有的单品种串行计算能力。
 - [x] **Cross-Asset 截面计算**: 当 `mining_mode` 设置为 `cross_asset` 时，重构底层数据对其逻辑，支持横截面算子 (如 `cs_rank`, `cs_zscore`) 的计算。
 - [ ] **更多原生算子支持**: 在 `OperatorRegistry` 中预置更多金融界常用的基础算子库 (如 `ts_decay`, `ts_corr`)。
+
+### 3. **去重与评估执行能力补齐** (进行中)
+**优先级**: 中
+**现状**: `DiversityFilter` 已实现基于候选源代码 MD5 的全局硬去重；相关性软去重目前仍为占位逻辑。`ParallelEvaluator` 当前采用固定 8 线程的 `ThreadPoolExecutor`，尚未接入 Ray/Celery 等可扩展的分布式执行后端。
+- [ ] **相关性软去重**: 计算候选因子面值的相关性，按阈值剔除高相关候选，并补充与历史因子库的正交性检查。
+- [ ] **可配置并行评估**: 将固定线程数改为配置项，并明确线程池的资源边界、超时和异常回收策略。
+- [ ] **分布式评估后端**: 评估并按需接入 Ray 或 Celery，实现大规模候选因子的任务分发、结果缓存与重试机制。
+
+### 4. **Factor Inspector 审查台** (进行中)
+**优先级**: 高
+**说明**: Phase I 已将 Inspector 从静态演示替换为基于 `factor_db` 的真实因子目录、异构逻辑白盒详情与生命周期标记。
+- [x] **持久化因子目录**: 提供 FactorStorage 列表/生命周期更新能力与 `/api/factors`、`/api/factors/{id}` API；不依赖易失的任务内存。
+- [x] **异构逻辑详情**: 按 GP AST、LLM 源码、RL 动作轨迹与 DL 模型版本/通道呈现真实存储产物；Launchpad 结果可直接跳转审查页。
+- [x] **审查状态流转**: 支持 `DISCOVERED`、`INSPECTED`、`PAPER_TRADING`、`LIVE`、`RETIRED` 的显式更新和持久化。
+- [ ] **审查快照与 Tearsheet**: 因子入库时保存对齐的因子值、未来收益和数据血缘；据此增加滚动 IC、收益/分层表现与 NN 特征归因，严禁使用模拟图表替代真实数据。
 
 ---
 
@@ -29,6 +48,7 @@
 - [x] **RL 范式落地**: 编写 `MyCustomRLMiner`，彻底解耦 PyTorch 依赖，通过 Policy Gradient 权重字典完成概率采样与反馈闭环验证。
 - [x] **LLM 范式落地**: 编写 `MyCustomLLMMiner`，实现大语言模型的自然反思机制 (Reflection) 及 API 容灾降级容错，直接生成 Python 源代码并通过安全沙盒评估。
 - [x] **DL 范式落地**: 编写 `MyCustomNNMiner`，使用纯 NumPy 实现含有向后传播 (Backpropagation) 及梯度截断 (`requires_grad=True`) 能力的微型张量机制，验证了 V4 引擎对端到端深度学习的原生兼容性。
+- [x] **NN 训练产物闭环**: 将训练用的临时模型组（`channel=-1`）在权重更新后物化为按通道评估的因子；保留 Top-K 的 IC/fitness 结果、以权重摘要生成逻辑哈希，并将模型权重与通道元数据一同落盘，供 Web 与 CLI 展示。
 - [x] **评估与沙盒闭环验证**: 成功剥离出 `user_workspace/custom_fitness/` 并在真实执行流中验证了 `EvaluatorRegistry` 钩子注入机制（如 `my_bear_market_hunter`）；跑通了防御性沙盒 `RestrictedSandbox` 及针对 DL 的张量短路评估机制。
 - [x] **因子落盘与持久化存储**: 补全了 `LocalFactorStorage`，实现了每个 Epoch 结束时将优质因子、元数据及评价指标落盘至 `factor_db/` 数据库。
 - [x] **多品种序列及横截面挖掘引擎**: 实现了 `sequential_single` 以及基于矩阵计算的 `cross_asset` 并行截面 IC 计算，并在 CLI 终端完美输出跨资产综合战报。
@@ -38,10 +58,10 @@
 - [x] **高级批量数据下载器集成 (Advanced Batch Downloader)**: 将 CCXT 动态元数据获取、网络降级熔断机制、以及基于笛卡尔积排列组合的批量下载和覆盖率分析无缝集成到统一后台。
 - [x] **Web UI 下载控制台集成**: 在前端实现下载日志的实时 Console 打印，提供对运行中下载任务的透明度和进度监控。
 - [x] **市场元数据优化与联动**: 在后端实现基于市值/流动性（Quote Volume）的智能排序，并优化前端 `Exchange -> TradeType -> Symbol` 的级联过滤逻辑，防止跨市场误选。
-- [x] **底层存储命名规范闭环**: 修复全链路对 `ccxt` 返回带冒号合约标的（如 `1000CAT/USDT:USDT`）的文件名解析一致性，确保 `Batch Downloader`、`Main API`、`Real Client` 之间对历史存储命名 (`replace('/', '_').replace(':', '_')`) 的完全兼容。
+- [x] **底层存储命名规范闭环**: `Batch Downloader`、`Main API`、`Real Client` 统一使用 `{safe_symbol}-{timeframe}-{trade_type}.feather`；期货配置必须使用 CCXT 原始标的（如 `1000CAT/USDT:USDT`），旧命名文件不再参与读取。
 ---
 
-**最后更新**: 2026年7月11日  
+**最后更新**: 2026年7月17日
 **维护者**: @CharlesJ-ABu  
 
 > 💡 **提示**: 此文件记录了 V4 重构后的核心骨架与待落地的待办事项。

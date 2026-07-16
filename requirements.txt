@@ -18,9 +18,13 @@ plotly>=5.10.0
 pyarrow>=8.0.0
 feather-format>=0.4.1
 
-# Web框架 (V4 升级为 Streamlit)
-streamlit>=1.30.0
-graphviz
+# V4 后端与实时 Web API
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.0.0
+
+# CLI 结果表格
+rich>=13.0.0
 
 # 其他工具
 tqdm>=4.64.0
@@ -35,7 +39,6 @@ yfinance
 mcp
 dashscope
 requests
-asyncio
 
 # 数据存储
 # sqlite3

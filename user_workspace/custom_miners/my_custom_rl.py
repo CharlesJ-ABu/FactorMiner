@@ -66,6 +66,7 @@ class MyCustomRLMiner(BaseFactorMiner):
         self.learning_rate = self.rl_config.get("learning_rate", 0.5)
         self.max_depth = self.rl_config.get("max_depth", 3)
         self.batch_size = self.config.get("population_size", 20)
+        self.top_k = self.config.get("top_k_factors", 5)
         
         # 初始策略网络 (Policy): 所有动作的权重均为 1.0 (等概率)
         self.op_weights = {op: 1.0 for op in self.operators}
@@ -121,15 +122,18 @@ class MyCustomRLMiner(BaseFactorMiner):
         """
         Policy Gradient (REINFORCE) 更新策略
         """
-        rewards = []
-        for idx in range(len(candidates)):
-            if idx < len(feedback.metrics):
-                # 假设评价器返回 fitness_score 或 IC
-                # 也可以是 Sharpe Ratio
-                score = feedback.metrics[idx].get("fitness_score", 0)
-                rewards.append(score)
-            else:
-                rewards.append(0.0)
+        rewards = [
+            candidate.metrics.get("fitness_score", 0.0)
+            if getattr(candidate, "metrics", None) else 0.0
+            for candidate in candidates
+        ]
+
+        evaluated_candidates = [
+            candidate for candidate in candidates if getattr(candidate, "metrics", None)
+        ]
+        if not evaluated_candidates:
+            logger.warning("MyCustomRL: No candidates were evaluated successfully this generation.")
+            return
                 
         # 计算 Baseline (平均奖励)，用于减少方差
         baseline = np.mean(rewards) if len(rewards) > 0 else 0
@@ -152,7 +156,23 @@ class MyCustomRLMiner(BaseFactorMiner):
         logger.info(f"Learned OP Weights: { {k: round(v, 2) for k, v in self.op_weights.items()} }")
         logger.info(f"Learned Term Weights: { {k: round(v, 2) for k, v in self.term_weights.items()} }")
         
-        # 记录最佳公式
-        best_idx = np.argmax(rewards)
-        best_ast = candidates[best_idx].get_source()
-        logger.info(f"🏆 Best AST this generation (Reward: {rewards[best_idx]}): {best_ast}")
+        # 保留每轮最佳候选。BaseFactorMiner 会从 state.population 返回这些结果，
+        # 供 Director 落盘、进度回调和 Web UI 使用。
+        best_candidate = max(
+            evaluated_candidates,
+            key=lambda candidate: candidate.metrics.get("fitness_score", float("-inf")),
+        )
+        best_ast = best_candidate.get_source()
+        logger.info(
+            "🏆 Best AST this generation (Reward: %s): %s",
+            best_candidate.metrics.get("fitness_score", 0.0),
+            best_ast,
+        )
+
+        archived = {candidate.logic_hash: candidate for candidate in self.state.population}
+        archived[best_candidate.logic_hash] = best_candidate
+        self.state.population = sorted(
+            archived.values(),
+            key=lambda candidate: candidate.metrics.get("fitness_score", float("-inf")),
+            reverse=True,
+        )[:self.top_k]

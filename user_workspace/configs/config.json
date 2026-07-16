@@ -14,8 +14,8 @@
 		"instrument_type": "futures",
 		"timeframe": "5m",
 		"pairs": [
-			"BTC_USDT",
-			"SUI_USDT"
+			"BTC/USDT:USDT",
+			"SUI/USDT:USDT"
 		],
 		"mine_period": [
 			[

@@ -1,4 +1,5 @@
 import logging
+import hashlib
 import numpy as np
 import pandas as pd
 from typing import List, Any
@@ -43,7 +44,17 @@ class MyNNExpression(FactorExpressionTensor):
     """
     def compute(self, data: pd.DataFrame):
         if self.model_instance:
-            return self.model_instance(data)
+            output = self.model_instance(data)
+            # ``-1`` is the model-group expression used during training: the
+            # evaluator must receive the tensor so the miner can update W.
+            if self.channel_idx < 0:
+                return output
+
+            # A persisted DL factor is one output head of a trained model.
+            # Return a Series here so it follows the normal IC/fitness path.
+            if self.channel_idx >= output.data.shape[1]:
+                raise IndexError(f"Channel {self.channel_idx} is outside the model output")
+            return pd.Series(output.data[:, self.channel_idx], index=data.index)
         return None
 
 @MinerRegistry.register("MyCustomNN")
@@ -120,5 +131,51 @@ class MyCustomNNMiner(BaseFactorMiner):
         # 5. 权重更新 (Gradient Descent)
         self.model.W -= self.lr * dW
         logger.debug(f"Weight updates (dW sum: {np.sum(np.abs(dW)):.6f}) applied.")
-        
+
+        # A neural-network result is a trained model plus its output heads,
+        # rather than the temporary group expression (channel=-1) used for
+        # backpropagation above.  Materialize every head as a regular factor,
+        # let the shared evaluator assign IC/fitness, then retain the best
+        # heads for the Director/UI/storage pipeline.
+        weights = np.ascontiguousarray(self.model.W)
+        model_version_id = f"nn_{hashlib.md5(weights.tobytes()).hexdigest()[:12]}"
+        trained_heads = []
+        for channel_idx in range(self.hidden_dim):
+            head = MyNNExpression(
+                model_version_id=model_version_id,
+                channel_idx=channel_idx,
+                model_instance=self.model,
+            )
+            # These heads are materialized after the base-loop's candidate
+            # filter, so give them the same stable source-derived identity
+            # expected by storage, task tracking and future de-duplication.
+            head.logic_hash = hashlib.md5(str(head.get_source()).encode()).hexdigest()
+            trained_heads.append(head)
+        head_feedback = self.evaluator.evaluate(trained_heads)
+        if head_feedback.execution_status:
+            logger.warning(
+                "MyCustomNN: %s output heads could not be evaluated.",
+                len(head_feedback.execution_status),
+            )
+
+        ranked_heads = [head for head in trained_heads if head.metrics]
+        ranked_heads.sort(
+            key=lambda head: head.metrics.get("fitness_score", float("-inf")),
+            reverse=True,
+        )
+        top_k = min(self.config.get("top_k_factors", 5), len(ranked_heads))
+        self.state.population = ranked_heads[:top_k]
+
+        if self.state.population:
+            best = self.state.population[0]
+            logger.info(
+                "MyCustomNN: retained %s trained output heads; best channel=%s, fitness=%.6f, IC=%.6f.",
+                len(self.state.population),
+                best.channel_idx,
+                best.metrics.get("fitness_score", 0.0),
+                best.metrics.get("IC", 0.0),
+            )
+        else:
+            logger.warning("MyCustomNN: training completed but no output head produced valid metrics.")
+
         self.epoch += 1

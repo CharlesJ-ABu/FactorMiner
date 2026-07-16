@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Play, Filter, Terminal } from 'lucide-react';
 import ReactECharts from 'echarts-for-react';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -123,6 +124,8 @@ export function Launchpad() {
     .catch(err => console.error('Failed to launch task:', err));
   };
 
+  const getTaskLogs = (task: any): string[] => taskData[task.id]?.logs || task.logs || [];
+
   return (
     <div className="flex flex-col h-full gap-6">
       {/* Top Panel: Unified Launch Form */}
@@ -238,6 +241,7 @@ export function Launchpad() {
                   <td className="px-6 py-3">
                     {row.status === 'running' && <span className="text-yellow-500">🟢 运行中 ({row.progress}%)</span>}
                     {row.status === 'completed' && <span className="text-green-500">✅ 完成</span>}
+                    {row.status === 'completed_empty' && <span className="text-amber-500">⚠️ 已完成（无有效因子）</span>}
                     {row.status === 'failed' && <span className="text-red-500">🔴 失败</span>}
                   </td>
                   <td className="px-6 py-3">
@@ -283,10 +287,54 @@ export function Launchpad() {
                 {selectedTask.status === 'completed' && (
                   <div className="mt-4 p-4 border border-green-900/30 bg-green-950/10 rounded">
                     <h4 className="text-green-500 font-bold mb-2">🎉 Mining Successful</h4>
-                    <p className="text-sm text-muted-foreground mb-4">Top factors have been saved to local storage.</p>
+                    <p className="text-sm text-muted-foreground mb-4">{selectedTask.result_count || 0} top factors have been saved to local storage.</p>
                     <div className="text-xs font-mono bg-background p-2 rounded border border-border">
                       Best Hash: {selectedTask.hash}
                     </div>
+                  </div>
+                )}
+
+                {selectedTask.factors?.length > 0 && (
+                  <div className="border border-border rounded-lg overflow-hidden">
+                    <div className="px-4 py-3 bg-secondary/30 flex items-center justify-between">
+                      <h4 className="text-sm font-bold">Mined Factors</h4>
+                      <span className="text-xs text-muted-foreground">{selectedTask.factors.length} saved</span>
+                    </div>
+                    <div className="max-h-56 overflow-auto">
+                      <table className="w-full text-xs text-left">
+                        <thead className="sticky top-0 bg-card text-muted-foreground">
+                          <tr>
+                            <th className="px-4 py-2">Factor ID</th>
+                            <th className="px-4 py-2">Expression</th>
+                            <th className="px-4 py-2 text-right">Fitness</th>
+                            <th className="px-4 py-2 text-right">IC</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {selectedTask.factors.map((factor: any) => (
+                            <tr key={factor.factor_id}>
+                              <td className="px-4 py-2 font-mono whitespace-nowrap">
+                                <Link to={`/inspector?factor=${encodeURIComponent(factor.factor_id)}`} className="text-primary hover:underline" onClick={(event) => event.stopPropagation()}>
+                                  {factor.factor_id}
+                                </Link>
+                              </td>
+                              <td className="px-4 py-2 font-mono break-all">{factor.logic}</td>
+                              <td className="px-4 py-2 text-right">{factor.metrics?.fitness_score?.toFixed?.(4) ?? '—'}</td>
+                              <td className="px-4 py-2 text-right">{factor.metrics?.IC?.toFixed?.(4) ?? '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {selectedTask.status === 'completed_empty' && (
+                  <div className="mt-4 p-4 border border-amber-900/50 bg-amber-950/20 rounded">
+                    <h4 className="text-amber-500 font-bold mb-2">⚠️ Mining Finished Without Factors</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedTask.error_msg || 'The task completed normally, but no valid factors were produced.'}
+                    </p>
                   </div>
                 )}
                 
@@ -347,10 +395,10 @@ export function Launchpad() {
                     <span>Execution Console</span>
                   </div>
                   <div className="flex-1 overflow-y-auto space-y-1 text-muted-foreground flex flex-col-reverse">
-                    {(taskData[selectedTask.id]?.logs || []).slice().reverse().map((log, i) => (
+                    {getTaskLogs(selectedTask).slice().reverse().map((log, i) => (
                       <div key={i} className="hover:text-foreground transition-colors">{log}</div>
                     ))}
-                    {(!taskData[selectedTask.id]?.logs || taskData[selectedTask.id].logs.length === 0) && (
+                    {getTaskLogs(selectedTask).length === 0 && (
                       <div className="text-muted-foreground/50 italic">Waiting for log stream...</div>
                     )}
                   </div>

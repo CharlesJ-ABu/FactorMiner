@@ -5,6 +5,7 @@ import { Launchpad } from './pages/Launchpad';
 import { DataDownload } from './pages/DataDownload';
 import { Inspector } from './pages/Inspector';
 import { useEffect } from 'react';
+import { I18nProvider } from './i18n';
 
 function App() {
   // Force dark mode
@@ -13,18 +14,19 @@ function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<MainLayout />}>
-          <Route index element={<Home />} />
-          <Route path="launchpad" element={<Launchpad />} />
-          <Route path="data" element={<DataDownload />} />
-          <Route path="inspector" element={<Inspector />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <I18nProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<MainLayout />}>
+            <Route index element={<Home />} />
+            <Route path="launchpad" element={<Launchpad />} />
+            <Route path="data" element={<DataDownload />} />
+            <Route path="inspector" element={<Inspector />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </I18nProvider>
   );
 }
 
 export default App;
-

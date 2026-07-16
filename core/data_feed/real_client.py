@@ -3,6 +3,7 @@ import logging
 import pandas as pd
 from typing import Dict, List, Any
 from pathlib import Path
+from core.data_feed.naming import data_path
 
 logger = logging.getLogger(__name__)
 
@@ -76,12 +77,10 @@ class RealDataClient:
         if not periods:
             return pd.DataFrame()
             
-        # 严格按照 batch_downloader.py 的本地数据存储命名进行匹配
-        clean_symbol = pair.replace('/', '_').replace(':', '_')
-        filename = f"{clean_symbol}-{self.timeframe}-{self.instrument_type}.feather"
-        
         project_root = Path(os.getcwd())
-        file_path = project_root / "data" / self.exchange / self.instrument_type / filename
+        file_path = data_path(
+            project_root / "data", self.exchange, pair, self.timeframe, self.instrument_type
+        )
         
         if not file_path.exists():
             logger.warning(f"Data file not found: {file_path}. Attempting to download automatically...")
@@ -107,13 +106,8 @@ class RealDataClient:
             from core.data_feed.data_downloader import DataDownloader
             downloader = DataDownloader()
             
-            # Binance symbol format uses normal pairing e.g. BTC/USDT
-            download_symbol = pair.replace('_', '/')
-            if not download_symbol.endswith('/USDT'):
-                download_symbol += '/USDT'
-                
             res = downloader.download_ohlcv(
-                symbol=download_symbol,
+                symbol=pair,
                 timeframe=self.timeframe,
                 start_date=start_date,
                 end_date=end_date,

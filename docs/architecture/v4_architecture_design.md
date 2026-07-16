@@ -743,6 +743,14 @@ def llm_factor_mining(data, max_iterations=50):
 - **`evaluate`**: 绝不能切断计算图。直接在 GPU 上让网络的输出 Tensor 与未来的次日收益率 Tensor 计算目标 Loss。将 loss 张量对象和计算图原封不动装入 `EvaluationFeedback.raw_outputs` 回传。
 - **`update`**: 取出带有计算图的 Loss，执行标准深度学习反向传播更新：`loss.backward()` 传导梯度，随后调用 `optimizer.step()` 更新模型权重。
 
+### 8.4.1 训练张量与可保存因子的边界
+
+DL 的训练中间产物不能直接当作因子落盘。以 `MyCustomNNMiner` 为例，`channel=-1` 表示完整模型输出，仅用于让 `ParallelEvaluator` 返回带梯度的原始张量并完成反向传播；它不是最终可查看或交易的单因子。
+
+每轮权重更新后，Miner 将每个输出通道物化为 `FactorExpressionTensor(model_version_id, channel_idx)`：通道 `compute()` 返回对齐行情索引的 `pd.Series`，因此会再次走标准 IC、RankIC、Turnover 与自定义 fitness 钩子。按 fitness 排序后的 Top-K 通道写入 `MinerState.population`，供 `BaseFactorMiner` 的进度回调、CLI 汇总和 Web Tracker 共用。
+
+`model_version_id` 由更新后权重内容摘要生成；每个通道同时拥有由 `{"model_version", "channel"}` 导出的逻辑哈希。`FactorMinerDirector` 保存时会先把该版本权重写入 `factor_db/weights/<model_version>.pt`（同版本仅写一次），再将每个通道的 `FactorMetadata.logic_reference` 写为 `{"type": "dl_channel", "model_version": ..., "channel": ...}`。这样“模型权重 + 通道索引”才构成一个可追溯的 NN 因子，而不把训练临时张量误认为最终结果。
+
 <details><summary>底层逻辑参考实现</summary>
 
 ```python
@@ -796,6 +804,8 @@ def dl_factor_mining(train_loader, epochs=100):
 ### 9.2 底层持久化与查询的一致性保证
 由于 CCXT 在不同市场下返回的 Symbol 格式差异巨大（如期货 `1000CAT/USDT:USDT`，现货 `1000CAT/USDT`），在持久化层面，V4 严格统一了从内存符号到物理文件名的转换规范：
 `safe_symbol = symbol.replace('/', '_').replace(':', '_')`
+
+唯一允许的落盘格式为：`{safe_symbol}-{timeframe}-{trade_type}.feather`。例如，永续合约 `BTC/USDT:USDT` 必须落盘为 `BTC_USDT_USDT-1m-futures.feather`；读取器不会回退匹配旧命名。
 无论是批处理下载器（`Batch Downloader`）、增量下载器，还是引擎读取器（`Real Data Client`）、断层修补器（`Gap Filler`），都必须通过上述绝对规则进行映射，保证了从硬盘扫描到内存加载的数据资产 100% 对齐。
 
 ### 9.3 沉浸式数据补全 Console
@@ -833,7 +843,7 @@ def dl_factor_mining(train_loader, epochs=100):
         "exchange": "binance",
         "instrument_type": "futures",
         "timeframe": "1m",
-        "pairs": ["BTC_USDT", "SUI_USDT"],
+        "pairs": ["BTC/USDT:USDT", "SUI/USDT:USDT"],
         "mine_period": [["2025-07-20", "2025-08-01"]],
         "test_period": [["2025-08-02", "2025-08-15"]],
         "mining_mode": "sequential_single"
@@ -844,7 +854,7 @@ def dl_factor_mining(train_loader, epochs=100):
 ### 10.2 真实数据源切片 (RealDataClient)
 
 系统内部提供 `RealDataClient` 组件接管底层 `data/` 目录中高速 `.feather` 格式的访问权限：
-- **动态寻址**：根据配置自动定位 `data/{exchange}/{instrument_type}/{pair}_USDT-{timeframe}-{instrument_type}.feather`。
+- **动态寻址**：根据 CCXT 原始标的自动定位 `data/{exchange}/{instrument_type}/{safe_symbol}-{timeframe}-{instrument_type}.feather`。
 - **时间段切片与拼接**：自动遍历 `mine_period` 中的多个时段，提取并过滤掉不需要的震荡市或噪声数据段，通过 `pd.concat` 无缝拼接出一块纯净的训练集传给底层挖掘器。
 - **模式切换**：支持 `sequential_single` 串行单品种挖掘模式，避免在 GP 等基于一维序列的算子引擎中发生不同资产数据的错位滚动。
 
@@ -924,10 +934,19 @@ class FirstGPMiner(GPFactorMiner):
    直接在根目录执行命令，底层 `DynamicLoader` 会在启动时自动扫盘加载 `user_workspace/` 下的所有文件，实现“写完即跑，框架零入侵”。
 
 ```bash
-python main.py --miner MyCustomGP --config user_workspace/configs/demo_config.json
+factorminer mine --miner MyCustomGP --config user_workspace/configs/demo_config.json --user-dir user_workspace
 ```
 
 这种架构彻底实现了**平台开发者（维护核心 `core/`）**与**策略研究员（只需维护 `user_workspace/`）**之间的职责与物理隔离。
+
+**扩展的结果契约：**
+
+- 自定义 Miner 仍需实现初始化、候选生成、评估和更新四个阶段；更新策略、提示词或模型权重后，必须把最终已评分候选写入 `MinerState.population` 或 `replay_buffer`，否则 Director 没有可持久化的研究产物。
+- `OperatorRegistry` 仅负责注册函数和元数据。AST/代码生成器以及表达式求值器必须显式按算子名路由到注册表，新增算子才会真正参与 GP/RL 的候选计算。
+- `EvaluatorRegistry.register_fitness_hook(name)` 的 Hook 接收 `factor_values, returns, base_metrics`，可返回数值或含 `fitness_score` 的字典；任务配置通过 `fitness.hook` 引用该名称。
+- NN 需将训练阶段的临时张量模型与可评估的输出通道区分开：只有被物化、评估并保留的通道表达式会成为因子档案，权重作为其可追溯附件保存。
+
+README 的目录地图以该边界为准：`core/` 只承担研究执行，`api/` 负责服务与任务可观测性，`web/` 负责研究工作台，`user_workspace/` 是策略、算子和评分的用户扩展面，`factor_db/` 只保存可追溯的研究产物。
 
 ---
 
@@ -1027,7 +1046,7 @@ class FactorInspector:
 - **GP (MyCustomGPMiner)**: 验证了基于抽象语法树的进化、变异和交叉，能够根据配置进行因子繁衍。
 - **RL (MyCustomRLMiner)**: 验证了策略梯度思想，通过概率权重字典实现了无 PyTorch 依赖的轻量级强化学习寻优闭环。
 - **LLM (MyCustomLLMMiner)**: 成功实现了大语言模型反思记忆（Reflection Loop）驱动的代码生成。验证了并行执行沙盒 `RestrictedSandbox` 的安全性，并在缺乏真实 API Key 时，验证了系统的容灾限流及优雅降级机制。
-- **DL (MyCustomNNMiner)**: 基于纯 NumPy 构建了包含反向传播（Backpropagation）能力的微型张量机制 `MockTensor`，验证了引擎完全支持短路打分并执行端到端梯度更新的深度学习原生范式。
+- **DL (MyCustomNNMiner)**: 基于纯 NumPy 构建了包含反向传播（Backpropagation）能力的微型张量机制 `MockTensor`。训练完成后，模型输出会按通道物化、评分、保留 Top-K，并将权重与通道元数据一同持久化，已打通 CLI 与 Web 的统一结果链路。
 - **并行评估与沙盒引擎 (ParallelEvaluator)**: 全面打通了回测评分闭环。验证了 `EvaluatorRegistry` 对于外部自定义挂钩 (`custom_fitness`) 的无缝动态注入（如实现了惩罚换手率的 `my_bear_market_hunter`），保证了回测评价维度的无限扩展。
 
 以上所有的完整实现均无缝外挂于 `user_workspace/custom_miners/` 和 `user_workspace/configs/` 目录下，实现了引擎核心代码的**零入侵**，完美兑现了“Config-Driven 配置驱动与逻辑插件化”的架构愿景。
@@ -1046,8 +1065,28 @@ class FactorInspector:
 - **全局看板**：由 FastAPI `/api/stats` 接口驱动，宏观统计并展示 Task 总量、落盘因子的总量、以及综合成功率。
 - **活动时间线**：Timeline 组件记录后端异步调度任务的轨迹。
 
+现行 Research Dashboard 进一步使用 `GET /api/dashboard` 作为单次聚合快照：任务部分来自内存中的 `TaskManager`（运行中任务和近期执行记录），因子部分来自持久化 `factor_db/metadata`（总量、Miner 分布、生命周期覆盖率和按 fitness 排序的候选）。因此服务重启后历史任务时间线会按既有内存策略清空，但因子档案和研究质量概览仍然保留。前端只展示这两类真实来源，并将因子链接到 Inspector、任务入口链接到 Launchpad。
+
 ### 12.3 异步调度与 WebSocket 实时流推送
 传统的 Web 提交长耗时任务往往会导致请求超时或阻塞主线程。V4 采用真正的异步池化策略：
 1. **任务分发**：前端提交 JSON (Miner & Config) 至 `/api/launch`，FastAPI 借助 `BackgroundTasks` 分配后台守护线程启动 `FactorMinerDirector.run()`，不阻塞 HTTP 响应。
 2. **状态挂载**：任务挂载至全局内存态字典 `TaskManager`。
 3. **实时推送**：注入回调勾子 `progress_callback` 进底层演化循环（`epoch` 级别）。每一次种群繁衍，底层直接透过 `ws_manager.broadcast` 将状态压入 WebSocket 管道，前端通过 `Launchpad` 的 Drawer 实现在无感刷新下的微秒级进度条呈现。
+
+### 12.4 Factor Inspector Phase I：持久化目录与白盒详情
+
+Inspector 不能读取 `TaskManager` 中的临时任务结果作为因子档案：服务重启后该内存会丢失，且 CLI 产生的因子也不会出现。Phase I 以 `LocalFactorStorage` 中的 `factor_db/metadata/*.json` 为唯一目录来源，并提供以下 API：
+
+- `GET /api/factors`：按创建时间、IC 或 fitness 返回可搜索/过滤的因子摘要；
+- `GET /api/factors/{factor_id}`：返回元数据、按存储类型还原的逻辑引用，以及因子值审查快照是否存在；
+- `PATCH /api/factors/{factor_id}/lifecycle`：持久化 `DISCOVERED → INSPECTED → PAPER_TRADING → LIVE / RETIRED` 等人工审查状态。
+
+前端根据 `logic_reference.type` 而不是笼统的 Miner 名称呈现白盒内容：`json_ast` 绘制 AST 树并展示表达式，`python_source` 读取受控源码文件，`rl_actions` 展示动作轨迹，`dl_channel` 展示模型版本、输出通道和权重工件是否存在。Launchpad 的已保存因子 ID 使用 `/inspector?factor=<id>` 直接跳转到对应档案。
+
+这期刻意不生成随机净值或模拟 Tearsheet。`factor_db/values/<factor_id>.parquet` 不存在时，API 会明确标记审查快照缺失；Phase II 必须先保存对齐的因子值、未来收益和数据血缘，再计算滚动 IC、分位数组合和归因图，确保每一张图可追溯到真实输入数据。
+
+### 12.5 三语界面与研究工件边界
+
+前端采用轻量本地 i18n Context，支持 `zh`、`en`、`de` 三种界面语言。初始语言由浏览器语言推断，用户通过顶部导航选择后写入 `localStorage`；翻译词典集中在 `web/src/i18n.tsx`，避免页面中散落条件判断。第一批覆盖全局导航、Research Dashboard 与 Factor Inspector，后续页面按相同键空间扩展。
+
+语言层只负责操作性 UI 文案：导航、按钮、状态说明、筛选项、空态及解释性提示。因子 ID、逻辑哈希、交易对、AST/表达式、代码、模型版本、权重文件，以及 IC、RankIC 等研究指标缩写均作为不可翻译的原始工件保留。后端保持返回稳定枚举与结构化数据，绝不向 API 注入某一种自然语言的业务文案。

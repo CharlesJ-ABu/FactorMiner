@@ -16,6 +16,7 @@ import os
 from config.user_config import config_manager
 from .health_checker import health_checker
 from .processor import data_processor
+from .naming import data_filename, data_path, parse_data_filename
 
 
 class DataDownloader:
@@ -107,8 +108,9 @@ class DataDownloader:
         try:
             # 设置交易类型属性
             self.trade_type = trade_type
+            data_filename(symbol, timeframe, trade_type)
 
-            exchange = self.get_exchange_instance(config_id)
+            exchange = self.get_exchange_instance(config_id, trade_type=trade_type)
             if not exchange:
                 return {'success': False, 'error': '无法创建交易所实例'}
 
@@ -215,31 +217,8 @@ class DataDownloader:
 
             print(f"最终验证通过，准备保存: {len(df_save)} 条数据")
 
-            # 保存数据 - 使用与现有文件一致的命名格式
-            # 例如：BTC_USDT_USDT-2h-futures.feather 或 1000CAT_USDT-1m-spot.feather
-            safe_symbol = symbol.replace('/', '_').replace(':', '_')
-            if hasattr(self, 'trade_type') and self.trade_type:
-                if self.trade_type in ['futures', 'spot', 'perpetual', 'delivery']:
-                    filename = f"{safe_symbol}-{timeframe}-{self.trade_type}.feather"
-                else:
-                    filename = f"{safe_symbol}_{timeframe}_{start_date}_{end_date}.feather"
-            else:
-                filename = f"{safe_symbol}_{timeframe}_{start_date}_{end_date}.feather"
-
-            # 根据交易类型确定存储目录
-            if hasattr(self, 'trade_type') and self.trade_type:
-                if self.trade_type == 'futures':
-                    # 确保不创建子目录，直接存储到 futures 目录
-                    save_path = Path("data/binance/futures") / filename
-                elif self.trade_type == 'spot':
-                    save_path = Path("data/binance/spot") / filename
-                elif self.trade_type in ['perpetual', 'delivery']:
-                    save_path = Path(f"data/binance/{self.trade_type}") / filename
-                else:
-                    save_path = Path("data/binance") / filename
-            else:
-                # 默认存储到 binance 目录
-                save_path = Path("data/binance") / filename
+            filename = data_filename(symbol, timeframe, self.trade_type)
+            save_path = data_path("data", "binance", symbol, timeframe, self.trade_type)
 
             # 检查现有文件以确定目标时区
             target_tz = None
@@ -404,21 +383,7 @@ class DataDownloader:
             合并后的数据
         """
         try:
-            # 构建文件路径
-            safe_symbol = symbol.replace('/', '_').replace(':', '_')
-            if hasattr(self, 'trade_type') and self.trade_type:
-                if self.trade_type == 'futures':
-                    filename = f"{safe_symbol}-{timeframe}-futures.feather"
-                    save_path = Path("data/binance/futures") / filename
-                elif self.trade_type == 'spot':
-                    filename = f"{safe_symbol}-{timeframe}-spot.feather"
-                    save_path = Path("data/binance/spot") / filename
-                else:
-                    filename = f"{safe_symbol}_{timeframe}_{start_date}_{end_date}.feather"
-                    save_path = Path("data/binance") / filename
-            else:
-                filename = f"{safe_symbol}_{timeframe}_{start_date}_{end_date}.feather"
-                save_path = Path("data/binance") / filename
+            save_path = data_path("data", "binance", symbol, timeframe, self.trade_type)
 
             # 检查是否存在现有文件
             if not save_path.exists():
@@ -1387,8 +1352,9 @@ class DataDownloader:
                 return []
 
             data_files = []
-            for file_path in data_dir.glob("*.feather"):
+            for file_path in data_dir.rglob("*.feather"):
                 try:
+                    parse_data_filename(file_path.name)
                     info = self.get_data_info(str(file_path))
                     if info['success']:
                         data_files.append({
@@ -1398,6 +1364,8 @@ class DataDownloader:
                             'data_points': info['data_points'],
                             'date_range': info['date_range']
                         })
+                except ValueError:
+                    self.logger.debug(f"跳过非标准命名数据文件: {file_path}")
                 except Exception as e:
                     self.logger.error(f"读取文件信息失败 {file_path}: {e}")
 

@@ -7,7 +7,7 @@
         "exchange": "binance",
         "instrument_type": "futures",
         "timeframe": "5m",
-        "pairs": ["BTC_USDT", "ETH_USDT", "SOL_USDT"],
+        "pairs": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
         "mine_period": [["2024-01-01", "2024-06-01"]],
         "test_period": [["2024-06-02", "2024-12-31"]],
         "mining_mode": "sequential_single"

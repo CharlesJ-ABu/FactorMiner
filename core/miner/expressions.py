@@ -146,6 +146,10 @@ class FactorExpressionTensor(FactorExpression):
         params = 0
         if self.model_instance and hasattr(self.model_instance, 'parameters'):
             params = sum(p.numel() for p in self.model_instance.parameters() if p.requires_grad)
+        elif self.model_instance and hasattr(self.model_instance, 'W'):
+            # Supports the NumPy-based reference miner as well as torch-like
+            # models above.
+            params = getattr(self.model_instance.W, 'size', 0)
         return f"Params: {params}"
         
     def to_display_string(self, max_length: int = None) -> str:

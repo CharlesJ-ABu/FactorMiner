@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from api.ws_manager import manager
@@ -8,6 +8,8 @@ import time
 import os
 import datetime
 import traceback
+import dataclasses
+from pathlib import Path
 
 app = FastAPI(title="FactorMiner V4 API")
 
@@ -26,6 +28,11 @@ class DownloadRequest(BaseModel):
     end_date: str
     trade_types: list[str] = ["futures"]
     download_mode: str = "merge"
+
+class LifecycleUpdateRequest(BaseModel):
+    lifecycle_status: str
+
+LIFECYCLE_STATUSES = {"DISCOVERED", "INSPECTED", "PAPER_TRADING", "LIVE", "RETIRED"}
 
 # Configure CORS for React frontend
 app.add_middleware(
@@ -75,16 +82,20 @@ async def get_configs():
 async def get_exchange_meta(exchange: str, trade_type: str = "futures"):
     # Try to fetch from CCXT, fallback if it fails (e.g., 451 error)
     import traceback
+
+    fallback_symbols = [
+        "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT", "ADA/USDT",
+        "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "MATIC/USDT", "DOT/USDT", "LTC/USDT",
+        "BCH/USDT", "TRX/USDT", "UNI/USDT", "ATOM/USDT", "ETC/USDT", "TON/USDT",
+        "NEAR/USDT", "APT/USDT", "ARB/USDT", "OP/USDT", "SUI/USDT", "SEI/USDT",
+        "TIA/USDT", "INJ/USDT", "FIL/USDT", "LDO/USDT", "RNDR/USDT", "STX/USDT",
+        "ORDI/USDT", "PEPE/USDT", "SHIB/USDT", "WLD/USDT", "GALA/USDT", "FTM/USDT",
+    ]
+    if trade_type == "futures":
+        fallback_symbols = [f"{symbol}:USDT" for symbol in fallback_symbols]
     
     meta = {
-        "symbols": [
-            "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT", "ADA/USDT", 
-            "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "MATIC/USDT", "DOT/USDT", "LTC/USDT",
-            "BCH/USDT", "TRX/USDT", "UNI/USDT", "ATOM/USDT", "ETC/USDT", "TON/USDT",
-            "NEAR/USDT", "APT/USDT", "ARB/USDT", "OP/USDT", "SUI/USDT", "SEI/USDT",
-            "TIA/USDT", "INJ/USDT", "FIL/USDT", "LDO/USDT", "RNDR/USDT", "STX/USDT",
-            "ORDI/USDT", "PEPE/USDT", "SHIB/USDT", "WLD/USDT", "GALA/USDT", "FTM/USDT"
-        ],
+        "symbols": fallback_symbols,
         "timeframes": ["1m", "5m", "15m", "1h", "4h", "1d", "1w"],
         "trade_types": ["spot", "futures"],
         "min_date": "2017-01-01"
@@ -100,7 +111,8 @@ async def get_exchange_meta(exchange: str, trade_type: str = "futures"):
             ex_instance.load_markets()
             if ex_instance.markets:
                 # filter to some USDT pairs
-                usdt_markets = [s for s in ex_instance.markets.keys() if s.endswith('/USDT') or s.endswith('USDT')]
+                market_suffix = "/USDT:USDT" if trade_type == "futures" else "/USDT"
+                usdt_markets = [s for s in ex_instance.markets.keys() if s.endswith(market_suffix)]
                 if usdt_markets:
                     try:
                         tickers = ex_instance.fetch_tickers()
@@ -157,6 +169,200 @@ async def get_stats():
         "recent_activity": recent_tasks
     }
 
+def _ast_display(node):
+    if not isinstance(node, dict) or "op" not in node:
+        return str(node)
+    return f"{node['op']}({_ast_display(node.get('left'))}, {_ast_display(node.get('right'))})"
+
+def _factor_logic(metadata):
+    """Return an Inspector-safe, paradigm-aware view of a persisted factor."""
+    logic_ref = metadata.logic_reference or {}
+    logic_type = logic_ref.get("type")
+
+    if logic_type == "json_ast":
+        ast = logic_ref.get("ast", {})
+        return {"kind": "ast", "ast": ast, "display": _ast_display(ast)}
+
+    if logic_type == "python_source":
+        source_file = logic_ref.get("source_file", "")
+        source_path = Path("factor_db") / "sources" / source_file
+        source = None
+        if source_file and source_path.is_file():
+            source = source_path.read_text(encoding="utf-8")
+        return {
+            "kind": "source",
+            "source_file": source_file,
+            "source": source,
+            "reflection": logic_ref.get("reflection", ""),
+        }
+
+    if logic_type == "rl_actions":
+        return {
+            "kind": "actions",
+            "actions": logic_ref.get("actions", []),
+            "weights_file": logic_ref.get("weights_file"),
+        }
+
+    if logic_type == "dl_channel":
+        model_version = logic_ref.get("model_version")
+        weight_file = f"{model_version}.pt" if model_version else None
+        weight_path = Path("factor_db") / "weights" / weight_file if weight_file else None
+        return {
+            "kind": "dl_channel",
+            "model_version": model_version,
+            "channel": logic_ref.get("channel"),
+            "weights_file": weight_file,
+            "weights_available": bool(weight_path and weight_path.is_file()),
+        }
+
+    return {"kind": "unknown", "reference": logic_ref}
+
+def _factor_summary(metadata):
+    logic = _factor_logic(metadata)
+    if logic["kind"] == "ast":
+        display = logic["display"]
+    elif logic["kind"] == "source":
+        display = logic.get("source_file") or "Python source unavailable"
+    elif logic["kind"] == "actions":
+        display = " → ".join(logic.get("actions") or []) or "Action trajectory"
+    elif logic["kind"] == "dl_channel":
+        display = f"NNModel(v={logic.get('model_version')}) [Ch: {logic.get('channel')}]"
+    else:
+        display = "Stored factor reference"
+    return {
+        "factor_id": metadata.factor_id,
+        "miner_type": metadata.miner_type,
+        "lifecycle_status": metadata.lifecycle_status,
+        "logic_hash": metadata.logic_hash,
+        "metrics": metadata.metrics,
+        "created_at": metadata.created_at,
+        "display": display,
+        "logic_kind": logic["kind"],
+    }
+
+def _factor_detail(metadata):
+    values_path = Path("factor_db") / "values" / f"{metadata.factor_id}.parquet"
+    return {
+        "metadata": dataclasses.asdict(metadata),
+        "logic": _factor_logic(metadata),
+        "audit_snapshot": {
+            "values_available": values_path.is_file(),
+            "message": (
+                "Factor-value snapshot is available for the Tearsheet."
+                if values_path.is_file()
+                else "No factor-value snapshot was saved. Performance charts will be added after a recalculation or a newly persisted snapshot."
+            ),
+        },
+    }
+
+@app.get("/api/dashboard")
+async def get_dashboard():
+    """Return a compact, storage-backed snapshot for the research dashboard."""
+    from core.storage.factor_storage import get_global_storage
+
+    tasks = list(TaskManager.tasks.values())
+    recent_tasks = sorted(tasks, key=lambda task: task["start_time"], reverse=True)[:6]
+    task_statuses = {status: 0 for status in ("running", "completed", "completed_empty", "failed")}
+    for task in tasks:
+        task_statuses[task.get("status", "failed")] = task_statuses.get(task.get("status", "failed"), 0) + 1
+
+    records = get_global_storage().list_metadata()
+    factors = [_factor_summary(record) for record in records]
+    factors_by_miner = {}
+    factors_by_lifecycle = {status: 0 for status in LIFECYCLE_STATUSES}
+    for factor in factors:
+        miner_type = factor["miner_type"]
+        lifecycle_status = factor["lifecycle_status"]
+        factors_by_miner[miner_type] = factors_by_miner.get(miner_type, 0) + 1
+        factors_by_lifecycle[lifecycle_status] = factors_by_lifecycle.get(lifecycle_status, 0) + 1
+
+    completed_tasks = task_statuses["completed"]
+    total_tasks = len(tasks)
+    top_by_fitness = sorted(
+        factors,
+        key=lambda factor: factor["metrics"].get("fitness_score", float("-inf")),
+        reverse=True,
+    )[:5]
+    top_by_ic = max(factors, key=lambda factor: factor["metrics"].get("IC", float("-inf")), default=None)
+
+    return {
+        "engine_online": True,
+        "generated_at": datetime.datetime.now().isoformat(),
+        "tasks": {
+            "total": total_tasks,
+            "statuses": task_statuses,
+            "success_rate": (completed_tasks / total_tasks) if total_tasks else None,
+            "recent": recent_tasks,
+        },
+        "factors": {
+            "total": len(factors),
+            "by_miner": factors_by_miner,
+            "by_lifecycle": factors_by_lifecycle,
+            "reviewed": sum(factors_by_lifecycle.get(status, 0) for status in ("INSPECTED", "PAPER_TRADING", "LIVE")),
+            "top_by_fitness": top_by_fitness,
+            "top_by_ic": top_by_ic,
+        },
+    }
+
+@app.get("/api/factors")
+async def get_factors(
+    miner: str | None = None,
+    lifecycle: str | None = None,
+    query: str | None = None,
+    sort_by: str = "created_at",
+    limit: int = 200,
+):
+    """List persisted factors for the Inspector; task memory is not used."""
+    from core.storage.factor_storage import get_global_storage
+
+    storage = get_global_storage()
+    records = storage.list_metadata()
+    if miner:
+        records = [record for record in records if record.miner_type == miner]
+    if lifecycle:
+        records = [record for record in records if record.lifecycle_status == lifecycle]
+
+    summaries = [_factor_summary(record) for record in records]
+    if query:
+        query_lower = query.lower()
+        summaries = [
+            summary for summary in summaries
+            if query_lower in " ".join(
+                str(summary.get(key, "")) for key in ("factor_id", "miner_type", "logic_hash", "display")
+            ).lower()
+        ]
+
+    sorters = {
+        "fitness": lambda item: item["metrics"].get("fitness_score", float("-inf")),
+        "ic": lambda item: item["metrics"].get("IC", float("-inf")),
+        "created_at": lambda item: item.get("created_at", ""),
+    }
+    summaries.sort(key=sorters.get(sort_by, sorters["created_at"]), reverse=True)
+    return {"factors": summaries[:max(1, min(limit, 500))], "total": len(summaries)}
+
+@app.get("/api/factors/{factor_id}")
+async def get_factor(factor_id: str):
+    from core.storage.factor_storage import get_global_storage
+
+    metadata = get_global_storage().get_metadata(factor_id)
+    if not metadata:
+        raise HTTPException(status_code=404, detail=f"Factor {factor_id} was not found")
+    return _factor_detail(metadata)
+
+@app.patch("/api/factors/{factor_id}/lifecycle")
+async def update_factor_lifecycle(factor_id: str, req: LifecycleUpdateRequest):
+    lifecycle_status = req.lifecycle_status.upper()
+    if lifecycle_status not in LIFECYCLE_STATUSES:
+        allowed = ", ".join(sorted(LIFECYCLE_STATUSES))
+        raise HTTPException(status_code=422, detail=f"Unsupported lifecycle status. Use one of: {allowed}")
+
+    from core.storage.factor_storage import get_global_storage
+
+    metadata = get_global_storage().update_lifecycle_status(factor_id, lifecycle_status)
+    if not metadata:
+        raise HTTPException(status_code=404, detail=f"Factor {factor_id} was not found")
+    return _factor_detail(metadata)
+
 @app.post("/api/launch")
 async def launch_mining(req: LaunchRequest, background_tasks: BackgroundTasks):
     task_id = f"T-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{random.randint(100, 999)}"
@@ -170,7 +376,10 @@ async def launch_mining(req: LaunchRequest, background_tasks: BackgroundTasks):
         "start_time": datetime.datetime.now().isoformat(),
         "error_msg": None,
         "hash": "---",
-        "duration": "0s"
+        "duration": "0s",
+        "result_count": 0,
+        "factors": [],
+        "logs": [],
     }
     TaskManager.tasks[task_id] = task_data
     
@@ -195,6 +404,7 @@ async def run_mining_task_background(task_id: str, miner_name: str, config_name:
     class WebsocketLogHandler(logging.Handler):
         def emit(self, record):
             log_entry = self.format(record)
+            task["logs"] = [*task["logs"][-199:], log_entry]
             asyncio.run_coroutine_threadsafe(
                 manager.broadcast({
                     "task_id": task_id,
@@ -208,9 +418,13 @@ async def run_mining_task_background(task_id: str, miner_name: str, config_name:
     ws_handler.setFormatter(logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s', datefmt='%H:%M:%S'))
     ws_handler.setLevel(logging.INFO)
     
-    # Attach handler to root logger temporarily
-    root_logger = logging.getLogger()
-    root_logger.addHandler(ws_handler)
+    # Attach only to FactorMiner and dynamically loaded user modules. Setting the
+    # root logger globally would duplicate Uvicorn logs and interfere with parallel tasks.
+    task_loggers = [logging.getLogger(name) for name in ("core", "custom_miners", "custom_fitness")]
+    previous_logger_levels = {task_logger: task_logger.level for task_logger in task_loggers}
+    for task_logger in task_loggers:
+        task_logger.setLevel(logging.INFO)
+        task_logger.addHandler(ws_handler)
     
     def progress_callback(epoch, max_epoch, best_factor):
         progress = int((epoch / max_epoch) * 100) if max_epoch > 0 else 0
@@ -247,6 +461,11 @@ async def run_mining_task_background(task_id: str, miner_name: str, config_name:
             config = json.load(f)
             
         config["paradigm"] = miner_name
+
+        # 后台任务与 CLI 使用同一套插件发现流程；不能依赖此前是否访问过
+        # /api/miners，否则自定义 Miner 在新启动的服务中不会注册。
+        from core.utils.dynamic_loader import load_user_modules
+        load_user_modules("user_workspace")
         
         from core.data_feed.real_client import RealDataClient
         data_client = RealDataClient(config)
@@ -259,17 +478,34 @@ async def run_mining_task_background(task_id: str, miner_name: str, config_name:
             director.run, max_iterations=max_iter, progress_callback=progress_callback
         )
         
-        task["status"] = "completed"
         task["progress"] = 100
         if best_factors:
+            task["status"] = "completed"
+            task["result_count"] = len(best_factors)
             task["hash"] = getattr(best_factors[0], 'logic_hash', 'N/A')
+            task["factors"] = [
+                {
+                    "factor_id": factor_id,
+                    "logic_hash": getattr(candidate, "logic_hash", ""),
+                    "logic": candidate.to_display_string(max_length=160),
+                    "complexity": candidate.get_complexity(),
+                    "metrics": candidate.metrics,
+                }
+                for factor_id, candidate in zip(director.get_latest_factor_ids(), best_factors)
+            ]
+        else:
+            task["status"] = "completed_empty"
+            task["result_count"] = 0
+            task["error_msg"] = "任务正常结束，但没有产生可保存的有效因子。请检查执行日志、数据和筛选条件。"
             
     except Exception as e:
         task["status"] = "failed"
         task["error_msg"] = str(e) + "\n" + traceback.format_exc()
         
     finally:
-        root_logger.removeHandler(ws_handler)
+        for task_logger in task_loggers:
+            task_logger.removeHandler(ws_handler)
+            task_logger.setLevel(previous_logger_levels[task_logger])
         elapsed = time.time() - start_time
         task["duration"] = f"{int(elapsed // 60)}m {int(elapsed % 60)}s"
         try:
@@ -302,40 +538,16 @@ async def get_batch_data_coverage(req: BatchCoverageRequest):
 @app.get("/api/data_coverage")
 async def get_data_coverage(exchange: str, symbol: str, timeframe: str, trade_type: str = "futures"):
     import pandas as pd
-    from pathlib import Path
+    from core.data_feed.naming import data_path
     
-    # 构建文件名
-    safe_symbol = symbol.replace('/', '_').replace(':', '_')
-    dir_path = Path(f"data/{exchange}/{trade_type}")
-    if not dir_path.exists():
-        dir_path = Path(f"data/{exchange}")
-        
-    if not dir_path.exists():
+    try:
+        target_file = data_path("data", exchange, symbol, timeframe, trade_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if not target_file.parent.exists():
         return {"exists": False, "message": "Directory not found"}
-        
-    matched_files = []
-    
-    if trade_type in ['futures', 'spot']:
-        # 严格按照 batch_downloader.py 的本地数据存储命名进行匹配
-        exact_filename = f"{safe_symbol}-{timeframe}-{trade_type}.feather"
-        target_file = dir_path / exact_filename
-        
-        if target_file.exists():
-            matched_files = [target_file]
-        else:
-            # Fallback
-            search_pattern = f"{safe_symbol}*-{timeframe}-{trade_type}.feather"
-            alt_pattern = f"{safe_symbol}_{timeframe}_*.feather"
-            matched_files = list(dir_path.glob(search_pattern)) + list(dir_path.glob(alt_pattern))
-    else:
-        search_pattern = f"{safe_symbol}_{timeframe}_*.feather"
-        matched_files = list(dir_path.glob(search_pattern))
-    
-    if not matched_files:
+    if not target_file.exists():
         return {"exists": False, "message": "No data found"}
-        
-    # 取第一个匹配的文件读取 coverage
-    target_file = matched_files[0]
     try:
         df = pd.read_feather(target_file)
         if len(df) == 0:

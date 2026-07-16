@@ -15,6 +15,7 @@ import time
 
 from .health_checker import health_checker
 from .processor import data_processor
+from .naming import parse_data_filename, safe_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,8 @@ class DataGapFiller:
             
             all_gaps = []
             
+            expected_symbol = safe_symbol(symbol) if symbol else None
+
             # 构建文件匹配模式
             if symbol and timeframe:
                 # 特定交易对和时间框架
@@ -141,7 +144,7 @@ class DataGapFiller:
                     file_symbol, file_timeframe = self._parse_filename(filename)
                     
                     # 如果指定了过滤条件，跳过不匹配的文件
-                    if symbol and file_symbol != symbol:
+                    if expected_symbol and file_symbol != expected_symbol:
                         continue
                     if timeframe and file_timeframe != timeframe:
                         continue
@@ -174,18 +177,8 @@ class DataGapFiller:
     def _parse_filename(self, filename: str) -> Tuple[str, str]:
         """从文件名解析交易对和时间框架"""
         try:
-            # 示例: BTC_USDT_USDT-1h-futures.feather
-            parts = filename.replace('.feather', '').split('-')
-            if len(parts) >= 2:
-                symbol_part = parts[0]  # BTC_USDT_USDT
-                timeframe_part = parts[1]  # 1h
-                
-                # 提取交易对（只去掉结尾的_USDT后缀）
-                symbol = symbol_part[:-5] if symbol_part.endswith('_USDT') else symbol_part
-                
-                return symbol, timeframe_part
-            else:
-                return 'unknown', 'unknown'
+            symbol, timeframe, _ = parse_data_filename(filename)
+            return symbol, timeframe
         except Exception:
             return 'unknown', 'unknown'
     

@@ -7,19 +7,21 @@
 
 > 🚀 **项目状态**: **V4 架构全面重构完成**（涵盖 React + FastAPI 前后端分离、以及四大挖掘范式）！
 > 👨‍💻 **维护者**: [@CharlesJ-ABu](https://github.com/CharlesJ-ABu)  
-> 📅 **最后更新**: 2026年7月  
+> 📅 **最后更新**: 2026年7月17日
 
-FactorMiner 是一款极客级别的专业量化因子挖掘与管理平台。在全新的 **V4 架构** 下，系统完成了从“传统代码堆砌”向“基于声明式配置 (Config-Driven)”和“控制反转 (IoC)”的彻底蜕变。我们不仅提供了底层极其硬核的异构计算引擎，更配备了充满未来科技感的 React + FastAPI Web 工作台，帮助量化研究人员以顶级的视觉密度洞察数据。
+FactorMiner 是一个面向量化研究的因子挖掘工作台。V4 以配置驱动的 Python 引擎为核心，提供 FastAPI + React WebUI、CLI、可持久化的因子档案，以及可由用户工作区扩展的 GP、RL、LLM 与 NN 挖掘范式。
+
+它覆盖从历史行情读取、候选生成与评估，到任务日志、结果审查和生命周期标记的研究闭环。项目更强调可复现和可追溯：因子逻辑、指标、来源、NN 权重与通道信息都以实际落盘结果为准，而不是由前端模拟。
 
 ---
 
 ## ✨ V4 核心特性
 
-- 🧬 **四大异构挖掘范式**: 系统原生支持 **大语言模型 (LLM)**、**遗传规划 (GP)**、**深度学习隐空间 (DL)** 以及 **强化学习策略梯度 (RL)** 四大维度的因子挖掘，并将它们的底层表达统一映射为标准的 `FactorExpression` 体系。
-- 👁️ **沉浸式控制台体验**: 抛弃繁杂的纯 CLI 黑盒，基于 WebSocket 实现微秒级的任务状态穿透。提供“动态赛马图”、“大模型反思滚动日志”、“Data Downloader 暗黑终端”等丰富的实时前端反馈。
-- 🧩 **全透明的因子生命周期 (FactorStorage)**: 引入 `FactorMetadata` 对因子实现“灵魂与肉体分离”。GP 存为跨语言 AST 树，LLM 存为带反思历史的纯 Python 脚本，DL 存为网络张量通道；而产出的时序打分全部统一为最高性能的 Parquet 矩阵，供下游随时组合。
-- 🛡️ **反膨胀与硬去重免疫系统**: 结合 MD5 哈希校验池 (`DiversityFilter`)，引擎在启动前即拦截 99% 的同质化废弃代码或重叠逻辑，大幅节省并行回测集群（如 Ray / Celery）的计算开销。
-- 📡 **数据基建级联联动**: 深度集成 CCXT 元数据获取引擎，支持按市场流动性自动排序，并通过最严格的文件命名规范 (`symbol.replace('/', '_').replace(':', '_')`) 彻底消除现货、期货、永续合约的数据跨界污染。
+- 🧬 **四种可扩展挖掘范式**：GP、RL、LLM、NN 统一输出 `FactorExpression`，可使用 `user_workspace` 中的自定义 Miner、算子和 Fitness Hook 扩展。
+- ⚖️ **统一评估与可追溯结果**：评估器计算 IC、RankIC、Turnover 和 fitness；每个因子将逻辑、指标和来源保存为元数据，NN 同时保存权重与通道信息。
+- 🖥️ **研究工作台与 CLI**：Dashboard 汇总真实任务/档案数据，Launchpad 发起并跟踪任务，Inspector 审查因子逻辑与生命周期；同一执行引擎也可从 CLI 调用。
+- 📡 **行情与命名规范**：支持本地 Feather 行情读取、缺口补全与下载。文件统一为 `{safe_symbol}-{timeframe}-{trade_type}.feather`；永续标的使用 CCXT 格式，例如 `BTC/USDT:USDT`。
+- 🛡️ **已知执行边界**：当前去重是源代码 MD5 硬去重，相关性软去重尚未实现；评估使用固定 8 线程，尚未接入 Ray/Celery 分布式后端。
 
 ---
 
@@ -27,32 +29,36 @@ FactorMiner 是一款极客级别的专业量化因子挖掘与管理平台。�
 
 ```text
 FactorMiner/
-├── README.md                    # 本文档
-├── requirements.txt             # Python 依赖包
-├── config/                      # 系统级配置文件目录
-│   └── settings.py              
-├── api/                         # FastAPI 后端模块 (V4)
-│   ├── main.py                  # API 主入口、HTTP 路由与 WebSocket 日志劫持
-│   └── ws_manager.py            # WebSocket 广播管理器
-├── web/                         # React + Vite 前端工作台 (V4)
-│   ├── src/                     # 组件、页面与 Hook (包含 Launchpad, Downloader)
-│   ├── package.json             
-│   └── vite.config.ts           
-├── core/                        # V4 核心挖掘引擎
-│   ├── data_feed/               # 高频行情切片、CCXT 批量爬虫与无缝拼接模块
-│   ├── evaluation/              # 统一并行评价器与代码执行沙盒 (RestrictedSandbox)
-│   ├── miner/                   # 因子挖掘引擎逻辑
-│   │   ├── paradigms/           # 异构挖掘范式基类 (llm_miner, gp_miner 等)
-│   │   └── director.py          # 任务调度与演化生命周期总管 (FactorMinerDirector)
-│   └── storage/                 # 持久化存储规范接口层
-├── user_workspace/              # ⭐️ 你的实验室：用户自定义实验区
-│   ├── configs/                 # Config-Driven 驱动文件 (configRL.json 等)
-│   ├── custom_miners/           # 用户扩展的具体挖掘流派实现
-│   ├── custom_operators/        # 用户手写的数学或技术特征衍生算子
-│   └── custom_fitness/          # 自定义评价挂钩函数 (Fitness Hooks)
-├── factor_db/                   # 挖掘因子的落地存储区 (Parquet 矩阵与灵魂元数据)
-├── data/                        # Binance 市场历史行情存储库 (.feather)
-└── docs/                        # 系统架构与使用指南文档区
+├── api/                          # FastAPI：REST、WebSocket、任务管理与 Dashboard/Inspector API
+│   ├── main.py
+│   └── ws_manager.py
+├── core/                         # 与 UI 无关的研究执行引擎
+│   ├── cli.py                    # factorminer CLI 入口
+│   ├── commands/                 # mine / download 命令
+│   ├── data_feed/                # Feather 读取、下载、补洞与命名规范
+│   ├── evaluation/               # 并行评估器、指标和受限代码执行
+│   ├── miner/                    # 表达式、注册表、Director、四种范式基类
+│   │   └── paradigms/
+│   ├── storage/                  # FactorMetadata 与本地因子档案读写
+│   └── utils/dynamic_loader.py   # user_workspace 扩展动态加载
+├── web/                          # React + Vite 研究工作台
+│   └── src/
+│       ├── pages/                # Dashboard、Launchpad、Inspector、Data Center
+│       ├── layouts/              # 全局导航和语言选择器
+│       ├── hooks/                # WebSocket 等前端状态逻辑
+│       └── i18n.tsx              # 中文 / English / Deutsch 词典与上下文
+├── user_workspace/               # 用户实验区（核心不需要为策略修改）
+│   ├── configs/                  # 可复用挖掘任务配置
+│   ├── custom_miners/            # GP / RL / LLM / NN 自定义 Miner
+│   ├── custom_operators/         # 注册的时序或截面算子
+│   └── custom_fitness/           # 注册的 Fitness Hook
+├── factor_db/                    # 已保存因子的 metadata、values（可选）和 weights
+├── data/                         # 本地历史行情：{safe_symbol}-{timeframe}-{trade_type}.feather
+├── docs/
+│   ├── architecture/             # V4 架构设计
+│   └── assets/                   # README 使用的 WebUI 截图
+├── requirements.txt
+└── README.md
 ```
 
 ---
@@ -71,6 +77,9 @@ source venv/bin/activate  # Mac/Linux
 
 # 安装后端依赖
 pip install -r requirements.txt
+
+# 安装 CLI 命令入口
+pip install -e .
 ```
 
 ### 2. 启动服务 (前后端分离)
@@ -89,6 +98,35 @@ npm install  # 仅首次需要
 npm run dev
 ```
 启动成功后，浏览器访问 `http://localhost:5173` 即可进入 FactorMiner 极客工作台。
+
+**Factor Inspector（Phase I）**
+
+`/inspector` 会直接读取 `factor_db/metadata/` 中已持久化的因子，而不是依赖会在服务重启后消失的任务内存。可按 Miner、生命周期和指标搜索/排序；详情页按 AST、Python 源码、RL 动作轨迹或 NN 模型通道展示真实逻辑，并支持更新生命周期状态。当前不会渲染随机或模拟 Tearsheet：只有保存了因子值快照的因子才会在后续 Phase II 展示性能图表。
+
+**Research Dashboard**
+
+首页 `/` 是研究指挥台，读取 `/api/dashboard` 聚合的任务状态与 `factor_db` 档案：可查看引擎心跳、因子库存与审查覆盖率、最高 fitness 候选、不同 Miner 的归档占比和近期执行记录。每条高质量因子可直达 Inspector，每个任务入口可直达 Launchpad；页面不会为了视觉效果生成虚构的研究曲线。
+
+**界面语言（中文 / English / Deutsch）**
+
+顶部导航右侧可切换简体中文、英文与德文。语言初始值跟随浏览器，并保存在本机 `localStorage`；当前已覆盖全局导航、Research Dashboard 与 Factor Inspector。因子 ID、交易对、表达式、源码、模型版本和 IC / RankIC 等研究工件保持原样，保证可复制性与可追溯性。
+
+## 🖥️ Web UI 工作台
+
+WebUI 将“配置一次、执行可观测、产物可审查”串成研究闭环：
+
+- **Research Dashboard**（`/`）：引擎心跳、任务成功率、因子库存、Top 因子和范式分布。
+- **Mining Launchpad**（`/launchpad`）：选择范式与配置，发起任务，并从 Tracker 打开实时日志和结果。
+- **Factor Inspector**（`/inspector`）：浏览已持久化因子，审查逻辑、指标、来源和生命周期状态。
+- **Data Center**（`/data`）：查看数据覆盖范围并下载数据。
+
+![Research Dashboard（中文）](docs/assets/web-dashboard-zh.jpg)
+
+*Research Dashboard：来自本地 API 的任务、因子与研究质量概览。*
+
+![Factor Inspector（中文）](docs/assets/web-inspector-zh.jpg)
+
+*Factor Inspector：因子目录、可复现逻辑与指标审查。*
 
 ### 3. 无头模式 (CLI 命令行挖掘与下载)
 
@@ -112,8 +150,184 @@ factorminer mine --miner GP --config user_workspace/configs/demo_config.json
 
 # 运行你在 user_workspace 中自己写的自定义挖掘器 (例如 MyCustomGP)
 factorminer mine --miner MyCustomGP --config user_workspace/configs/config.json --user-dir user_workspace
+
+# 运行自定义神经网络挖掘器；--iterations 可临时覆盖配置中的训练轮数
+factorminer mine --miner MyCustomNN --config user_workspace/configs/configNN.json --user-dir user_workspace --iterations 5
 ```
 挖掘完成后，终端会直接打印全局大表 (Final Mining Summary)，记录所有存活的因子及其 IC 表现。
+
+`MyCustomNN` 的一条训练结果不是普通公式：训练阶段先用 `channel=-1` 的临时模型组保持计算图，训练后再将最佳输出通道物化为因子。每个结果显示为 `NNModel(v=<weights-hash>) [Ch: <n>]`，带有独立的 IC/fitness；模型权重保存至 `factor_db/weights/`，通道元数据保存至 `factor_db/metadata/`。`sequential_single` 会逐一处理配置中的交易对；若某个交易对的本地训练切片为空，CLI 会记录警告并跳过该标的，不会伪造因子结果。
+
+若没有安装命令行入口，所有 CLI 示例都可以替换为等价模块命令：
+
+~~~bash
+python -m core.cli mine --miner MyCustomGP --config user_workspace/configs/configGP.json --user-dir user_workspace
+~~~
+
+---
+
+## 🧪 自定义 Miner、算子与 Fitness Hook
+
+用户扩展统一放在 user_workspace。WebUI 在读取 Miner 列表和启动任务时、CLI 在执行命令时都会动态导入 custom_miners、custom_operators 和 custom_fitness 中的 Python 模块；装饰器会将实现注册到运行时注册表。
+
+~~~text
+user_workspace/
+├── custom_miners/       # 四大范式或任意自定义 Miner
+├── custom_operators/    # 可复用时序 / 截面算子
+├── custom_fitness/      # 因子评分 Hook
+└── configs/             # 可复用的任务配置
+~~~
+
+所有范式遵守同一条结果契约：
+
+1. initialize_search_space 初始化模型、种群或记忆。
+2. generate_candidates 返回可执行的 FactorExpression 子类列表。
+3. evaluate_candidates 委托 self.evaluator.evaluate(candidates)，取得 EvaluationFeedback。
+4. update_model 更新策略、提示词或权重后，还必须将最终通过筛选的候选放进 self.state.population（或 replay_buffer）。
+
+第 4 条尤其重要：仅更新模型并不等于发现因子。BaseFactorMiner 最终只从 population 或 replay_buffer 读取产物；否则任务会正常完成，但 Tracker 会显示没有可保存的有效因子。
+
+### 1. 四大范式的自定义方式
+
+| 范式 | 可复制的起点 | 候选表达式 | 需要保留的研究产物 |
+| --- | --- | --- | --- |
+| GP | user_workspace/custom_miners/my_custom_gp.py | MyGPExpression / FactorExpressionAST | 可执行 AST、变异/交叉后的精英种群 |
+| RL | user_workspace/custom_miners/my_custom_rl.py | MyRLExpression | 动作轨迹、已更新策略、回放或精英候选 |
+| LLM | user_workspace/custom_miners/my_custom_llm.py | FactorExpressionCode | 生成代码、反思历史、已评分代码候选 |
+| NN | user_workspace/custom_miners/my_custom_nn.py | FactorExpressionTensor | 权重、通道元数据、每个通道的因子结果 |
+
+建议直接复制同范式的内置示例并修改，而不是从零实现调度循环。最小注册形式如下：
+
+~~~python
+from core.miner.paradigms.base import BaseFactorMiner
+from core.miner.registry import MinerRegistry
+
+
+@MinerRegistry.register("MyMomentumGP")
+class MyMomentumGPMiner(BaseFactorMiner):
+    def initialize_search_space(self):
+        self.state.population = []
+
+    def generate_candidates(self):
+        # 返回自己的 FactorExpression 子类实例。
+        return [self.make_expression()]
+
+    def evaluate_candidates(self, candidates):
+        return self.evaluator.evaluate(candidates)
+
+    def update_model(self, candidates, feedback):
+        ranked = sorted(
+            zip(feedback.metrics, candidates),
+            key=lambda item: item[0].get("fitness_score", float("-inf")),
+            reverse=True,
+        )
+        self.state.population = [expr for _, expr in ranked[:20]]
+~~~
+
+#### GP：让 AST 真正能计算
+
+GP 的候选是树形表达式。表达式的 compute() 必须把 close、open、volume 等数据流计算成与输入索引对齐的 pandas.Series。内置 MyGPExpression 展示了递归计算 AST 的方式；新增节点时，也要同步实现节点求值、复杂度统计和可读的 source。
+
+~~~python
+# 示例 AST：(close / open) - volume
+{
+    "op": "sub",
+    "left": {"op": "div", "left": "close", "right": "open"},
+    "right": "volume",
+}
+~~~
+
+GP 的 update_model 通常负责选择、交叉和变异。选择后的精英表达式必须写入 state.population，而不是只打印每代日志。
+
+#### RL：策略和因子是两类产物
+
+RL 可以将选择算子、选择输入流、停止生成等步骤建模为 action，并在 MyRLExpression 上记录 trajectory。策略网络权重、reward 和轨迹属于训练产物；可以独立计算并带指标的表达式才是研究产物。每轮策略更新后，应从采样表达式中按 fitness 选择 Top-K，保留到 state.population 或 replay_buffer。
+
+#### LLM：代码候选必须设置 factor
+
+LLM 范式使用 FactorExpressionCode。传入的代码以 pandas DataFrame 变量 df 为输入，最终必须创建名为 factor 的 pandas.Series，且不应有文件、网络或解释执行等副作用：
+
+~~~python
+returns = df["close"].pct_change()
+factor = returns.rolling(20, min_periods=10).mean()
+~~~
+
+建议在将模型响应交给评估器前做语法和安全检查，并把提示词摘要、响应和反思结果写入自己的 history，方便 Inspector 溯源。当前 MyCustomLLM 示例重点演示反思记忆；若要将其用于产物入库，请像上面的通用骨架一样，在 update_model 末尾保留本轮高分的代码表达式。
+
+#### NN：把训练权重物化为通道因子
+
+NN 的训练权重不是一个可以直接评分的因子。MyCustomNNMiner 的流程是：先以 channel=-1 的临时张量候选完成前向计算和反传；更新权重后，把每个输出 channel 物化成独立的 FactorExpressionTensor；评估这些通道，按 fitness 选出 Top-K 写入 state.population；最后由 Director 保存权重字节和通道元数据。这样 Tracker 和 Inspector 展示的是可审查的多个通道因子，而非笼统的“模型已训练”。
+
+### 2. 注册并接入自定义算子
+
+在 user_workspace/custom_operators 中创建模块，通过 OperatorRegistry 注册函数。算子应接受、返回索引对齐的 pandas.Series：
+
+~~~python
+# user_workspace/custom_operators/robust_ops.py
+import pandas as pd
+from core.miner.registry import OperatorRegistry
+
+
+@OperatorRegistry.register(arity=1)
+def rolling_zscore(series: pd.Series) -> pd.Series:
+    mean = series.rolling(20, min_periods=10).mean()
+    std = series.rolling(20, min_periods=10).std().replace(0, pd.NA)
+    return (series - mean) / std
+~~~
+
+注册只会让函数出现在运行时注册表；生成器和表达式求值器仍需主动调用它。当前 MyGPExpression 的基础运算是硬编码示例，所以新增算子不会自动被 AST 使用。对 GP/RL 的 AST 求值器，可按节点名查表并根据 arity 传参：
+
+~~~python
+from core.miner.registry import OperatorRegistry
+
+spec = OperatorRegistry._registry[node["op"]]
+func, arity = spec["func"], spec["arity"]
+result = func(left) if arity == 1 else func(left, right)
+~~~
+
+请处理滚动窗口产生的 NaN/无穷值，并在小样本数据上直接运行表达式的 compute()，确认输出索引、dtype 和长度正确。
+
+### 3. 注册自定义 Fitness Hook
+
+Fitness Hook 接收因子值、未来收益和评估器已计算的基础指标。可以返回单个分数，也可以返回包含 fitness_score 的字典；字典中的额外指标会随因子一起保存，便于 Inspector 审查。
+
+~~~python
+# user_workspace/custom_fitness/turnover_aware.py
+from core.miner.registry import EvaluatorRegistry
+
+
+@EvaluatorRegistry.register_fitness_hook("turnover_aware")
+def turnover_aware(factor_values, returns, base_metrics: dict) -> dict:
+    ic = float(base_metrics.get("IC", 0.0))
+    turnover = float(base_metrics.get("Turnover", 0.0))
+    penalty = 0.02 * turnover
+    return {
+        "fitness_score": abs(ic) * 100 - penalty,
+        "turnover_penalty": penalty,
+    }
+~~~
+
+在任务配置中精确引用注册名，并使用当前的永续 CCXT 标的格式：
+
+~~~json
+{
+  "max_iterations": 5,
+  "data_feeds": {
+    "pairs": ["BTC/USDT:USDT"],
+    "timeframe": "1h",
+    "required_streams": ["close", "volume"]
+  },
+  "fitness": {
+    "hook": "turnover_aware"
+  }
+}
+~~~
+
+若 Hook 名称未加载或拼写不一致，评估器会回退到默认的 abs(IC) 评分。因此先用少量迭代验证导入、日志、候选数和最终持久化结果：
+
+~~~bash
+factorminer mine --miner MyMomentumGP --config user_workspace/configs/configGP.json --user-dir user_workspace --iterations 1
+~~~
 
 ---
 

@@ -33,6 +33,12 @@ class FactorStorageInterface(ABC):
     def get_metadata(self, factor_id: str) -> FactorMetadata: pass
 
     @abstractmethod
+    def list_metadata(self) -> List[FactorMetadata]: pass
+
+    @abstractmethod
+    def update_lifecycle_status(self, factor_id: str, lifecycle_status: str) -> FactorMetadata: pass
+
+    @abstractmethod
     def load_factor_values(self, factor_id: str) -> Any: pass
     
     @abstractmethod
@@ -124,6 +130,30 @@ class LocalFactorStorage(FactorStorageInterface):
                 data = json.load(f)
             return FactorMetadata(**data)
         return None
+
+    def list_metadata(self) -> List[FactorMetadata]:
+        """Return every readable factor record for the Inspector catalog."""
+        metadata_items = []
+        for filename in os.listdir(self.meta_dir):
+            if not filename.endswith(".json"):
+                continue
+            factor_id = os.path.splitext(filename)[0]
+            try:
+                metadata = self.get_metadata(factor_id)
+                if metadata:
+                    metadata_items.append(metadata)
+            except Exception as exc:
+                logger.warning("Skipping unreadable factor metadata %s: %s", filename, exc)
+        return metadata_items
+
+    def update_lifecycle_status(self, factor_id: str, lifecycle_status: str) -> FactorMetadata:
+        metadata = self.get_metadata(factor_id)
+        if not metadata:
+            return None
+        metadata.lifecycle_status = lifecycle_status
+        self._save_meta(metadata)
+        logger.info("Updated lifecycle status for %s to %s", factor_id, lifecycle_status)
+        return metadata
 
     def load_factor_values(self, factor_id: str) -> Any:
         path = os.path.join(self.val_dir, f"{factor_id}.parquet")

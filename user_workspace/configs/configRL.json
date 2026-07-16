@@ -7,7 +7,7 @@
         "exchange": "binance",
         "instrument_type": "futures",
         "timeframe": "1m",
-        "pairs": ["BTC_USDT", "SUI_USDT"],
+        "pairs": ["BTC/USDT:USDT", "SUI/USDT:USDT"],
         "mine_period": [["2025-07-20", "2025-08-01"]],
         "test_period": [["2025-08-02", "2025-08-15"]],
         "mining_mode": "sequential_single"

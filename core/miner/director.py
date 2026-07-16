@@ -97,6 +97,19 @@ class FactorMinerDirector:
                 self.storage_client.save_rl_factor(cand.get_source(), b"", metadata)
             elif isinstance(cand, FactorExpressionTensor):
                 src = cand.get_source()
+                # Persist the model once alongside the channel metadata.  A
+                # channel ID alone cannot reproduce a trained neural factor.
+                weights = getattr(getattr(cand, "model_instance", None), "W", None)
+                if weights is not None:
+                    try:
+                        self.storage_client.save_model_weights(
+                            src["model_version"], weights.tobytes()
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to persist weights for model %s: %s",
+                            src["model_version"], exc,
+                        )
                 self.storage_client.save_dl_factor_channel(src["model_version"], src["channel"], metadata)
 
     def _print_results_table(self, candidates):

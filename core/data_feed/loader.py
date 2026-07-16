@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import os
 import warnings
+from core.data_feed.naming import data_path
 warnings.filterwarnings('ignore')
 
 
@@ -109,22 +110,12 @@ class DataLoader:
                 print(f"数据目录不存在: {data_dir}")
                 return pd.DataFrame()
             
-            # 查找匹配的数据文件
-            # 严格按照 batch_downloader.py 的本地数据存储命名进行匹配
-            clean_symbol = symbol.replace('/', '_').replace(':', '_')
-            
-            pattern = f"{clean_symbol}-{interval}-futures.feather"
-            matching_files = list(data_dir.glob(pattern))
-            
-            print(f"查找模式: {pattern}")
-            print(f"找到文件: {[f.name for f in matching_files]}")
-            
-            if not matching_files:
-                print(f"未找到匹配的数据文件: {pattern}")
+            file_path = data_path(data_dir.parent.parent, "binance", symbol, interval, "futures")
+            print(f"查找文件: {file_path.name}")
+            if not file_path.exists():
+                print(f"未找到标准命名的数据文件: {file_path.name}")
                 return pd.DataFrame()
             
-            # 读取第一个匹配的文件
-            file_path = matching_files[0]
             print(f"读取数据文件: {file_path}")
             
             data = pd.read_feather(file_path)
@@ -380,4 +371,4 @@ class DataLoader:
         else:
             raise ValueError(f"不支持的文件格式: {format}")
         
-        return data 
+        return data

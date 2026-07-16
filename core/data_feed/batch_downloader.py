@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from .data_downloader import DataDownloader
 from .health_checker import health_checker
 from .processor import data_processor
+from .naming import data_filename, data_path
 
 
 @dataclass
@@ -108,6 +109,8 @@ class SmartBatchDownloader(DataDownloader):
         try:
             # 设置交易类型属性
             self.trade_type = trade_type
+            self.exchange_id = exchange_id or "binance"
+            data_filename(symbol, timeframe, trade_type)
             
             exchange = self.get_exchange_instance(config_id, exchange_id, trade_type=trade_type)
             if not exchange:
@@ -303,29 +306,10 @@ class SmartBatchDownloader(DataDownloader):
         """保存数据并处理合并逻辑"""
         # 直接保存数据，避免重复调用
         try:
-            # 构建文件名
-            safe_symbol = symbol.replace('/', '_').replace(':', '_')
-            if hasattr(self, 'trade_type') and self.trade_type:
-                if self.trade_type in ['futures', 'spot', 'perpetual', 'delivery']:
-                    filename = f"{safe_symbol}-{timeframe}-{self.trade_type}.feather"
-                else:
-                    filename = f"{safe_symbol}_{timeframe}_{start_date}_{end_date}.feather"
-            else:
-                filename = f"{safe_symbol}_{timeframe}_{start_date}_{end_date}.feather"
+            filename = data_filename(symbol, timeframe, self.trade_type)
             print(f"完成构建文件名: {filename}")
 
-            # 确定存储目录
-            if hasattr(self, 'trade_type') and self.trade_type:
-                if self.trade_type == 'futures':
-                    save_path = Path("data/binance/futures") / filename
-                elif self.trade_type == 'spot':
-                    save_path = Path("data/binance/spot") / filename
-                elif self.trade_type in ['perpetual', 'delivery']:
-                    save_path = Path(f"data/binance/{self.trade_type}") / filename
-                else:
-                    save_path = Path("data/binance") / filename
-            else:
-                save_path = Path("data/binance") / filename
+            save_path = data_path("data", self.exchange_id, symbol, timeframe, self.trade_type)
             print(f"生成保存路径: {save_path}")
             
             # 检查现有文件并合并

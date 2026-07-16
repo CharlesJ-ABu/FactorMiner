@@ -1,14 +1,16 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Rocket, Activity, FileSearch, Database, LayoutDashboard } from 'lucide-react';
+import { Rocket, FileSearch, Database, LayoutDashboard, Languages } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 export function MainLayout() {
   const location = useLocation();
+  const { language, setLanguage, t } = useI18n();
 
   const navItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Launchpad', path: '/launchpad', icon: Rocket },
-    { name: 'Data Downloader', path: '/data', icon: Database },
-    { name: 'Factor Inspector', path: '/inspector', icon: FileSearch },
+    { name: t('nav.dashboard'), path: '/', icon: LayoutDashboard },
+    { name: t('nav.launchpad'), path: '/launchpad', icon: Rocket },
+    { name: t('nav.data'), path: '/data', icon: Database },
+    { name: t('nav.inspector'), path: '/inspector', icon: FileSearch },
   ];
 
   return (
@@ -41,9 +43,19 @@ export function MainLayout() {
           })}
         </nav>
 
-        <div className="flex items-center gap-2 text-xs text-muted-foreground ml-auto px-4 py-2 bg-secondary/50 rounded-full border border-border">
+        <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-1 px-2 py-1.5 bg-secondary/50 rounded-full border border-border">
+            <Languages className="h-3.5 w-3.5 text-muted-foreground" />
+            <select value={language} onChange={(event) => setLanguage(event.target.value as typeof language)} aria-label="Language" className="bg-transparent text-xs text-foreground outline-none cursor-pointer">
+              <option value="zh">简中</option>
+              <option value="en">EN</option>
+              <option value="de">DE</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground px-4 py-2 bg-secondary/50 rounded-full border border-border">
           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          Engine Online
+          {t('engine.online')}
+          </div>
         </div>
       </header>
 
