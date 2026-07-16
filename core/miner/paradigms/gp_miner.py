@@ -5,6 +5,7 @@ import random
 from core.miner.paradigms.base import BaseFactorMiner
 from core.miner.expressions import FactorExpression, FactorExpressionAST
 from core.miner.entities import EvaluationFeedback
+from core.miner.operator_runtime import configured_operator_names, resolve_operator_specs
 
 logger = logging.getLogger(__name__)
 
@@ -14,8 +15,9 @@ class GPFactorMiner(BaseFactorMiner):
     """
     def initialize_search_space(self) -> None:
         logger.info("Initializing GP search space...")
-        # 从 OperatorRegistry 中加载配置允许的算子
-        self.allowed_operators = self.config.get("search_space", {}).get("allowed_operators", ["add", "sub", "mul", "div"])
+        # 允许内置算子与动态注册的用户算子共同构成搜索空间。
+        self.allowed_operators = configured_operator_names(self.config)
+        self.operator_specs = resolve_operator_specs(self.allowed_operators)
         self.population_size = self.config.get("population_size", 20)
         
     def generate_candidates(self) -> List[FactorExpression]:
@@ -25,14 +27,20 @@ class GPFactorMiner(BaseFactorMiner):
         if not self.state.population:
             # 初始随机种群
             for _ in range(self.population_size):
-                ast = {"op": random.choice(self.allowed_operators), "left": "close", "right": "volume"}
+                op = random.choice(self.allowed_operators)
+                ast = {"op": op, "left": "close"}
+                if self.operator_specs[op]["arity"] == 2:
+                    ast["right"] = "volume"
                 candidates.append(FactorExpressionAST(ast_dict=ast))
         else:
             # 交叉变异产生新一代
             # 伪代码：交叉
             for _ in range(self.population_size):
                 p1 = random.choice(self.state.population)
-                ast = {"op": "add", "left": p1.get_source(), "right": "close"}
+                op = random.choice(self.allowed_operators)
+                ast = {"op": op, "left": p1.get_source()}
+                if self.operator_specs[op]["arity"] == 2:
+                    ast["right"] = "close"
                 candidates.append(FactorExpressionAST(ast_dict=ast, parent_ids=p1.get_lineage_parents()))
                 
         return candidates

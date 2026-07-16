@@ -32,6 +32,13 @@ class DownloadRequest(BaseModel):
 class LifecycleUpdateRequest(BaseModel):
     lifecycle_status: str
 
+class BatchLifecycleUpdateRequest(BaseModel):
+    factor_ids: list[str]
+    lifecycle_status: str
+
+class CompareFactorsRequest(BaseModel):
+    factor_ids: list[str]
+
 LIFECYCLE_STATUSES = {"DISCOVERED", "INSPECTED", "PAPER_TRADING", "LIVE", "RETIRED"}
 
 # Configure CORS for React frontend
@@ -53,12 +60,12 @@ async def get_miners():
     from core.miner.registry import MinerRegistry
     
     # Load custom modules
-    load_user_modules("user_workspace")
+    load_report = load_user_modules("user_workspace")
     
     # Only return registered custom miners
     custom_miners = list(MinerRegistry._registry.keys())
     
-    return {"miners": custom_miners}
+    return {"miners": custom_miners, "load_errors": load_report.errors}
 
 @app.get("/api/configs")
 async def get_configs():
@@ -238,22 +245,45 @@ def _factor_summary(metadata):
         "created_at": metadata.created_at,
         "display": display,
         "logic_kind": logic["kind"],
+        "snapshot_available": bool(metadata.data_lineage.get("snapshot_file")),
     }
 
 def _factor_detail(metadata):
     values_path = Path("factor_db") / "values" / f"{metadata.factor_id}.parquet"
+    snapshot_available = values_path.is_file()
     return {
         "metadata": dataclasses.asdict(metadata),
         "logic": _factor_logic(metadata),
         "audit_snapshot": {
-            "values_available": values_path.is_file(),
+            "values_available": snapshot_available,
+            "lineage": metadata.data_lineage,
             "message": (
-                "Factor-value snapshot is available for the Tearsheet."
-                if values_path.is_file()
-                else "No factor-value snapshot was saved. Performance charts will be added after a recalculation or a newly persisted snapshot."
+                f"Snapshot contains {metadata.data_lineage.get('snapshot_rows', 0)} aligned factor/forward-return observations."
+                if snapshot_available
+                else "No factor-value snapshot was saved. Re-run mining to create a real Tearsheet snapshot."
             ),
         },
     }
+
+def _factor_analysis_payload(factor_id: str):
+    from core.analysis.factor_analytics import SnapshotAnalysisError, analyze_factor_snapshot
+    from core.storage.factor_storage import get_global_storage
+
+    storage = get_global_storage()
+    metadata = storage.get_metadata(factor_id)
+    if not metadata:
+        raise HTTPException(status_code=404, detail=f"Factor {factor_id} was not found")
+    snapshot = storage.load_factor_values(factor_id)
+    if snapshot is None or snapshot.empty:
+        raise HTTPException(
+            status_code=409,
+            detail="This factor has no persisted value/forward-return snapshot. Re-run mining to generate a real Tearsheet.",
+        )
+    try:
+        analysis = analyze_factor_snapshot(snapshot)
+    except SnapshotAnalysisError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"factor": _factor_summary(metadata), "lineage": metadata.data_lineage, "analysis": analysis}
 
 @app.get("/api/dashboard")
 async def get_dashboard():
@@ -339,6 +369,41 @@ async def get_factors(
     }
     summaries.sort(key=sorters.get(sort_by, sorters["created_at"]), reverse=True)
     return {"factors": summaries[:max(1, min(limit, 500))], "total": len(summaries)}
+
+@app.get("/api/factors/{factor_id}/analysis")
+async def get_factor_analysis(factor_id: str):
+    return _factor_analysis_payload(factor_id)
+
+@app.post("/api/factors/compare")
+async def compare_factors(req: CompareFactorsRequest):
+    factor_ids = list(dict.fromkeys(req.factor_ids))
+    if not 2 <= len(factor_ids) <= 5:
+        raise HTTPException(status_code=422, detail="Select between 2 and 5 unique factors for comparison.")
+    return {"factors": [_factor_analysis_payload(factor_id) for factor_id in factor_ids]}
+
+@app.patch("/api/factors/lifecycle/batch")
+async def batch_update_factor_lifecycle(req: BatchLifecycleUpdateRequest):
+    lifecycle_status = req.lifecycle_status.upper()
+    if lifecycle_status not in LIFECYCLE_STATUSES:
+        allowed = ", ".join(sorted(LIFECYCLE_STATUSES))
+        raise HTTPException(status_code=422, detail=f"Unsupported lifecycle status. Use one of: {allowed}")
+
+    factor_ids = list(dict.fromkeys(req.factor_ids))
+    if not factor_ids:
+        raise HTTPException(status_code=422, detail="Select at least one factor to update.")
+
+    from core.storage.factor_storage import get_global_storage
+
+    storage = get_global_storage()
+    updated = []
+    missing = []
+    for factor_id in factor_ids:
+        metadata = storage.update_lifecycle_status(factor_id, lifecycle_status)
+        if metadata:
+            updated.append(_factor_summary(metadata))
+        else:
+            missing.append(factor_id)
+    return {"updated": updated, "missing": missing, "lifecycle_status": lifecycle_status}
 
 @app.get("/api/factors/{factor_id}")
 async def get_factor(factor_id: str):
@@ -465,7 +530,10 @@ async def run_mining_task_background(task_id: str, miner_name: str, config_name:
         # 后台任务与 CLI 使用同一套插件发现流程；不能依赖此前是否访问过
         # /api/miners，否则自定义 Miner 在新启动的服务中不会注册。
         from core.utils.dynamic_loader import load_user_modules
-        load_user_modules("user_workspace")
+        from core.startup_validation import validate_mining_startup
+
+        load_report = load_user_modules("user_workspace")
+        validate_mining_startup(config, load_report)
         
         from core.data_feed.real_client import RealDataClient
         data_client = RealDataClient(config)

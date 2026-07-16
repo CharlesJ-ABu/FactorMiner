@@ -30,6 +30,15 @@ class FactorStorageInterface(ABC):
     def save_factor_values(self, factor_id: str, values_df: Any) -> bool: pass
 
     @abstractmethod
+    def save_factor_snapshot(
+        self,
+        factor_id: str,
+        factor_values: Any,
+        forward_returns: Any,
+        data_lineage: Dict[str, Any],
+    ) -> bool: pass
+
+    @abstractmethod
     def get_metadata(self, factor_id: str) -> FactorMetadata: pass
 
     @abstractmethod
@@ -107,21 +116,78 @@ class LocalFactorStorage(FactorStorageInterface):
         return True
 
     def save_factor_values(self, factor_id: str, values_df: Any) -> bool:
-        # Fallback if values_df is not valid or empty
-        if values_df is None or (hasattr(values_df, 'empty') and values_df.empty):
-            logger.warning(f"No values to save for {factor_id}")
+        """Legacy helper retained for callers that only have factor values."""
+        if isinstance(values_df, pd.Series):
+            returns = pd.Series(index=values_df.index, dtype=float)
+        elif isinstance(values_df, pd.DataFrame):
+            returns = pd.DataFrame(index=values_df.index, columns=values_df.columns, dtype=float)
+        else:
+            logger.warning("No tabular factor values to save for %s", factor_id)
             return False
-            
-        path = os.path.join(self.val_dir, f"{factor_id}.parquet")
-        # In real system, it would be values_df.to_parquet(path)
-        # We mock it for the demo if it's just a raw dict or tensor
-        if isinstance(values_df, pd.DataFrame) or isinstance(values_df, pd.Series):
-            try:
-                values_df.to_frame().to_parquet(path)
-            except Exception:
-                pass
-        logger.info(f"Saved factor values for {factor_id} to {path}")
-        return True
+        return self.save_factor_snapshot(factor_id, values_df, returns, {})
+
+    @staticmethod
+    def _snapshot_frame(factor_values: Any, forward_returns: Any) -> pd.DataFrame:
+        """Normalize sequential and cross-asset values into a stable parquet schema."""
+        if isinstance(factor_values, pd.DataFrame) and isinstance(forward_returns, pd.DataFrame):
+            factors = factor_values.rename_axis(index="timestamp", columns="asset").stack().rename("factor")
+            returns = forward_returns.rename_axis(index="timestamp", columns="asset").stack().rename("forward_return")
+            snapshot = pd.concat([factors, returns], axis=1).reset_index()
+        elif isinstance(factor_values, pd.Series) and isinstance(forward_returns, pd.Series):
+            snapshot = pd.concat(
+                [
+                    factor_values.rename("factor"),
+                    forward_returns.rename("forward_return"),
+                ],
+                axis=1,
+            ).reset_index()
+            snapshot = snapshot.rename(columns={snapshot.columns[0]: "timestamp"})
+        else:
+            raise TypeError(
+                "Factor snapshot requires factor values and forward returns with matching pandas Series or DataFrame types."
+            )
+
+        snapshot["timestamp"] = pd.to_datetime(snapshot["timestamp"], errors="coerce")
+        snapshot["factor"] = pd.to_numeric(snapshot["factor"], errors="coerce")
+        snapshot["forward_return"] = pd.to_numeric(snapshot["forward_return"], errors="coerce")
+        snapshot = snapshot.dropna(subset=["timestamp"]).sort_values(
+            ["timestamp", "asset"] if "asset" in snapshot.columns else ["timestamp"]
+        )
+        return snapshot
+
+    def save_factor_snapshot(
+        self,
+        factor_id: str,
+        factor_values: Any,
+        forward_returns: Any,
+        data_lineage: Dict[str, Any],
+    ) -> bool:
+        try:
+            snapshot = self._snapshot_frame(factor_values, forward_returns)
+            if snapshot.empty:
+                logger.warning("No aligned snapshot rows to save for %s", factor_id)
+                return False
+
+            path = os.path.join(self.val_dir, f"{factor_id}.parquet")
+            snapshot.to_parquet(path, index=False)
+
+            metadata = self.get_metadata(factor_id)
+            if metadata:
+                metadata.data_lineage = {
+                    **data_lineage,
+                    "snapshot_file": os.path.basename(path),
+                    "snapshot_schema": list(snapshot.columns),
+                    "snapshot_rows": int(len(snapshot)),
+                    "snapshot_start": snapshot["timestamp"].min().isoformat(),
+                    "snapshot_end": snapshot["timestamp"].max().isoformat(),
+                }
+                self._save_meta(metadata)
+
+            logger.info("Saved factor snapshot for %s to %s", factor_id, path)
+            return True
+        except Exception as exc:
+            logger.warning("Failed to save factor snapshot for %s: %s", factor_id, exc)
+            return False
 
     def get_metadata(self, factor_id: str) -> FactorMetadata:
         path = os.path.join(self.meta_dir, f"{factor_id}.json")

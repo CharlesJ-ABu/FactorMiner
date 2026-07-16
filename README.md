@@ -99,9 +99,15 @@ npm run dev
 ```
 启动成功后，浏览器访问 `http://localhost:5173` 即可进入 FactorMiner 极客工作台。
 
-**Factor Inspector（Phase I）**
+**Factor Inspector（Phase II）**
 
-`/inspector` 会直接读取 `factor_db/metadata/` 中已持久化的因子，而不是依赖会在服务重启后消失的任务内存。可按 Miner、生命周期和指标搜索/排序；详情页按 AST、Python 源码、RL 动作轨迹或 NN 模型通道展示真实逻辑，并支持更新生命周期状态。当前不会渲染随机或模拟 Tearsheet：只有保存了因子值快照的因子才会在后续 Phase II 展示性能图表。
+`/inspector` 会直接读取 `factor_db/metadata/` 中已持久化的因子，而不是依赖会在服务重启后消失的任务内存。入库时，Director 会保存与评估切片对齐的 `timestamp / asset（如有）/ factor / forward_return` 快照，并记录交易对、周期、输入流、数据范围和未来收益定义。
+
+详情页据此展示真实滚动 IC、分位平均未来收益、换手率和数据血缘；顺序单标的使用时序滚动 IC，全市场模式使用逐期截面 IC。图表不会回算、补造或以模拟结果占位。目录支持勾选 2–5 个已有快照的因子比较滚动 IC，并可批量更新生命周期状态。旧档案没有快照时会明确提示重新挖掘，而不会生成虚构 Tearsheet。
+
+**指标与重启约定**
+
+因子档案的唯一指标契约是 `metrics.IC`、`metrics.RankIC`、`metrics.Turnover` 和 `metrics.fitness_score`；CLI、Launchpad、Dashboard 与 Inspector 都使用这些原始字段，不使用小写别名。`0` 可以是某个候选的真实评分，但一批新因子若全部为零，应先确认后端已重启到最新 Python 代码，并检查 `factor_db/metadata/<factor_id>.json` 中的上述字段。FastAPI 重启会清空内存中的 Tracker 任务历史，却不会删除 `factor_db` 中的因子档案和 Phase II 快照。
 
 **Research Dashboard**
 
@@ -252,7 +258,7 @@ returns = df["close"].pct_change()
 factor = returns.rolling(20, min_periods=10).mean()
 ~~~
 
-建议在将模型响应交给评估器前做语法和安全检查，并把提示词摘要、响应和反思结果写入自己的 history，方便 Inspector 溯源。当前 MyCustomLLM 示例重点演示反思记忆；若要将其用于产物入库，请像上面的通用骨架一样，在 update_model 末尾保留本轮高分的代码表达式。
+建议在将模型响应交给评估器前做语法和安全检查，并把提示词摘要、响应和反思结果写入自己的 history，方便 Inspector 溯源。MyCustomLLM 会将反思历史与高分代码候选分开保存：前者用于下一轮提示，后者按 Top-K 写入 state.population 供 Director 入库。
 
 #### NN：把训练权重物化为通道因子
 
@@ -275,17 +281,31 @@ def rolling_zscore(series: pd.Series) -> pd.Series:
     return (series - mean) / std
 ~~~
 
-注册只会让函数出现在运行时注册表；生成器和表达式求值器仍需主动调用它。当前 MyGPExpression 的基础运算是硬编码示例，所以新增算子不会自动被 AST 使用。对 GP/RL 的 AST 求值器，可按节点名查表并根据 arity 传参：
+CLI 与 WebUI 启动任务时会加载该模块。GP/RL 的候选生成器会把配置中允许的算子解析为统一元数据：arity=1 的算子生成只有 left 的一元 AST 节点，arity=2 的算子生成 left/right 双操作数节点；FactorExpressionAST 使用同一个运行时分发器执行内置与已注册算子。因此算子注册、配置、生成和求值已经是完整链路，不需要再修改 MyGPExpression/MyRLExpression。
 
 ~~~python
-from core.miner.registry import OperatorRegistry
+# 一元节点
+{"op": "rolling_zscore", "left": "close"}
 
-spec = OperatorRegistry._registry[node["op"]]
-func, arity = spec["func"], spec["arity"]
-result = func(left) if arity == 1 else func(left, right)
+# 二元节点
+{"op": "add", "left": "close", "right": "volume"}
 ~~~
 
-请处理滚动窗口产生的 NaN/无穷值，并在小样本数据上直接运行表达式的 compute()，确认输出索引、dtype 和长度正确。
+在配置中声明可被搜索的算子：
+
+~~~json
+{
+  "search_space": {
+    "allowed_operators": ["add", "custom_ts_decay", "rolling_zscore"]
+  }
+}
+~~~
+
+默认的 MyCustomGP 搜索空间现在包含四则运算、内置的 ts_mean / ts_std，以及用户时序算子 custom_ts_decay、ts_zscore_20、ts_delta_5、ts_rank_20、ts_volatility_20。它们分别覆盖加权衰减、滚动标准化、短期变化、滚动分位位置和滚动波动率；可在 config.json 的 search_space.allowed_operators 中按研究目标增删。
+
+当前工作区的 `config.json` 已用真实 BTC、SUI 永续 Feather 数据完成 MyCustomGP 回归：新入库候选会同时写入非空指标和 `factor_db/values/<factor_id>.parquet` 快照。该检查验证的是“注册 → AST 生成 → 求值 → fitness → metadata/快照落盘”的完整链路，而不是只验证算子可被导入。
+
+请处理滚动窗口产生的 NaN/无穷值，并确保算子返回 pandas.Series 或 pandas.DataFrame。启动校验会拒绝 arity 非 1/2、函数签名不足、未注册的算子，以及未知的 Miner/Fitness Hook；运行时算子异常也会携带算子名，而不会静默降级为零因子。
 
 ### 3. 注册自定义 Fitness Hook
 
@@ -323,11 +343,27 @@ def turnover_aware(factor_values, returns, base_metrics: dict) -> dict:
 }
 ~~~
 
-若 Hook 名称未加载或拼写不一致，评估器会回退到默认的 abs(IC) 评分。因此先用少量迭代验证导入、日志、候选数和最终持久化结果：
+若 Hook 名称未加载或拼写不一致，启动校验会在读取数据之前中止任务，并列出已加载 Hook；不会再静默回退。先用少量迭代验证导入、日志、候选数和最终持久化结果：
 
 ~~~bash
 factorminer mine --miner MyMomentumGP --config user_workspace/configs/configGP.json --user-dir user_workspace --iterations 1
 ~~~
+
+### 4. 启动校验与 CLI smoke tests
+
+CLI 与 Launchpad 共享启动校验：动态加载失败、未知 Miner、缺失的必填数据流、无效的算子名称/arity，以及未知 Fitness Hook 都会在启动前以聚合错误报告返回。自定义 Operator 必须接收其声明 arity 所需的位置参数；Fitness Hook 必须接收 factor_values、returns、base_metrics 三个参数。
+
+仓库的 tests/test_cli_smoke.py 为 MyCustomGP、MyCustomRL、MyCustomLLM、MyCustomNN 分别创建临时 Feather 行情，通过公开 CLI 跑一轮，并验证至少一个因子元数据被写入临时 factor_db。可在提交前运行：
+
+~~~bash
+python -B -m unittest discover -s tests -v
+~~~
+
+### 5. Phase II 快照与审查口径
+
+每个成功入库的因子会在 `factor_db/values/<factor_id>.parquet` 保存其计算值和同一评估切片的未来收益；元数据中的 `data_lineage` 保存数据来源、交易对、市场类型、周期、样本范围、输入流和收益定义。Inspector 的 API 仅从该 parquet 快照生成滚动 IC、分位收益和换手率。
+
+这意味着删除旧档案后，只有新的挖掘任务会产生可审查的 Tearsheet。若因子没有快照，先重新运行挖掘，而不要把旧的指标或前端演示图当作研究证据。
 
 ---
 

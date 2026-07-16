@@ -22,6 +22,7 @@ class FactorMetadata:
     
     # 评测指标 (肉体成绩单)
     metrics: Dict[str, float] = field(default_factory=dict) # 留存当时的评估指标 (IC, IR, Sharpe等)
+    data_lineage: Dict[str, Any] = field(default_factory=dict) # 快照来源、数据范围与收益定义
     created_at: str = ""
 
 @dataclass

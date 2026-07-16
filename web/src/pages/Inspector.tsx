@@ -2,15 +2,17 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ReactECharts from 'echarts-for-react';
 import {
+  BarChart3,
+  CheckSquare,
   ChevronRight,
   CircleAlert,
   Database,
   FileSearch,
   GitBranch,
+  GitCompareArrows,
   Loader2,
   RefreshCw,
   Save,
-  ShieldCheck,
 } from 'lucide-react';
 import { useI18n } from '../i18n';
 
@@ -28,6 +30,7 @@ type FactorSummary = {
   created_at: string;
   display: string;
   logic_kind: string;
+  snapshot_available?: boolean;
 };
 
 type FactorDetail = {
@@ -39,6 +42,28 @@ type FactorDetail = {
   };
   logic: Record<string, any>;
   audit_snapshot: { values_available: boolean; message: string };
+};
+
+type AnalysisPoint = { timestamp: string; value: number };
+type QuantilePoint = { bucket: string; mean_return: number; count: number };
+type AnalysisPayload = {
+  factor: FactorSummary;
+  lineage: Record<string, unknown>;
+  analysis: {
+    mode: 'sequential_single' | 'cross_asset';
+    rolling_ic: AnalysisPoint[];
+    turnover: AnalysisPoint[];
+    quantiles: QuantilePoint[];
+    summary: {
+      observations: number;
+      start: string;
+      end: string;
+      rolling_window: number;
+      latest_rolling_ic: number | null;
+      mean_turnover: number | null;
+      quantile_spread: number | null;
+    };
+  };
 };
 
 type TreeNode = { name: string; children?: TreeNode[] };
@@ -70,6 +95,90 @@ function astToTree(node: any): TreeNode {
     .filter((child) => child !== undefined && child !== null)
     .map(astToTree);
   return { name: node.op, ...(children.length ? { children } : {}) };
+}
+
+function lineageValue(value: unknown) {
+  if (Array.isArray(value)) return value.join(', ');
+  if (typeof value === 'object' && value !== null) return JSON.stringify(value);
+  return String(value ?? '—');
+}
+
+function TearsheetPanel({ payload }: { payload: AnalysisPayload }) {
+  const { t } = useI18n();
+  const { analysis, lineage } = payload;
+  const lineOption = (title: string, points: AnalysisPoint[], color: string) => ({
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'axis' },
+    grid: { top: 38, left: 44, right: 20, bottom: 38 },
+    title: { text: title, left: 10, top: 8, textStyle: { color: '#e2e8f0', fontSize: 12, fontWeight: 600 } },
+    xAxis: { type: 'category', data: points.map((point) => new Date(point.timestamp).toLocaleString()), axisLabel: { color: '#94a3b8', hideOverlap: true }, axisLine: { lineStyle: { color: '#334155' } } },
+    yAxis: { type: 'value', axisLabel: { color: '#94a3b8', formatter: (value: number) => value.toFixed(3) }, splitLine: { lineStyle: { color: '#1e293b' } } },
+    series: [{ type: 'line', data: points.map((point) => point.value), smooth: true, showSymbol: false, lineStyle: { color, width: 2 }, areaStyle: { opacity: 0.1 } }],
+  });
+  const quantileOption = {
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'axis', valueFormatter: (value: number) => value.toExponential(3) },
+    grid: { top: 38, left: 50, right: 20, bottom: 28 },
+    title: { text: t('inspector.quantileReturn'), left: 10, top: 8, textStyle: { color: '#e2e8f0', fontSize: 12, fontWeight: 600 } },
+    xAxis: { type: 'category', data: analysis.quantiles.map((item) => item.bucket), axisLabel: { color: '#94a3b8' }, axisLine: { lineStyle: { color: '#334155' } } },
+    yAxis: { type: 'value', axisLabel: { color: '#94a3b8', formatter: (value: number) => value.toExponential(1) }, splitLine: { lineStyle: { color: '#1e293b' } } },
+    series: [{ type: 'bar', data: analysis.quantiles.map((item) => item.mean_return), itemStyle: { color: '#a78bfa', borderRadius: [3, 3, 0, 0] } }],
+  };
+  const summaryCards = [
+    [t('inspector.observations'), String(analysis.summary.observations)],
+    [t('inspector.latestRollingIc'), metric(analysis.summary.latest_rolling_ic ?? undefined)],
+    [t('inspector.meanTurnover'), metric(analysis.summary.mean_turnover ?? undefined)],
+    [t('inspector.quantileSpread'), metric(analysis.summary.quantile_spread ?? undefined)],
+  ];
+  const lineageEntries = Object.entries(lineage)
+    .filter(([key]) => !['snapshot_file', 'snapshot_schema'].includes(key))
+    .slice(0, 8);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>{t('inspector.realSnapshot')}</span>
+        <span>{analysis.mode === 'cross_asset' ? t('inspector.crossAssetMethod') : t('inspector.sequentialMethod')}</span>
+      </div>
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        {summaryCards.map(([label, value]) => <div key={label} className="rounded-lg border border-border bg-secondary/20 p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-1 font-mono text-base font-semibold">{value}</p></div>)}
+      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="h-64 rounded-lg border border-border bg-background/30 overflow-hidden"><ReactECharts option={lineOption(t('inspector.rollingIc'), analysis.rolling_ic, '#38bdf8')} style={{ height: '100%', width: '100%' }} /></div>
+        <div className="h-64 rounded-lg border border-border bg-background/30 overflow-hidden"><ReactECharts option={quantileOption} style={{ height: '100%', width: '100%' }} /></div>
+      </div>
+      <div className="h-56 rounded-lg border border-border bg-background/30 overflow-hidden"><ReactECharts option={lineOption(t('inspector.turnover'), analysis.turnover, '#f59e0b')} style={{ height: '100%', width: '100%' }} /></div>
+      <div className="rounded-lg border border-border bg-secondary/10 p-4">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('inspector.dataLineage')}</p>
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-2 text-xs">
+          {lineageEntries.map(([key, value]) => <div key={key} className="flex gap-2"><span className="shrink-0 text-muted-foreground">{key}</span><span className="font-mono break-all text-foreground">{lineageValue(value)}</span></div>)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ComparisonPanel({ payloads }: { payloads: AnalysisPayload[] }) {
+  const { t } = useI18n();
+  const timestamps = [...new Set(payloads.flatMap((payload) => payload.analysis.rolling_ic.map((point) => point.timestamp)))].sort();
+  const option = {
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'axis' },
+    legend: { top: 8, textStyle: { color: '#cbd5e1' } },
+    grid: { top: 42, left: 44, right: 20, bottom: 38 },
+    xAxis: { type: 'category', data: timestamps.map((timestamp) => new Date(timestamp).toLocaleString()), axisLabel: { color: '#94a3b8', hideOverlap: true }, axisLine: { lineStyle: { color: '#334155' } } },
+    yAxis: { type: 'value', axisLabel: { color: '#94a3b8' }, splitLine: { lineStyle: { color: '#1e293b' } } },
+    series: payloads.map((payload, index) => {
+      const values = new Map(payload.analysis.rolling_ic.map((point) => [point.timestamp, point.value]));
+      return { name: payload.factor.factor_id, type: 'line', smooth: true, showSymbol: false, data: timestamps.map((timestamp) => values.get(timestamp) ?? null), lineStyle: { width: 2 }, color: ['#38bdf8', '#a78bfa', '#34d399', '#fb7185', '#f59e0b'][index] };
+    }),
+  };
+  return (
+    <div className="rounded-xl border border-violet-900/60 bg-violet-950/10 p-5">
+      <div className="flex items-center gap-2 mb-4"><GitCompareArrows className="w-4 h-4 text-violet-300" /><h3 className="text-sm font-bold">{t('inspector.comparison')}</h3><span className="ml-auto text-xs text-muted-foreground">{payloads.length} {t('inspector.factorsSelected')}</span></div>
+      <div className="h-72"><ReactECharts option={option} style={{ height: '100%', width: '100%' }} /></div>
+    </div>
+  );
 }
 
 function LogicPanel({ detail }: { detail: FactorDetail }) {
@@ -176,8 +285,15 @@ export function Inspector() {
   const [lifecycleFilter, setLifecycleFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState('created_at');
   const [statusDraft, setStatusDraft] = useState('DISCOVERED');
+  const [selectedForReview, setSelectedForReview] = useState<string[]>([]);
+  const [batchStatus, setBatchStatus] = useState('INSPECTED');
+  const [analysis, setAnalysis] = useState<AnalysisPayload | null>(null);
+  const [comparison, setComparison] = useState<AnalysisPayload[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [savingBatch, setSavingBatch] = useState(false);
+  const [loadingComparison, setLoadingComparison] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
   const [error, setError] = useState('');
 
@@ -227,6 +343,31 @@ export function Inspector() {
     void loadDetail();
   }, [selectedId]);
 
+  useEffect(() => {
+    if (!selectedId) {
+      setAnalysis(null);
+      return;
+    }
+    const loadAnalysis = async () => {
+      setLoadingAnalysis(true);
+      try {
+        const response = await fetch(`${API_BASE}/api/factors/${encodeURIComponent(selectedId)}/analysis`);
+        if (response.status === 409) {
+          setAnalysis(null);
+          return;
+        }
+        if (!response.ok) throw new Error('Unable to calculate the persisted Tearsheet.');
+        setAnalysis(await response.json());
+      } catch (err) {
+        setAnalysis(null);
+        setError(err instanceof Error ? err.message : 'Unable to calculate the persisted Tearsheet.');
+      } finally {
+        setLoadingAnalysis(false);
+      }
+    };
+    void loadAnalysis();
+  }, [selectedId]);
+
   const filteredFactors = useMemo(() => factors
     .filter((factor) => minerFilter === 'ALL' || factor.miner_type === minerFilter)
     .filter((factor) => lifecycleFilter === 'ALL' || factor.lifecycle_status === lifecycleFilter)
@@ -243,6 +384,12 @@ export function Inspector() {
   const minerTypes = useMemo(() => [...new Set(factors.map((factor) => factor.miner_type))].sort(), [factors]);
 
   const selectFactor = (factorId: string) => setSearchParams({ factor: factorId });
+
+  const toggleReviewSelection = (factorId: string) => {
+    setSelectedForReview((current) => current.includes(factorId)
+      ? current.filter((id) => id !== factorId)
+      : [...current, factorId]);
+  };
 
   const saveLifecycle = async () => {
     if (!detail) return;
@@ -267,6 +414,55 @@ export function Inspector() {
     }
   };
 
+  const saveBatchLifecycle = async () => {
+    if (!selectedForReview.length) return;
+    setSavingBatch(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/factors/lifecycle/batch`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ factor_ids: selectedForReview, lifecycle_status: batchStatus }),
+      });
+      if (!response.ok) throw new Error('Unable to update selected factor lifecycles.');
+      const payload = await response.json();
+      const updated = new Map((payload.updated || []).map((factor: FactorSummary) => [factor.factor_id, factor.lifecycle_status]));
+      setFactors((current) => current.map((factor) => updated.has(factor.factor_id)
+        ? { ...factor, lifecycle_status: updated.get(factor.factor_id) as string }
+        : factor));
+      if (detail && updated.has(detail.metadata.factor_id)) {
+        setDetail({ ...detail, metadata: { ...detail.metadata, lifecycle_status: updated.get(detail.metadata.factor_id) as string } });
+        setStatusDraft(updated.get(detail.metadata.factor_id) as string);
+      }
+      setSelectedForReview([]);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update selected factor lifecycles.');
+    } finally {
+      setSavingBatch(false);
+    }
+  };
+
+  const compareSelected = async () => {
+    if (selectedForReview.length < 2 || selectedForReview.length > 5) return;
+    setLoadingComparison(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/factors/compare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ factor_ids: selectedForReview }),
+      });
+      if (!response.ok) throw new Error('Selected factors require persisted analysis snapshots before comparison.');
+      const payload = await response.json();
+      setComparison(payload.factors || []);
+      setError('');
+    } catch (err) {
+      setComparison([]);
+      setError(err instanceof Error ? err.message : 'Unable to compare selected factors.');
+    } finally {
+      setLoadingComparison(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6 max-w-[1500px] mx-auto min-h-[720px]">
       <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -284,6 +480,19 @@ export function Inspector() {
       </header>
 
       {error && <div className="flex items-center gap-2 rounded-lg border border-red-900/60 bg-red-950/25 px-4 py-3 text-sm text-red-300"><CircleAlert className="w-4 h-4 shrink-0" />{error}</div>}
+
+      {selectedForReview.length > 0 && (
+        <div className="flex flex-col gap-3 rounded-xl border border-violet-900/60 bg-violet-950/15 p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-2 text-sm"><CheckSquare className="w-4 h-4 text-violet-300" /><span>{selectedForReview.length} {t('inspector.factorsSelected')}</span></div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select value={batchStatus} onChange={(event) => setBatchStatus(event.target.value)} className="rounded-md border border-input bg-background px-2 py-2 text-xs">
+              {LIFECYCLE_STATUSES.map((status) => <option key={status} value={status}>{t(`status.${status}`)}</option>)}
+            </select>
+            <button onClick={() => void saveBatchLifecycle()} disabled={savingBatch} className="inline-flex items-center gap-2 rounded-md border border-violet-700/60 bg-violet-950/40 px-3 py-2 text-xs font-bold text-violet-200 disabled:opacity-50"><Save className="w-3.5 h-3.5" />{t('inspector.batchReview')}</button>
+            <button onClick={() => void compareSelected()} disabled={loadingComparison || selectedForReview.length < 2 || selectedForReview.length > 5} className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-xs font-bold text-primary-foreground disabled:opacity-50"><GitCompareArrows className="w-3.5 h-3.5" />{loadingComparison ? t('common.loading') : t('inspector.compare')}</button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 flex-1">
         <aside className="xl:col-span-1 border border-border bg-card rounded-xl overflow-hidden flex flex-col min-h-[580px]">
@@ -314,15 +523,18 @@ export function Inspector() {
             {loadingCatalog && <div className="p-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>}
             {!loadingCatalog && filteredFactors.length === 0 && <div className="p-8 text-center text-sm text-muted-foreground">{t('inspector.noMatches')}</div>}
             {filteredFactors.map((factor) => (
-              <button key={factor.factor_id} onClick={() => selectFactor(factor.factor_id)} className={`w-full p-4 text-left transition-colors hover:bg-secondary/50 ${selectedId === factor.factor_id ? 'bg-primary/10 border-l-2 border-primary' : 'border-l-2 border-transparent'}`}>
-                <div className="flex gap-2 items-start justify-between">
-                  <span className="font-mono text-xs font-semibold text-foreground">{factor.factor_id}</span>
-                  <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-semibold ${lifecycleClass(factor.lifecycle_status)}`}>{t(`status.${factor.lifecycle_status}`)}</span>
-                </div>
-                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><span className="rounded bg-secondary px-1.5 py-0.5">{factor.miner_type}</span><span>IC {metric(factor.metrics.IC)}</span><span>Fit {metric(factor.metrics.fitness_score)}</span></div>
-                <p className="mt-2 font-mono text-xs leading-5 text-muted-foreground line-clamp-2">{factor.display}</p>
-                <p className="mt-2 text-[11px] text-muted-foreground/70">{dateTime(factor.created_at)}</p>
-              </button>
+              <div key={factor.factor_id} className={`flex gap-2 p-3 transition-colors hover:bg-secondary/50 ${selectedId === factor.factor_id ? 'bg-primary/10 border-l-2 border-primary' : 'border-l-2 border-transparent'}`}>
+                <input aria-label={t('inspector.selectForReview')} type="checkbox" checked={selectedForReview.includes(factor.factor_id)} onChange={() => toggleReviewSelection(factor.factor_id)} className="mt-1 h-3.5 w-3.5 accent-primary" />
+                <button onClick={() => selectFactor(factor.factor_id)} className="min-w-0 flex-1 text-left">
+                  <div className="flex gap-2 items-start justify-between">
+                    <span className="font-mono text-xs font-semibold text-foreground">{factor.factor_id}</span>
+                    <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-semibold ${lifecycleClass(factor.lifecycle_status)}`}>{t(`status.${factor.lifecycle_status}`)}</span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><span className="rounded bg-secondary px-1.5 py-0.5">{factor.miner_type}</span><span>IC {metric(factor.metrics.IC)}</span><span>Fit {metric(factor.metrics.fitness_score)}</span></div>
+                  <p className="mt-2 font-mono text-xs leading-5 text-muted-foreground line-clamp-2">{factor.display}</p>
+                  <div className="mt-2 flex justify-between gap-2 text-[11px] text-muted-foreground/70"><span>{dateTime(factor.created_at)}</span>{factor.snapshot_available && <span className="text-emerald-400">{t('inspector.snapshotReady')}</span>}</div>
+                </button>
+              </div>
             ))}
           </div>
         </aside>
@@ -332,6 +544,8 @@ export function Inspector() {
           {selectedId && loadingDetail && <div className="h-full min-h-[580px] rounded-xl border border-border bg-card flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>}
           {selectedId && !loadingDetail && detail && (
             <div className="space-y-6">
+              {comparison.length > 0 && <ComparisonPanel payloads={comparison} />}
+
               <div className="rounded-xl border border-border bg-card p-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
@@ -370,7 +584,10 @@ export function Inspector() {
               </div>
 
               <div className={`rounded-xl border p-5 ${detail.audit_snapshot.values_available ? 'border-emerald-900/60 bg-emerald-950/10' : 'border-amber-900/60 bg-amber-950/10'}`}>
-                <div className="flex gap-3"><ShieldCheck className={`w-5 h-5 shrink-0 ${detail.audit_snapshot.values_available ? 'text-emerald-400' : 'text-amber-400'}`} /><div><h3 className="text-sm font-bold">{t('inspector.tearsheetStatus')}</h3><p className="mt-1 text-sm text-muted-foreground">{detail.audit_snapshot.message}</p><p className="mt-2 text-xs text-muted-foreground">{t('inspector.noSyntheticCharts')}</p></div></div>
+                <div className="flex gap-3"><BarChart3 className={`w-5 h-5 shrink-0 ${detail.audit_snapshot.values_available ? 'text-emerald-400' : 'text-amber-400'}`} /><div><h3 className="text-sm font-bold">{t('inspector.tearsheet')}</h3><p className="mt-1 text-sm text-muted-foreground">{detail.audit_snapshot.message}</p></div></div>
+                {loadingAnalysis && <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>}
+                {!loadingAnalysis && analysis && <div className="mt-5"><TearsheetPanel payload={analysis} /></div>}
+                {!loadingAnalysis && !analysis && <p className="mt-3 text-xs text-muted-foreground">{t('inspector.snapshotRequired')}</p>}
               </div>
             </div>
           )}

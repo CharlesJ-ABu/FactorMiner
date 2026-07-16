@@ -1,9 +1,22 @@
 import os
 import importlib.util
 import logging
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import List
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ModuleLoadReport:
+    loaded_modules: List[str] = field(default_factory=list)
+    errors: List[str] = field(default_factory=list)
+
+    @property
+    def ok(self) -> bool:
+        return not self.errors
+
 
 def load_user_modules(workspace_path: str = "user_workspace"):
     """
@@ -12,9 +25,12 @@ def load_user_modules(workspace_path: str = "user_workspace"):
     一旦被 import，文件中的 @MinerRegistry.register 等装饰器就会自动触发，将用户的类和算子注入到系统的注册中心。
     """
     workspace_dir = Path(workspace_path).absolute()
+    report = ModuleLoadReport()
     if not workspace_dir.exists():
-        logger.warning(f"User workspace directory {workspace_dir} not found. Skipping dynamic load.")
-        return
+        message = f"User workspace directory {workspace_dir} not found."
+        logger.warning(message)
+        report.errors.append(message)
+        return report
 
     # 定义我们要扫描的核心用户子目录
     target_dirs = ["custom_miners", "custom_operators", "custom_fitness"]
@@ -37,8 +53,12 @@ def load_user_modules(workspace_path: str = "user_workspace"):
                     module = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(module)
                     loaded_count += 1
+                    report.loaded_modules.append(module_name)
                     logger.debug(f"Successfully loaded user module: {module_name} from {file_path}")
             except Exception as e:
-                logger.error(f"Failed to load user module {file_path}: {e}")
+                message = f"Failed to load user module {file_path}: {type(e).__name__}: {e}"
+                logger.error(message)
+                report.errors.append(message)
                 
     logger.info(f"Dynamic loader successfully imported {loaded_count} user modules from {workspace_path}.")
+    return report

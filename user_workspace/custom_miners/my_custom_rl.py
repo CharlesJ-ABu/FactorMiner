@@ -8,6 +8,7 @@ from core.miner.paradigms.base import BaseFactorMiner
 from core.miner.registry import MinerRegistry
 from core.miner.expressions import FactorExpressionAST
 from core.miner.entities import EvaluationFeedback
+from core.miner.operator_runtime import configured_operator_names, resolve_operator_specs
 
 logger = logging.getLogger(__name__)
 
@@ -21,33 +22,7 @@ class MyRLExpression(FactorExpressionAST):
         self.trajectory = trajectory # 例如: [("op", "add"), ("term", "close")]
         
     def compute(self, data: pd.DataFrame) -> pd.Series:
-        return self._eval_node(self.ast_dict, data)
-        
-    def _eval_node(self, node: Any, data: pd.DataFrame) -> pd.Series:
-        if isinstance(node, str):
-            if node in data.columns:
-                return data[node]
-            else:
-                return pd.Series(index=data.index, data=0)
-                
-        if isinstance(node, (int, float)):
-            return pd.Series(index=data.index, data=node)
-            
-        if isinstance(node, dict) and "op" in node:
-            op = node["op"]
-            left = self._eval_node(node.get("left"), data)
-            right = self._eval_node(node.get("right"), data)
-            
-            if op == "add":
-                return left + right
-            elif op == "sub":
-                return left - right
-            elif op == "mul":
-                return left * right
-            elif op == "div":
-                return left / (right.replace(0, 1e-9))
-                
-        return pd.Series(index=data.index, data=0)
+        return super().compute(data)
 
 
 @MinerRegistry.register("MyCustomRL")
@@ -59,7 +34,8 @@ class MyCustomRLMiner(BaseFactorMiner):
     def initialize_search_space(self) -> None:
         logger.info("Initializing MyCustomRL search space (Policy Network)...")
         
-        self.operators = self.config.get("search_space", {}).get("allowed_operators", ["add", "sub", "mul", "div"])
+        self.operators = configured_operator_names(self.config)
+        self.operator_specs = resolve_operator_specs(self.operators)
         self.terminals = self.config.get("data_feeds", {}).get("required_streams", ["close", "volume"])
         
         self.rl_config = self.config.get("rl_config", {})
@@ -98,11 +74,13 @@ class MyCustomRLMiner(BaseFactorMiner):
         op = self._sample_action(self.op_weights)
         trajectory.append(("op", op))
         
-        return {
+        node = {
             "op": op,
             "left": self._generate_tree_with_trajectory(current_depth + 1, trajectory),
-            "right": self._generate_tree_with_trajectory(current_depth + 1, trajectory)
         }
+        if self.operator_specs[op]["arity"] == 2:
+            node["right"] = self._generate_tree_with_trajectory(current_depth + 1, trajectory)
+        return node
         
     def generate_candidates(self) -> List[MyRLExpression]:
         candidates = []

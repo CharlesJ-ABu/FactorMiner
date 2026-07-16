@@ -84,6 +84,11 @@ class FactorMinerDirector:
                 user_id="CharlesJ-ABu",
                 metrics=cand.metrics,
                 logic_hash=getattr(cand, 'logic_hash', ""),
+                generation_config={
+                    key: self.config[key]
+                    for key in ("max_iterations", "population_size", "top_k_factors", "hidden_dim")
+                    if key in self.config
+                },
                 created_at=datetime.now().isoformat()
             )
             
@@ -111,6 +116,38 @@ class FactorMinerDirector:
                             src["model_version"], exc,
                         )
                 self.storage_client.save_dl_factor_channel(src["model_version"], src["channel"], metadata)
+
+            self._save_factor_snapshot(factor_id, cand)
+
+    def _snapshot_lineage(self) -> Dict[str, Any]:
+        feeds = self.config.get("data_feeds", {})
+        return {
+            "source": self.data_client.__class__.__name__,
+            "exchange": feeds.get("exchange"),
+            "instrument_type": feeds.get("instrument_type"),
+            "timeframe": feeds.get("timeframe"),
+            "pairs": feeds.get("pairs", []),
+            "mining_mode": feeds.get("mining_mode", "sequential_single"),
+            "mine_period": feeds.get("mine_period", []),
+            "required_streams": feeds.get("required_streams", []),
+            "forward_return_definition": "close.pct_change().shift(-1)",
+        }
+
+    def _save_factor_snapshot(self, factor_id: str, candidate: Any) -> None:
+        """Persist the exact values and labels used for Phase II analysis."""
+        try:
+            factor_values = candidate.compute(self.data_client.get_data())
+            forward_returns = self.data_client.get_returns()
+            saved = self.storage_client.save_factor_snapshot(
+                factor_id,
+                factor_values,
+                forward_returns,
+                self._snapshot_lineage(),
+            )
+            if not saved:
+                logger.warning("No Phase II snapshot persisted for factor %s", factor_id)
+        except Exception as exc:
+            logger.warning("Failed to materialize Phase II snapshot for factor %s: %s", factor_id, exc)
 
     def _print_results_table(self, candidates):
         try:

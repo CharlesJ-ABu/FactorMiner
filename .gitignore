@@ -105,5 +105,6 @@ web/dist/
 
 # Scratch and test files
 test_*.py
+!tests/test_*.py
 demo_v4_script.py
 implementation_plan.md

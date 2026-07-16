@@ -7,8 +7,23 @@ from core.miner.paradigms.base import BaseFactorMiner
 from core.miner.registry import MinerRegistry
 from core.miner.expressions import FactorExpressionAST
 from core.miner.entities import EvaluationFeedback
+from core.miner.operator_runtime import configured_operator_names, resolve_operator_specs
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_CUSTOM_GP_OPERATORS = [
+    "add",
+    "sub",
+    "mul",
+    "div",
+    "ts_mean",
+    "ts_std",
+    "custom_ts_decay",
+    "ts_zscore_20",
+    "ts_delta_5",
+    "ts_rank_20",
+    "ts_volatility_20",
+]
 
 class MyGPExpression(FactorExpressionAST):
     """
@@ -18,51 +33,7 @@ class MyGPExpression(FactorExpressionAST):
         super().__init__(ast_dict, parent_ids)
         
     def compute(self, data: pd.DataFrame) -> pd.Series:
-        return self._eval_node(self.ast_dict, data)
-        
-    def _eval_node(self, node: Any, data: Any) -> Any:
-        # 叶子节点：直接是 DataFrame 的列名（比如 "close", "volume"）
-        if isinstance(node, str):
-            if isinstance(data, dict):
-                # Cross-asset mode: data is a dict of DataFrames
-                if node in data:
-                    return data[node]
-                else:
-                    # 获取任意一个 dataframe 的 index 来构造全 0 DataFrame
-                    sample_df = next(iter(data.values()))
-                    return pd.DataFrame(0, index=sample_df.index, columns=sample_df.columns)
-            else:
-                # Sequential single mode: data is a DataFrame
-                if node in data.columns:
-                    return data[node]
-                else:
-                    return pd.Series(index=data.index, data=0)
-                
-        # 标量常量
-        if isinstance(node, (int, float)):
-            if isinstance(data, dict):
-                sample_df = next(iter(data.values()))
-                return pd.DataFrame(node, index=sample_df.index, columns=sample_df.columns)
-            else:
-                return pd.Series(index=data.index, data=node)
-            
-        # 操作节点
-        if isinstance(node, dict) and "op" in node:
-            op = node["op"]
-            left = self._eval_node(node.get("left"), data)
-            right = self._eval_node(node.get("right"), data)
-            
-            if op == "add":
-                return left + right
-            elif op == "sub":
-                return left - right
-            elif op == "mul":
-                return left * right
-            elif op == "div":
-                # 简单防零除
-                return left / (right.replace(0, 1e-9))
-                
-        return pd.Series(index=data.index, data=0)
+        return super().compute(data)
 
 
 @MinerRegistry.register("MyCustomGP")
@@ -73,8 +44,9 @@ class MyCustomGPMiner(BaseFactorMiner):
     """
     def initialize_search_space(self) -> None:
         logger.info("Initializing MyCustomGP search space...")
-        # 从配置读取或者硬编码可用的算子和变量
-        self.operators = ["add", "sub", "mul", "div"]
+        # 配置的算子同时可以包含内置算子和动态注册的用户算子。
+        self.operators = configured_operator_names(self.config, DEFAULT_CUSTOM_GP_OPERATORS)
+        self.operator_specs = resolve_operator_specs(self.operators)
         # 获取输入的数据流作为终端节点 (Terminal set)
         self.terminals = self.config.get("data_feeds", {}).get("required_streams", ["close", "volume"])
         self.population_size = self.config.get("population_size", 10)
@@ -87,11 +59,13 @@ class MyCustomGPMiner(BaseFactorMiner):
         
         # 否则生成操作符节点
         op = random.choice(self.operators)
-        return {
+        node = {
             "op": op,
             "left": self._generate_random_tree(current_depth + 1),
-            "right": self._generate_random_tree(current_depth + 1)
         }
+        if self.operator_specs[op]["arity"] == 2:
+            node["right"] = self._generate_random_tree(current_depth + 1)
+        return node
         
     def _mutate(self, ast: Any) -> Any:
         # 对节点进行变异
@@ -100,11 +74,13 @@ class MyCustomGPMiner(BaseFactorMiner):
             
         if isinstance(ast, dict) and "op" in ast:
             # 递归变异左右子树
-            return {
+            mutated = {
                 "op": ast["op"],
                 "left": self._mutate(ast.get("left")),
-                "right": self._mutate(ast.get("right"))
             }
+            if ast.get("right") is not None:
+                mutated["right"] = self._mutate(ast["right"])
+            return mutated
         return ast
         
     def generate_candidates(self) -> List[MyGPExpression]:

@@ -66,8 +66,9 @@ class FactorExpressionAST(FactorExpression, LineageTrackableMixIn):
         self.ast_dict = ast_dict
         
     def compute(self, data: pd.DataFrame):
-        # 实际需要深度遍历 AST 字典并计算，此处仅作示例
-        return pd.Series(index=data.index, data=0)
+        from core.miner.operator_runtime import evaluate_ast
+
+        return evaluate_ast(self.ast_dict, data)
         
     def get_source(self) -> Dict:
         return self.ast_dict
@@ -86,7 +87,10 @@ class FactorExpressionAST(FactorExpression, LineageTrackableMixIn):
         def to_str(node):
             if not isinstance(node, dict) or 'op' not in node:
                 return str(node)
-            return f"{node['op']}({to_str(node.get('left'))}, {to_str(node.get('right'))})"
+            left = to_str(node.get('left'))
+            if node.get('right') is None:
+                return f"{node['op']}({left})"
+            return f"{node['op']}({left}, {to_str(node.get('right'))})"
         s = to_str(self.ast_dict)
         if max_length is not None and len(s) > max_length:
             return s[:max_length-3] + "..."

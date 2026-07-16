@@ -6,6 +6,7 @@ import sys
 
 from core.utils.dynamic_loader import load_user_modules
 from core.miner.director import FactorMinerDirector
+from core.startup_validation import StartupValidationError, validate_mining_startup
 
 # Removed MockDataClient in favor of RealDataClient
 
@@ -36,10 +37,18 @@ def run_miner(args):
             
     # 覆盖配置中的 paradigm
     config_dict["paradigm"] = args.miner
+    if args.iterations is not None:
+        config_dict["max_iterations"] = args.iterations
     
     # 2. 动态加载用户目录 (Freqtrade 范式的核心！)
     logger.info(f"Loading user modules from {args.user_dir}...")
-    load_user_modules(args.user_dir)
+    load_report = load_user_modules(args.user_dir)
+
+    try:
+        validate_mining_startup(config_dict, load_report)
+    except StartupValidationError as exc:
+        logger.error("%s", exc)
+        sys.exit(1)
     
     # 3. 初始化并启动
     logger.info(f"Starting FactorMiner execution for miner: {args.miner}")
@@ -63,7 +72,7 @@ def run_miner(args):
                 data_client = RealDataClient(pair_config)
                 director = FactorMinerDirector(pair_config, data_client)
                 
-                iters = args.iterations if args.iterations is not None else pair_config.get("max_iterations", 5)
+                iters = pair_config.get("max_iterations", 5)
                 best_candidates = director.run(max_iterations=iters)
                 
                 factor_ids = director.get_latest_factor_ids()

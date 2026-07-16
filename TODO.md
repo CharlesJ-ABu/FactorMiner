@@ -19,6 +19,9 @@
 **优先级**: 中
 **说明**: 扩展现有的单品种串行计算能力。
 - [x] **Cross-Asset 截面计算**: 当 `mining_mode` 设置为 `cross_asset` 时，重构底层数据对其逻辑，支持横截面算子 (如 `cs_rank`, `cs_zscore`) 的计算。
+- [x] **用户算子端到端接入**: 动态加载的 OperatorRegistry 已接入 GP/RL 的搜索空间、按 arity 生成 AST、统一求值和运行期异常报告；MyCustomGP 默认使用四则运算、ts_mean/ts_std 和衰减、Z-score、变化、排名、波动率等用户时序算子。
+- [x] **扩展启动校验与四范式 CLI smoke tests**: CLI/Launchpad 会在读取数据前校验 Miner、算子、Fitness Hook 与用户模块加载错误；MyCustomGP、MyCustomRL、MyCustomLLM、MyCustomNN 均有真实 Feather 数据的一轮 CLI smoke test。
+- [x] **MyCustomGP 真实数据回归与指标契约核验**: 重启 FastAPI 后以当前 `config.json` 完整运行 BTC、SUI 永续挖掘，确认用户算子进入 AST、候选评分非零，并将 `IC`、`RankIC`、`Turnover`、`fitness_score` 与 Phase II 值/未来收益快照一同落盘。Tracker 重启后内存任务会清空，因子档案仍以 `factor_db` 为准。
 - [ ] **更多原生算子支持**: 在 `OperatorRegistry` 中预置更多金融界常用的基础算子库 (如 `ts_decay`, `ts_corr`)。
 
 ### 3. **去重与评估执行能力补齐** (进行中)
@@ -28,13 +31,15 @@
 - [ ] **可配置并行评估**: 将固定线程数改为配置项，并明确线程池的资源边界、超时和异常回收策略。
 - [ ] **分布式评估后端**: 评估并按需接入 Ray 或 Celery，实现大规模候选因子的任务分发、结果缓存与重试机制。
 
-### 4. **Factor Inspector 审查台** (进行中)
+### 4. **Factor Inspector 审查台** (Phase II 完成)
 **优先级**: 高
-**说明**: Phase I 已将 Inspector 从静态演示替换为基于 `factor_db` 的真实因子目录、异构逻辑白盒详情与生命周期标记。
+**说明**: Inspector 已从静态演示升级为基于 `factor_db` 的真实因子目录、异构逻辑白盒详情、数据快照 Tearsheet 与批量审查工作流。
 - [x] **持久化因子目录**: 提供 FactorStorage 列表/生命周期更新能力与 `/api/factors`、`/api/factors/{id}` API；不依赖易失的任务内存。
 - [x] **异构逻辑详情**: 按 GP AST、LLM 源码、RL 动作轨迹与 DL 模型版本/通道呈现真实存储产物；Launchpad 结果可直接跳转审查页。
 - [x] **审查状态流转**: 支持 `DISCOVERED`、`INSPECTED`、`PAPER_TRADING`、`LIVE`、`RETIRED` 的显式更新和持久化。
-- [ ] **审查快照与 Tearsheet**: 因子入库时保存对齐的因子值、未来收益和数据血缘；据此增加滚动 IC、收益/分层表现与 NN 特征归因，严禁使用模拟图表替代真实数据。
+- [x] **审查快照与 Tearsheet**: 因子入库时保存对齐的因子值、未来收益和数据血缘；据此提供真实滚动 IC、分位收益、换手率和数据范围。无快照档案明确要求重新挖掘，严禁模拟图表。
+- [x] **多因子比较与批量审查**: 支持选择 2–5 个有快照的因子比较滚动 IC，并可批量更新生命周期状态。
+- [ ] **高级归因与投资组合回测**: 在已保存快照之上增加 NN 特征归因、行业/市场中性化、分位组合净值与交易成本模型。
 
 ---
 

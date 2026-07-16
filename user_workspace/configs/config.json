@@ -37,7 +37,13 @@
 			"sub",
 			"mul",
 			"div",
-			"custom_ts_decay"
+			"ts_mean",
+			"ts_std",
+			"custom_ts_decay",
+			"ts_zscore_20",
+			"ts_delta_5",
+			"ts_rank_20",
+			"ts_volatility_20"
 		]
 	},
 	"fitness": {

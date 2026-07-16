@@ -131,3 +131,16 @@ Reflection History from previous generations (learn from it):
             f"Please try to improve upon this logic or combine it with other signals."
         )
         self.reflection_history += reflection_note
+
+        # Reflection is a training artifact; the scored code expressions are
+        # the research artifacts that Director can persist and Inspector can
+        # review. Retain a bounded Top-K archive across generations.
+        top_k = self.config.get("top_k_factors", self.population_size)
+        archived = {candidate.logic_hash: candidate for candidate in self.state.population}
+        for _, candidate in scored:
+            archived[candidate.logic_hash] = candidate
+        self.state.population = sorted(
+            archived.values(),
+            key=lambda candidate: candidate.metrics.get("fitness_score", float("-inf")),
+            reverse=True,
+        )[:top_k]

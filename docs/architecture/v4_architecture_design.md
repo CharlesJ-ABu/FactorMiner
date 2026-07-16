@@ -942,9 +942,17 @@ factorminer mine --miner MyCustomGP --config user_workspace/configs/demo_config.
 **扩展的结果契约：**
 
 - 自定义 Miner 仍需实现初始化、候选生成、评估和更新四个阶段；更新策略、提示词或模型权重后，必须把最终已评分候选写入 `MinerState.population` 或 `replay_buffer`，否则 Director 没有可持久化的研究产物。
-- `OperatorRegistry` 仅负责注册函数和元数据。AST/代码生成器以及表达式求值器必须显式按算子名路由到注册表，新增算子才会真正参与 GP/RL 的候选计算。
+- `OperatorRegistry` 中的内置与用户算子由统一 AST runtime 消费。GP/RL 根据 arity 生成一元或二元节点，`FactorExpressionAST.compute()` 再按节点名分发到同一注册表；因此注册算子会实际参与候选生成和求值，而不会仅停留在发现阶段。
+- `MyCustomGP` 的默认时序搜索调色板包含 `custom_ts_decay`、`ts_zscore_20`、`ts_delta_5`、`ts_rank_20` 和 `ts_volatility_20`，并可由 `search_space.allowed_operators` 显式收窄或扩展。
 - `EvaluatorRegistry.register_fitness_hook(name)` 的 Hook 接收 `factor_values, returns, base_metrics`，可返回数值或含 `fitness_score` 的字典；任务配置通过 `fitness.hook` 引用该名称。
 - NN 需将训练阶段的临时张量模型与可评估的输出通道区分开：只有被物化、评估并保留的通道表达式会成为因子档案，权重作为其可追溯附件保存。
+
+**启动校验与验证闭环：**
+
+- DynamicLoader 返回模块加载报告；CLI 和 WebUI Launchpad 在创建数据客户端前汇总模块导入错误、Miner 存在性、data_feeds 基础字段、算子注册/arity、Fitness Hook 名称。
+- 算子注册只允许 arity 为 1 或 2，函数签名必须覆盖声明的参数数量；Fitness Hook 必须接收 factor_values、returns、base_metrics。未知配置会失败并返回可行动的错误，而非回退为零因子或默认评分。
+- tests/test_cli_smoke.py 在临时目录写入最小 Feather 数据，实际调用公开 CLI 验证 MyCustomGP、MyCustomRL、MyCustomLLM、MyCustomNN 均能完成一轮并落盘因子元数据。
+- 真实运行的档案指标采用稳定键名 `IC`、`RankIC`、`Turnover`、`fitness_score`。前端摘要、任务结果和 Inspector 必须直接消费该契约；不能以不存在的小写别名读取并将缺失值误呈现为零。变更 Python 执行链路后需重启 FastAPI；重启只丢弃 `TaskManager` 的内存 Tracker，不影响 `LocalFactorStorage` 的 metadata 和 values 快照。
 
 README 的目录地图以该边界为准：`core/` 只承担研究执行，`api/` 负责服务与任务可观测性，`web/` 负责研究工作台，`user_workspace/` 是策略、算子和评分的用户扩展面，`factor_db/` 只保存可追溯的研究产物。
 
@@ -1073,7 +1081,7 @@ class FactorInspector:
 2. **状态挂载**：任务挂载至全局内存态字典 `TaskManager`。
 3. **实时推送**：注入回调勾子 `progress_callback` 进底层演化循环（`epoch` 级别）。每一次种群繁衍，底层直接透过 `ws_manager.broadcast` 将状态压入 WebSocket 管道，前端通过 `Launchpad` 的 Drawer 实现在无感刷新下的微秒级进度条呈现。
 
-### 12.4 Factor Inspector Phase I：持久化目录与白盒详情
+### 12.4 Factor Inspector Phase II：可复现快照、Tearsheet 与批量审查
 
 Inspector 不能读取 `TaskManager` 中的临时任务结果作为因子档案：服务重启后该内存会丢失，且 CLI 产生的因子也不会出现。Phase I 以 `LocalFactorStorage` 中的 `factor_db/metadata/*.json` 为唯一目录来源，并提供以下 API：
 
@@ -1083,7 +1091,13 @@ Inspector 不能读取 `TaskManager` 中的临时任务结果作为因子档案�
 
 前端根据 `logic_reference.type` 而不是笼统的 Miner 名称呈现白盒内容：`json_ast` 绘制 AST 树并展示表达式，`python_source` 读取受控源码文件，`rl_actions` 展示动作轨迹，`dl_channel` 展示模型版本、输出通道和权重工件是否存在。Launchpad 的已保存因子 ID 使用 `/inspector?factor=<id>` 直接跳转到对应档案。
 
-这期刻意不生成随机净值或模拟 Tearsheet。`factor_db/values/<factor_id>.parquet` 不存在时，API 会明确标记审查快照缺失；Phase II 必须先保存对齐的因子值、未来收益和数据血缘，再计算滚动 IC、分位数组合和归因图，确保每一张图可追溯到真实输入数据。
+Phase II 在 Director 落盘逻辑工件后，重新以该候选和同一数据客户端物化因子值，并和 `RealDataClient.get_returns()` 返回的未来收益对齐，写入 `factor_db/values/<factor_id>.parquet`。标准 schema 为 `timestamp, asset（截面模式）, factor, forward_return`；`FactorMetadata.data_lineage` 同时记录数据源、交易对、市场类型、周期、输入流、样本范围和 `close.pct_change().shift(-1)` 的收益定义。
+
+对 MyCustomGP 的真实 Feather 回归应检查完整闭环：配置允许的用户算子会生成符合 arity 的 AST；AST runtime 产生可对齐的序列；Evaluator 写入上述四项指标；Director 最后将同一候选的逻辑、指标、数据血缘及 values/forward-return 快照持久化。只看到模块成功导入或任务完成并不足以证明该链路有效。
+
+Tearsheet API 只分析上述 parquet：单标的计算时序滚动 IC、逐期因子差分换手和全样本分位平均未来收益；截面模式计算逐期截面 IC 的滚动均值、资产矩阵换手和逐期分位组合的平均未来收益。没有快照会返回明确的重新挖掘提示，绝不以模拟曲线替代。
+
+Inspector 支持选择 2–5 个具有快照的因子调用比较 API，以同一口径对齐并叠加其滚动 IC；同时提供批量生命周期更新 API。测试套件以临时 FactorStorage 和 FastAPI TestClient 覆盖快照 schema、顺序/截面分析、比较和批量审查端点。
 
 ### 12.5 三语界面与研究工件边界
 

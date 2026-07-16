@@ -30,6 +30,9 @@ const translations: Record<Language, Record<string, string>> = {
     'inspector.source': '源码', 'inspector.sourceMissing': '因子来源目录中缺少源码工件。', 'inspector.noActions': '未保存动作轨迹。', 'inspector.agentArtifact': 'Agent 工件',
     'inspector.nnPhaseOne': '第一期会核验模型工件与所选输出通道。特征归因与基于面值的 Tearsheet 图表将在第二期审查快照完成后提供。',
     'inspector.tearsheetStatus': 'Tearsheet 数据状态', 'inspector.noSyntheticCharts': '第一期不会以合成图表替代真实数据。只有可核验的快照存在时，才会展示因子分布、滚动 IC 与收益分析。',
+    'inspector.tearsheet': '真实数据 Tearsheet', 'inspector.realSnapshot': '指标完全由持久化因子值与未来收益快照计算', 'inspector.crossAssetMethod': '逐期截面 IC 与分位组合', 'inspector.sequentialMethod': '时序滚动 IC 与全样本分位收益',
+    'inspector.observations': '观测数', 'inspector.latestRollingIc': '最新滚动 IC', 'inspector.meanTurnover': '平均换手', 'inspector.quantileSpread': '分位收益差', 'inspector.rollingIc': '滚动 IC', 'inspector.quantileReturn': '分位平均未来收益',
+    'inspector.dataLineage': '数据血缘', 'inspector.comparison': '因子比较', 'inspector.factorsSelected': '个已选因子', 'inspector.batchReview': '批量更新状态', 'inspector.compare': '比较', 'inspector.selectForReview': '选择用于批量审查', 'inspector.snapshotReady': '快照就绪', 'inspector.snapshotRequired': '尚无可用快照。请重新执行挖掘后再审查真实 Tearsheet。',
     'status.DISCOVERED': '已发现', 'status.INSPECTED': '已审查', 'status.PAPER_TRADING': '模拟盘', 'status.LIVE': '实盘中', 'status.RETIRED': '已退役',
   },
   en: {
@@ -52,6 +55,9 @@ const translations: Record<Language, Record<string, string>> = {
     'inspector.source': 'Source', 'inspector.sourceMissing': 'The source artifact is missing from factor_db/sources.', 'inspector.noActions': 'No action trajectory was stored.', 'inspector.agentArtifact': 'Agent artifact',
     'inspector.nnPhaseOne': 'Phase I verifies the model artifact and selected output channel. Feature attribution and value-based Tearsheet charts require the Phase II analysis snapshot.',
     'inspector.tearsheetStatus': 'Tearsheet data status', 'inspector.noSyntheticCharts': 'Phase I intentionally does not substitute synthetic charts. Value distributions, rolling IC and return analysis will appear only after a verifiable snapshot is available.',
+    'inspector.tearsheet': 'Real-data Tearsheet', 'inspector.realSnapshot': 'Metrics are calculated only from persisted factor-value and forward-return snapshots', 'inspector.crossAssetMethod': 'Per-period cross-sectional IC and quantile portfolios', 'inspector.sequentialMethod': 'Time-series rolling IC and full-sample quantile returns',
+    'inspector.observations': 'Observations', 'inspector.latestRollingIc': 'Latest rolling IC', 'inspector.meanTurnover': 'Mean turnover', 'inspector.quantileSpread': 'Quantile spread', 'inspector.rollingIc': 'Rolling IC', 'inspector.quantileReturn': 'Mean forward return by quantile',
+    'inspector.dataLineage': 'Data lineage', 'inspector.comparison': 'Factor comparison', 'inspector.factorsSelected': 'factor(s) selected', 'inspector.batchReview': 'Batch update status', 'inspector.compare': 'Compare', 'inspector.selectForReview': 'Select for batch review', 'inspector.snapshotReady': 'Snapshot ready', 'inspector.snapshotRequired': 'No usable snapshot yet. Re-run mining before reviewing a real Tearsheet.',
     'status.DISCOVERED': 'Discovered', 'status.INSPECTED': 'Inspected', 'status.PAPER_TRADING': 'Paper trading', 'status.LIVE': 'Live', 'status.RETIRED': 'Retired',
   },
   de: {
@@ -74,6 +80,9 @@ const translations: Record<Language, Record<string, string>> = {
     'inspector.source': 'Quelle', 'inspector.sourceMissing': 'Das Quellartefakt fehlt in factor_db/sources.', 'inspector.noActions': 'Keine Aktionssequenz wurde gespeichert.', 'inspector.agentArtifact': 'Agent-Artefakt',
     'inspector.nnPhaseOne': 'Phase I prüft das Modellartefakt und den gewählten Ausgabekanal. Merkmalsattribution und Tearsheet-Charts auf Wertbasis benötigen den Analyse-Snapshot aus Phase II.',
     'inspector.tearsheetStatus': 'Tearsheet-Datenstatus', 'inspector.noSyntheticCharts': 'Phase I ersetzt keine echten Daten durch synthetische Charts. Werteverteilungen, Rolling IC und Renditeanalyse erscheinen erst mit einem überprüfbaren Snapshot.',
+    'inspector.tearsheet': 'Tearsheet mit echten Daten', 'inspector.realSnapshot': 'Kennzahlen werden ausschließlich aus gespeicherten Faktor- und Forward-Return-Snapshots berechnet', 'inspector.crossAssetMethod': 'Periodischer Querschnitts-IC und Quantilportfolios', 'inspector.sequentialMethod': 'Zeitreihen-Rolling-IC und Quantilrenditen der Gesamtstichprobe',
+    'inspector.observations': 'Beobachtungen', 'inspector.latestRollingIc': 'Letzter Rolling IC', 'inspector.meanTurnover': 'Durchschnittlicher Umschlag', 'inspector.quantileSpread': 'Quantilspanne', 'inspector.rollingIc': 'Rolling IC', 'inspector.quantileReturn': 'Mittlere Forward-Rendite nach Quantil',
+    'inspector.dataLineage': 'Datenherkunft', 'inspector.comparison': 'Faktorvergleich', 'inspector.factorsSelected': 'Faktor(en) ausgewählt', 'inspector.batchReview': 'Status gesammelt aktualisieren', 'inspector.compare': 'Vergleichen', 'inspector.selectForReview': 'Für Sammelprüfung auswählen', 'inspector.snapshotReady': 'Snapshot bereit', 'inspector.snapshotRequired': 'Noch kein nutzbarer Snapshot. Starten Sie Mining erneut, bevor Sie ein echtes Tearsheet prüfen.',
     'status.DISCOVERED': 'Entdeckt', 'status.INSPECTED': 'Geprüft', 'status.PAPER_TRADING': 'Papierhandel', 'status.LIVE': 'Live', 'status.RETIRED': 'Ausgemustert',
   },
 };
