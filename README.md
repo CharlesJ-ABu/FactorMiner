@@ -6,7 +6,7 @@
 [![Maintenance](https://img.shields.io/badge/Maintenance-Actively%20Maintained-green.svg)](https://github.com/CharlesJ-ABu/FactorMiner)
 
 > 🚀 **项目状态**: **V4 架构全面重构完成**（涵盖 React + FastAPI 前后端分离、以及四大挖掘范式）！
-> 👨‍💻 **维护者**: [@CharlesJ-ABu](https://github.com/CharlesJ-ABu)  
+> 👨‍💻 **维护者**: [@CharlesJ-ABu](https://github.com/CharlesJ-ABu)
 > 📅 **最后更新**: 2026年7月17日
 
 FactorMiner 是一个面向量化研究的因子挖掘工作台。V4 以配置驱动的 Python 引擎为核心，提供 FastAPI + React WebUI、CLI、可持久化的因子档案，以及可由用户工作区扩展的 GP、RL、LLM 与 NN 挖掘范式。
@@ -379,6 +379,10 @@ python -B -m unittest discover -s tests -v
 > *(注意：V3 时代的函数式 API、过期的 Streamlit 界面和 `factorlib` 结构设计均已放入 `docs/legacy_v3/` 作归档处理。)*
 
 ---
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=CharlesJ-ABu/FactorMiner&type=Date)](https://star-history.com/#CharlesJ-ABu/FactorMiner&Date)
 
 ## 🤝 贡献与反馈
 

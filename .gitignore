@@ -102,6 +102,10 @@ factor_db/
 web/node_modules/
 web/dist/
 .env
+*.tsbuildinfo
+
+# Obsidian
+.obsidian/
 
 # Scratch and test files
 test_*.py
