@@ -382,7 +382,13 @@ python -B -m unittest discover -s tests -v
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=CharlesJ-ABu/FactorMiner&type=Date)](https://star-history.com/#CharlesJ-ABu/FactorMiner&Date)
+<a href="https://www.star-history.com/?type=date&repos=CharlesJ-ABu%2FFactorMiner">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=CharlesJ-ABu/FactorMiner&type=date&theme=dark&legend=top-left&sealed_token=hzreCWwyuEBXzGUPFeK2U5i-NyE72I4SADmwiCn6xntum1-jt6CU5xPipLkgoTUjydo-f4cyh-Z-fSufzROBd4hgraf6QDyy34-a1PXCAIDwj95m1-t-vyaPEbgR_IfMFlppsgv_Vwyf-hY2BDKIoVLuW0NJnkWWwc_dG1SIpcX-kNb6cy7LmlayhqIf" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=CharlesJ-ABu/FactorMiner&type=date&legend=top-left&sealed_token=hzreCWwyuEBXzGUPFeK2U5i-NyE72I4SADmwiCn6xntum1-jt6CU5xPipLkgoTUjydo-f4cyh-Z-fSufzROBd4hgraf6QDyy34-a1PXCAIDwj95m1-t-vyaPEbgR_IfMFlppsgv_Vwyf-hY2BDKIoVLuW0NJnkWWwc_dG1SIpcX-kNb6cy7LmlayhqIf" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=CharlesJ-ABu/FactorMiner&type=date&legend=top-left&sealed_token=hzreCWwyuEBXzGUPFeK2U5i-NyE72I4SADmwiCn6xntum1-jt6CU5xPipLkgoTUjydo-f4cyh-Z-fSufzROBd4hgraf6QDyy34-a1PXCAIDwj95m1-t-vyaPEbgR_IfMFlppsgv_Vwyf-hY2BDKIoVLuW0NJnkWWwc_dG1SIpcX-kNb6cy7LmlayhqIf" />
+ </picture>
+</a>
 
 ## 🤝 贡献与反馈
 
