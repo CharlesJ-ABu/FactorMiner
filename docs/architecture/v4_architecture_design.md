@@ -1056,6 +1056,7 @@ class FactorInspector:
 - **LLM (MyCustomLLMMiner)**: 成功实现了大语言模型反思记忆（Reflection Loop）驱动的代码生成。验证了并行执行沙盒 `RestrictedSandbox` 的安全性，并在缺乏真实 API Key 时，验证了系统的容灾限流及优雅降级机制。
 - **DL (MyCustomNNMiner)**: 基于纯 NumPy 构建了包含反向传播（Backpropagation）能力的微型张量机制 `MockTensor`。训练完成后，模型输出会按通道物化、评分、保留 Top-K，并将权重与通道元数据一同持久化，已打通 CLI 与 Web 的统一结果链路。
 - **并行评估与沙盒引擎 (ParallelEvaluator)**: 全面打通了回测评分闭环。验证了 `EvaluatorRegistry` 对于外部自定义挂钩 (`custom_fitness`) 的无缝动态注入（如实现了惩罚换手率的 `my_bear_market_hunter`），保证了回测评价维度的无限扩展。
+- **因子归因与审查引擎 (FactorInspectorEngine)**: 实现了 `core/inspector/` 独立审查模块与 `factorminer inspect` CLI 命令。支持从 Factor ID、AST 字典字符串或 Python 源码解析因子，在多币种与样本外 (OOS) 时间段计算 Coverage（有效覆盖率）、Pearson/RankIC (Mean/Std/IR/t-stat)、Lag 1..10 延迟衰减、5-Quantile 组间收益与换手率，并利用 Rich 库输出终端卡片面板。
 
 以上所有的完整实现均无缝外挂于 `user_workspace/custom_miners/` 和 `user_workspace/configs/` 目录下，实现了引擎核心代码的**零入侵**，完美兑现了“Config-Driven 配置驱动与逻辑插件化”的架构愿景。
 

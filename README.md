@@ -34,7 +34,8 @@ FactorMiner/
 │   └── ws_manager.py
 ├── core/                         # 与 UI 无关的研究执行引擎
 │   ├── cli.py                    # factorminer CLI 入口
-│   ├── commands/                 # mine / download 命令
+│   ├── commands/                 # mine / download / inspect 命令
+│   ├── inspector/                # 因子审查引擎：因子解析、全维指标库(IC/IR/Decay/Quantiles)、Rich报告
 │   ├── data_feed/                # Feather 读取、下载、补洞与命名规范
 │   ├── evaluation/               # 并行评估器、指标和受限代码执行
 │   ├── miner/                    # 表达式、注册表、Director、四种范式基类
@@ -134,7 +135,7 @@ WebUI 将“配置一次、执行可观测、产物可审查”串成研究闭�
 
 *Factor Inspector：因子目录、可复现逻辑与指标审查。*
 
-### 3. 无头模式 (CLI 命令行挖掘与下载)
+### 3. 无头模式 (CLI 命令行挖掘、归因审查与下载)
 
 如果你希望在服务器后端挂机，或者不启动 Web 界面直接运行，FactorMiner 也提供了原生纯命令行的工业级入口：
 
@@ -162,12 +163,27 @@ factorminer mine --miner MyCustomNN --config user_workspace/configs/configNN.jso
 ```
 挖掘完成后，终端会直接打印全局大表 (Final Mining Summary)，记录所有存活的因子及其 IC 表现。
 
+**3. 命令行执行因子归因与审查 (Factor Inspector)**
+使用 `factorminer inspect` 命令，对任何因子（可通过 Factor ID、AST 字典字符串或 Python 源码）在指定的交易对、样本外时间段以及不同统计方法下进行全维度的深度审查：
+```bash
+# 审查存储在 factor_db 中的已有因子
+factorminer inspect --factor "fac_dc9b98d8" --pairs "BTC/USDT:USDT"
+
+# 直接粘贴 AST 表达式字符串进行跨币种、跨时期审查 (样本外 OOS 验证)
+factorminer inspect \
+  --ast "{'op': 'ts_mean', 'left': {'op': 'div', 'left': 'close', 'right': 'open'}}" \
+  --pairs "BTC/USDT:USDT,ETH/USDT:USDT" \
+  --start 2025-08-01 --end 2025-12-31 --timeframe 5m
+```
+审查结果包含 **有效数据覆盖率 (Coverage)**、**RankIC (Mean/Std/IR/t-stat)**、**Pearson IC**、**Lag 1~10 因子衰减**、**5-Quantile 分组收益与多空价差** 以及 **换手率 (Turnover)**。
+
 `MyCustomNN` 的一条训练结果不是普通公式：训练阶段先用 `channel=-1` 的临时模型组保持计算图，训练后再将最佳输出通道物化为因子。每个结果显示为 `NNModel(v=<weights-hash>) [Ch: <n>]`，带有独立的 IC/fitness；模型权重保存至 `factor_db/weights/`，通道元数据保存至 `factor_db/metadata/`。`sequential_single` 会逐一处理配置中的交易对；若某个交易对的本地训练切片为空，CLI 会记录警告并跳过该标的，不会伪造因子结果。
 
 若没有安装命令行入口，所有 CLI 示例都可以替换为等价模块命令：
 
 ~~~bash
 python -m core.cli mine --miner MyCustomGP --config user_workspace/configs/configGP.json --user-dir user_workspace
+python -m core.cli inspect --factor "fac_dc9b98d8" --pairs "BTC/USDT:USDT"
 ~~~
 
 ---

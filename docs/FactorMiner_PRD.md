@@ -40,22 +40,31 @@
 - **元数据绑定**: 每条因子携带独一无二的 `FactorMetadata`（存储父代 ID、超参 Config、创建时间等）。
 - **异构统一**: GP (存 JSON AST)、RL (存 Action List + Model Weights)、LLM (存 Py 脚本 + Reflection Log)、DL (存 Model Checkpoint)，底层全打平存储。
 
-### 3.6 用户界面与交互接口 (Web UI)
+### 3.6 用户界面与交互接口 (Web UI & CLI)
 - **指挥中心 Dashboard**: React/Vite 构建。提供一键任务发射、动态配置加载、以及全局挖掘指标看板。
 - **监控大厅与控制台**: 通过 WebSocket 推送微秒级进度。居中模态弹窗提供运行时 LLM Reflection / 终端控制台 Execution Console 以及实时 IC 适应度演化图。
+- **命令行界面 (CLI)**: 纯无头模式运行，支持 `factorminer mine`（配置驱动挖掘）、`factorminer download`（行情批量下载）和 `factorminer inspect`（因子多维审查与归因）。
 - **API接口**: FastAPI 高性能异步后台支持，完全解耦。
+
+### 3.7 因子归因与审查引擎 (Factor Inspector)
+- **多维度归因分析**: 支持 Pearson IC、Spearman RankIC、RankIC IR (年化)、RankIC t-stat、Positive IC Ratio 占比。
+- **数据有效覆盖率检查 (Coverage)**: 自动统计有效 Bars 占总 K 线数的百分比，及时暴露因子逻辑因嵌套极值/复杂算子导致严重缺少有效数据（如只剩几十根有效 K 线）的虚假高分过拟合问题。
+- **Lag IC 衰减分析**: 计算因子在 Lag 1..10 的延迟相关性，检验因子的衰减速度。
+- **分组多空收益**: 5-Quantile 分组收益计算与 Long-Short (Q5-Q1) 换手率/多空利差计算。
+- **无缝输入支持**: 兼容 Factor ID（解析 DB）、AST 表达式字典字符串（解析任意日志中的表达式）以及纯 Python 代码。
 
 ## 4. 系统架构设计 (V4)
 - **展现层**: React.js, WebSockets, ECharts 可视化 (独立运行在 5173 端口)。
 - **控制层**: FastAPI (后台 8000 端口)，依赖 `BackgroundTasks` 分配常驻线程。
 - **抽象层**: 引入 `BaseFactorMiner`, `FactorExpression` 统一范式。
+- **审查与归因层**: 引入 `core/inspector` (`FactorResolver`, `InspectorMetricEngine`, `InspectorReporter`, `FactorInspectorEngine`)。
 - **底层引擎**: 异构存储引擎、并发评价引擎池、自动数据补全探针。
 
 ## 5. 当前阶段与重点迭代方向 (V4 落地与扩展)
 - **完善多资产跨截面挖掘**: 强化 `cross_asset` (横截面运算) 原生能力。
 - **MCP协议改造 (Model Context Protocol)** (规划中):
   - **目标**: 将核心服务转化为MCP标准服务，赋能AI大模型与Agent直接调用。
-  - **接口规划**: `get_market_data`, `compute_factor`, `evaluate_factor`, `mine_factors`等。
+  - **接口规划**: `get_market_data`, `compute_factor`, `evaluate_factor`, `mine_factors`, `inspect_factor`等。
 
 ## 6. 非功能性需求
 - **环境要求**: Python 3.8+, 建议8GB内存与50GB+存储。
