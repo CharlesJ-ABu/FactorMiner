@@ -23,6 +23,18 @@ def setup_parser():
     dl_parser.add_argument("--start", type=str, required=True, help="Start date (YYYY-MM-DD)")
     dl_parser.add_argument("--end", type=str, required=True, help="End date (YYYY-MM-DD)")
     
+    # Inspect Subcommand
+    inspect_parser = subparsers.add_parser("inspect", help="Inspect and audit factor across assets, periods, and metrics")
+    inspect_parser.add_argument("--factor", type=str, default=None, help="Factor ID stored in factor_db")
+    inspect_parser.add_argument("--ast", type=str, default=None, help="Raw AST string or dictionary literal")
+    inspect_parser.add_argument("--code", type=str, default=None, help="Python factor code string")
+    inspect_parser.add_argument("--config", type=str, default=None, help="Optional: Path to base JSON configuration file")
+    inspect_parser.add_argument("--pairs", type=str, default=None, help="Comma-separated symbols (e.g., BTC/USDT:USDT,ETH/USDT:USDT)")
+    inspect_parser.add_argument("--start", type=str, default=None, help="Start date (YYYY-MM-DD)")
+    inspect_parser.add_argument("--end", type=str, default=None, help="End date (YYYY-MM-DD)")
+    inspect_parser.add_argument("--timeframe", type=str, default=None, help="Timeframe (e.g. 5m, 1h, 1d)")
+    inspect_parser.add_argument("--user-dir", type=str, default="user_workspace", help="Path to user workspace directory")
+
     return parser
 
 def main():
@@ -35,6 +47,9 @@ def main():
     elif args.command == "download":
         from core.commands import download as dl_main
         asyncio.run(dl_main.run_downloader(args))
+    elif args.command == "inspect":
+        from core.commands import inspect as inspect_main
+        inspect_main.run_inspector(args)
     else:
         parser.print_help()
         sys.exit(1)
