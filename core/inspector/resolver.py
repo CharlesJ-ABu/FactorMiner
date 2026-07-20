@@ -29,27 +29,33 @@ class FactorResolver:
         # 1. 优先从 Factor ID 从数据库/本地存储中解包
         if factor_id:
             logger.info("Resolving factor from Factor ID: %s", factor_id)
-            meta = self.storage.load_factor_metadata(factor_id)
+            meta = self.storage.get_metadata(factor_id)
             if not meta:
                 raise ValueError(f"Factor ID '{factor_id}' not found in storage.")
-                
-            ast_payload = meta.get("ast_dict") or meta.get("expression")
-            if isinstance(ast_payload, dict):
-                return FactorExpressionAST(ast_dict=ast_payload)
-            elif isinstance(ast_payload, str):
-                try:
-                    parsed = json.loads(ast_payload)
-                    return FactorExpressionAST(ast_dict=parsed)
-                except Exception:
-                    try:
-                        parsed = ast.literal_eval(ast_payload)
-                        return FactorExpressionAST(ast_dict=parsed)
-                    except Exception as e:
-                        raise ValueError(f"Failed to parse metadata AST for factor '{factor_id}': {e}")
-            elif "code" in meta:
-                return FactorExpressionCode(code_str=meta["code"])
+
+            logic_ref = getattr(meta, "logic_reference", {}) or {}
+            l_type = logic_ref.get("type")
+
+            if l_type == "json_ast" and "ast" in logic_ref:
+                return FactorExpressionAST(ast_dict=logic_ref["ast"])
+            elif l_type == "python_source" and "source_file" in logic_ref:
+                import os
+                src_path = os.path.join("factor_db", "src", logic_ref["source_file"])
+                if os.path.exists(src_path):
+                    with open(src_path, "r") as f:
+                        code_content = f.read()
+                    return FactorExpressionCode(code_str=code_content)
+                raise ValueError(f"Source file {src_path} for factor {factor_id} not found.")
+            elif "ast_dict" in logic_ref:
+                return FactorExpressionAST(ast_dict=logic_ref["ast_dict"])
+            elif "expression" in logic_ref:
+                return FactorExpressionAST(ast_dict=logic_ref["expression"])
             else:
-                raise ValueError(f"Metadata for factor '{factor_id}' contains neither valid AST nor code.")
+                # Fallback: check raw attributes or string conversions
+                ast_payload = logic_ref.get("ast") or logic_ref.get("ast_dict")
+                if isinstance(ast_payload, dict):
+                    return FactorExpressionAST(ast_dict=ast_payload)
+                raise ValueError(f"Metadata for factor '{factor_id}' contains no supported logic reference.")
 
         # 2. 直接从传入的 ast_dict 或 ast_str 解析
         if ast_dict:
