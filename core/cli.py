@@ -22,6 +22,7 @@ def setup_parser():
     dl_parser.add_argument("--type", type=str, default="spot", choices=["spot", "futures"], help="Market type (spot or futures)")
     dl_parser.add_argument("--start", type=str, required=True, help="Start date (YYYY-MM-DD)")
     dl_parser.add_argument("--end", type=str, required=True, help="End date (YYYY-MM-DD)")
+    dl_parser.add_argument("--mode", type=str, default="full", choices=["full", "incremental", "overwrite"], help="Download mode (full, incremental, or overwrite)")
     
     # Inspect Subcommand
     inspect_parser = subparsers.add_parser("inspect", help="Inspect and audit factor across assets, periods, and metrics")

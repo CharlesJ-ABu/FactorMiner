@@ -11,6 +11,7 @@ def parse_args():
     parser.add_argument("--type", type=str, default="spot", choices=["spot", "futures"], help="Market type (spot or futures)")
     parser.add_argument("--start", type=str, required=True, help="Start date (YYYY-MM-DD)")
     parser.add_argument("--end", type=str, required=True, help="End date (YYYY-MM-DD)")
+    parser.add_argument("--mode", type=str, default="full", choices=["full", "incremental", "overwrite"], help="Download mode (full, incremental, or overwrite)")
     return parser.parse_args()
 
 async def run_downloader(args):
@@ -23,7 +24,7 @@ async def run_downloader(args):
     
     for symbol in symbols:
         for timeframe in timeframes:
-            logging.info(f"Downloading {symbol} {timeframe} ({args.type}) from {args.start} to {args.end}...")
+            logging.info(f"Downloading {symbol} {timeframe} ({args.type}) from {args.start} to {args.end} (mode: {args.mode})...")
             await asyncio.to_thread(
                 downloader.download_ohlcv_batch,
                 exchange_id=args.exchange,
@@ -33,7 +34,7 @@ async def run_downloader(args):
                 end_date=args.end,
                 trade_type=args.type,
                 progress_callback=None,
-                download_mode="full"
+                download_mode=args.mode
             )
             
     logging.info("Batch download completed.")

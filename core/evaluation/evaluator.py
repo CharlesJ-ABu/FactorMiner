@@ -155,7 +155,19 @@ class ParallelEvaluator:
                     else:
                         metrics = {**base_metrics, "fitness_score": float(custom_score)}
                 else:
-                    metrics = {**base_metrics, "fitness_score": abs(base_metrics["IC"])}
+                    # 默认与 Inspector 对齐：使用 RankIC (Spearman) 乘以覆盖率惩罚项
+                    rank_ic = base_metrics.get("RankIC", 0.0)
+                    if hasattr(factor_values, 'dropna'):
+                        valid_count = int(factor_values.dropna().count().sum()) if hasattr(factor_values.dropna().count(), 'sum') else int(factor_values.dropna().count())
+                        total_count = int(factor_values.size)
+                        coverage = valid_count / total_count if total_count > 0 else 0.0
+                    else:
+                        coverage = 1.0
+                    
+                    # 覆盖率小于 20% 时进行惩罚
+                    penalty = (coverage / 0.20) ** 2 if coverage < 0.20 else 1.0
+                    fitness_score = abs(rank_ic) * 100.0 * penalty
+                    metrics = {**base_metrics, "coverage": coverage, "fitness_score": float(fitness_score)}
                 
                 expr.metrics = metrics
                 return {"status": "success", "metrics": metrics, "expr": expr}

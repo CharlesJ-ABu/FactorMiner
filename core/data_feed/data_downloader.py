@@ -266,12 +266,9 @@ class DataDownloader:
                         elif existing_df['date'].dtype == 'int32':
                             existing_df['date'] = pd.to_datetime(existing_df['date'], unit='s')
 
-                        # 统一时区：如果现有数据有时区，新数据也使用相同时区
+                        # 统一时区：统统转为 tz-naive UTC
                         if hasattr(existing_df['date'], 'dt') and existing_df['date'].dt.tz is not None:
-                            target_tz = existing_df['date'].dt.tz
-                            print(f"现有数据时区: {target_tz}")
-                        else:
-                            print("现有数据无时区")
+                            existing_df['date'] = existing_df['date'].dt.tz_convert('UTC').dt.tz_localize(None)
 
                     if 'date' in df_save.columns:
                         if df_save['date'].dtype == 'int64':
@@ -279,21 +276,8 @@ class DataDownloader:
                         elif df_save['date'].dtype == 'int32':
                             df_save['date'] = pd.to_datetime(df_save['date'], unit='s')
 
-                        # 统一时区
-                        if target_tz is not None:
-                            if df_save['date'].dt.tz is None:
-                                # 新数据无时区，添加时区
-                                df_save['date'] = df_save['date'].dt.tz_localize(target_tz)
-                                print(f"为新数据添加时区: {target_tz}")
-                            elif df_save['date'].dt.tz != target_tz:
-                                # 新数据时区不同，转换为相同时区
-                                df_save['date'] = df_save['date'].dt.tz_convert(target_tz)
-                                print(f"转换新数据时区到: {target_tz}")
-                        else:
-                            # 现有数据无时区，确保新数据也无时区
-                            if df_save['date'].dt.tz is not None:
-                                df_save['date'] = df_save['date'].dt.tz_localize(None)
-                                print("移除新数据时区以匹配现有数据")
+                        if hasattr(df_save['date'], 'dt') and df_save['date'].dt.tz is not None:
+                            df_save['date'] = df_save['date'].dt.tz_convert('UTC').dt.tz_localize(None)
 
                     # 合并数据，按 date 去重，保留最新的数据
                     combined_df = pd.concat([existing_df, df_save], ignore_index=True)

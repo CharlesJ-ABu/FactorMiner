@@ -313,34 +313,31 @@ class SmartBatchDownloader(DataDownloader):
             print(f"生成保存路径: {save_path}")
             
             # 检查现有文件并合并
+            # 统一将 df_save 处理为以 'date' 为列的数据框
+            if 'date' not in df_save.columns and df_save.index.name == 'date':
+                df_save = df_save.reset_index()
+            elif 'date' not in df_save.columns and df_save.index.name is None:
+                df_save = df_save.reset_index().rename(columns={'index': 'date'})
+
+            df_save = df_save.drop(columns=[c for c in ['level_0', 'index'] if c in df_save.columns])
+
+            # 统一 df_save 中的 date 列为 tz-naive datetime64[ns]
+            if 'date' in df_save.columns:
+                df_save['date'] = pd.to_datetime(df_save['date'])
+                if hasattr(df_save['date'], 'dt') and df_save['date'].dt.tz is not None:
+                    df_save['date'] = df_save['date'].dt.tz_convert('UTC').dt.tz_localize(None)
+
             if save_path.exists() and download_mode != 'overwrite':
                 try:
                     existing_df = pd.read_feather(save_path)
                     print(f"读取到现有数据: {len(existing_df)} 条")
+                    existing_df = existing_df.drop(columns=[c for c in ['level_0', 'index'] if c in existing_df.columns])
                     
-                    # 确保两个数据框的 date 列都是 datetime 类型
                     if 'date' in existing_df.columns and len(existing_df) > 0:
-                        try:
-                            # 检查数据类型并转换
-                            if existing_df['date'].dtype in ['int64', 'int32', 'float64']:
-                                # 根据数值大小判断单位
-                                sample_date = existing_df['date'].iloc[0]
-                                if sample_date > 1e12:  # 毫秒时间戳
-                                    existing_df['date'] = pd.to_datetime(existing_df['date'], unit='ms')
-                                else:  # 秒时间戳
-                                    existing_df['date'] = pd.to_datetime(existing_df['date'], unit='s')
-                            elif existing_df['date'].dtype == 'object':
-                                existing_df['date'] = pd.to_datetime(existing_df['date'])
-                            
-                            print(f"✅ 成功转换date列，数据类型: {existing_df['date'].dtype}")
-                        except Exception as e:
-                            print(f"❌ 转换date列失败: {e}")
-                            # 如果转换失败，跳过后续处理
-                            return None
-                    
-                    # 新数据已经有 date 列，无需处理
-                    print("合并时：数据格式已正确")
-                    
+                        existing_df['date'] = pd.to_datetime(existing_df['date'])
+                        if hasattr(existing_df['date'], 'dt') and existing_df['date'].dt.tz is not None:
+                            existing_df['date'] = existing_df['date'].dt.tz_convert('UTC').dt.tz_localize(None)
+
                     # 合并数据，按 date 去重，保留最新的数据
                     combined_df = pd.concat([existing_df, df_save], ignore_index=True)
                     combined_df = combined_df.drop_duplicates(subset=['date'], keep='last').sort_values('date')
@@ -350,15 +347,14 @@ class SmartBatchDownloader(DataDownloader):
                     
                 except Exception as e:
                     print(f"合并数据失败，将另存为新文件: {e}")
-                    # 生成新文件名
                     ts = datetime.now().strftime('%Y%m%d_%H%M%S')
                     save_path = save_path.with_name(f"{save_path.stem}-new-{ts}{save_path.suffix}")
             elif download_mode == 'overwrite':
                 print("强制覆盖模式：忽略本地数据")
             
-            # 保存数据
+            # 保存数据（确保没有双重 reset_index 导致的 level_0 / index 列）
             save_path.parent.mkdir(parents=True, exist_ok=True)
-            df_save.reset_index().to_feather(save_path)
+            df_save.to_feather(save_path)
             print(f"保存数据成功，共 {len(df_save)} 条记录")
 
             return {

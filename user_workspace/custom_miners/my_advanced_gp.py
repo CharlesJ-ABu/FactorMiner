@@ -36,10 +36,13 @@ class AdvancedGPExpression(FactorExpressionAST):
         return super().compute(data)
 
 
+HEAVY_WINDOW_OPERATORS = {"ts_sampen_20", "ts_hurst_60", "ts_frac_diff_05", "ts_zscore_20", "ts_rank_20"}
+
 @MinerRegistry.register("AdvancedSampleGP")
 class AdvancedSampleGPMiner(BaseFactorMiner):
     """
     基于 MyCustomGP 修改的高级版本，专门用于挖掘包含新数学特征的算子。
+    已加入方案 B 防嵌套类型约束：禁止长窗口时序算子 (如 ts_sampen_20, ts_hurst_60) 自相嵌套。
     """
     def initialize_search_space(self) -> None:
         logger.info("Initializing AdvancedSampleGP search space...")
@@ -47,19 +50,51 @@ class AdvancedSampleGPMiner(BaseFactorMiner):
         self.operator_specs = resolve_operator_specs(self.operators)
         self.terminals = self.config.get("data_feeds", {}).get("required_streams", ["close", "volume", "high", "low"])
         self.population_size = self.config.get("population_size", 10)
-        self.max_depth = 4 # 允许更深一点的树来容纳复杂的数学算子
+        self.max_depth = 4 # 允许深度为 4，但禁止长窗口算子嵌套
+        # 允许选择的非重型算子集合
+        self.light_operators = [op for op in self.operators if op not in HEAVY_WINDOW_OPERATORS]
+        if not self.light_operators:
+            self.light_operators = ["add", "sub", "mul", "div", "ts_mean"]
         
-    def _generate_random_tree(self, current_depth: int) -> Any:
+    def _generate_random_tree(self, current_depth: int, allow_heavy_op: bool = True) -> Any:
         if current_depth >= self.max_depth or random.random() < 0.25:
             return random.choice(self.terminals)
         
-        op = random.choice(self.operators)
+        # 如果子树中已存在重型算子，则禁止再次选择重型算子
+        candidate_ops = self.operators if allow_heavy_op else self.light_operators
+        op = random.choice(candidate_ops)
+        
+        # 如果当前选择了重型算子，后续子树禁止再次选择重型算子
+        next_allow_heavy = False if op in HEAVY_WINDOW_OPERATORS else allow_heavy_op
+
         node = {
             "op": op,
-            "left": self._generate_random_tree(current_depth + 1),
+            "left": self._generate_random_tree(current_depth + 1, allow_heavy_op=next_allow_heavy),
         }
         if self.operator_specs[op]["arity"] == 2:
-            node["right"] = self._generate_random_tree(current_depth + 1)
+            node["right"] = self._generate_random_tree(current_depth + 1, allow_heavy_op=next_allow_heavy)
+        return node
+
+    def _sanitize_tree(self, ast: Any, inside_heavy_op: bool = False) -> Any:
+        """净化树结构：如在变异中意外产生了重型算子嵌套，自动裁剪降级为普通终结符或轻量算子"""
+        if not isinstance(ast, dict) or "op" not in ast:
+            return ast
+
+        op = ast["op"]
+        if op in HEAVY_WINDOW_OPERATORS:
+            if inside_heavy_op:
+                # 触发防嵌套约束：将重型算子降级为终结符或基础二元运算
+                return random.choice(self.terminals)
+            current_inside = True
+        else:
+            current_inside = inside_heavy_op
+
+        sanitized_left = self._sanitize_tree(ast.get("left"), inside_heavy_op=current_inside)
+        sanitized_right = self._sanitize_tree(ast.get("right"), inside_heavy_op=current_inside) if ast.get("right") is not None else None
+
+        node = {"op": op, "left": sanitized_left}
+        if sanitized_right is not None:
+            node["right"] = sanitized_right
         return node
         
     def _mutate(self, ast: Any) -> Any:
@@ -73,11 +108,11 @@ class AdvancedSampleGPMiner(BaseFactorMiner):
             }
             if ast.get("right") is not None:
                 mutated["right"] = self._mutate(ast["right"])
-            return mutated
+            return self._sanitize_tree(mutated)
         return ast
         
     def generate_candidates(self) -> List[AdvancedGPExpression]:
-        logger.info("AdvancedSampleGP: Generating candidates...")
+        logger.info("AdvancedSampleGP: Generating candidates (with anti-nesting constraints)...")
         candidates = []
         
         if not self.state.population:

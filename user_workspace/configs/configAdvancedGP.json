@@ -1,7 +1,7 @@
 {
 	"miner": "AdvancedSampleGP",
-	"population_size": 200,
-	"max_iterations": 100,
+	"population_size": 20,
+	"max_iterations": 5,
 	"data_feeds": {
 		"required_streams": [
 			"open",
@@ -19,13 +19,13 @@
 		],
 		"mine_period": [
 			[
-				"2025-07-20",
-				"2025-08-01"
+				"2023-07-20",
+				"2025-03-01"
 			]
 		],
 		"test_period": [
 			[
-				"2025-08-02",
+				"2025-03-02",
 				"2025-08-15"
 			]
 		],
