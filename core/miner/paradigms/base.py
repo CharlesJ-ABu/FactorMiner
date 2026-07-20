@@ -15,17 +15,22 @@ class DiversityFilter:
         self.threshold = correlation_threshold
         self.archive_hashes = initial_hashes or set()
 
-    def filter_redundant(self, candidates: List[FactorExpression], data: Any) -> List[FactorExpression]:
+    def filter_redundant(self, candidates: List[FactorExpression], data: Any, preserved_candidates: List[FactorExpression] = None) -> List[FactorExpression]:
         unique_candidates = []
+        preserved_set = set(preserved_candidates) if preserved_candidates else set()
+        
         for cand in candidates:
-            # 1. 语法/语义层面的硬去重（通过 Hash 机制）
+            # 1. 优先保留上一代保留下来的精英父代个体，不过滤
+            if cand in preserved_set:
+                unique_candidates.append(cand)
+                continue
+                
+            # 2. 语法/语义层面的硬去重（通过 Hash 机制）
             source_str = str(cand.get_source())
             expr_hash = hashlib.md5(source_str.encode()).hexdigest()
             if expr_hash in self.archive_hashes:
                 continue
                 
-            # 2. 截面相关性软去重（目前占位，由外部回测引擎负责或后续扩展）
-            
             self.archive_hashes.add(expr_hash)
             cand.logic_hash = expr_hash
             unique_candidates.append(cand)
@@ -44,6 +49,27 @@ class BaseFactorMiner(ABC):
         self.state = MinerState()
         # 预留统一的回测评价器接口（由外部 Director 或自身子类初始化时注入）
         self.evaluator = None 
+        # 全局名人堂（Hall of Fame）：记录历史上出现过的全量最高分因子
+        self.hall_of_fame: List[Dict[str, Any]] = []
+
+    def _update_hall_of_fame(self, candidate: FactorExpression, score: float, max_hof_size: int = 100):
+        """记录并维护全局名人堂"""
+        source_str = str(candidate.get_source())
+        cand_hash = hashlib.md5(source_str.encode()).hexdigest()
+        
+        # 避免同一因子重复进入名人堂
+        for item in self.hall_of_fame:
+            if item["hash"] == cand_hash:
+                return
+                
+        self.hall_of_fame.append({
+            "score": score,
+            "hash": cand_hash,
+            "candidate": candidate
+        })
+        self.hall_of_fame.sort(key=lambda x: x["score"], reverse=True)
+        if len(self.hall_of_fame) > max_hof_size:
+            self.hall_of_fame = self.hall_of_fame[:max_hof_size]
         
     @abstractmethod
     def initialize_search_space(self) -> None:
@@ -101,8 +127,9 @@ class BaseFactorMiner(ABC):
             # 1. 提案
             raw_candidates = self.generate_candidates()
             
-            # 1.5 拦截过滤：干掉高相关性/重复因子
-            candidates = div_filter.filter_redundant(raw_candidates, self.data)
+            # 1.5 拦截过滤：不过滤上一代保留的种群精英，只去重全新生成的表达式
+            preserved = getattr(self.state, "population", None)
+            candidates = div_filter.filter_redundant(raw_candidates, self.data, preserved_candidates=preserved)
             if not candidates:
                 logger.warning(f"Epoch {epoch}: All candidates filtered out as redundant.")
                 if progress_callback:
@@ -111,6 +138,15 @@ class BaseFactorMiner(ABC):
             
             # 2. 判卷
             feedback = self.evaluate_candidates(candidates)
+            
+            # 2.5 搜集本轮高分因子放入名人堂 (Hall of Fame)
+            if feedback and feedback.metrics:
+                for idx, cand in enumerate(candidates):
+                    if idx < len(feedback.metrics):
+                        metrics = feedback.metrics[idx]
+                        score = metrics.get("fitness_score", 0.0)
+                        cand.metrics = metrics
+                        self._update_hall_of_fame(cand, score)
             
             # 3. 学习：update_model 负责更新内部的 self.state 或模型参数
             self.update_model(candidates, feedback)
@@ -127,7 +163,9 @@ class BaseFactorMiner(ABC):
         logger.info(f"Epoch {epoch} completed. Processed {len(candidates)} unique candidates.")
         
     def _get_best_factors(self) -> List[FactorExpression]:
-        # 默认实现，尝试返回种群或缓冲区
+        # 优先从全局名人堂中获取全期最高分的因子列表
+        if self.hall_of_fame:
+            return [item["candidate"] for item in self.hall_of_fame]
         if hasattr(self.state, "population") and self.state.population:
             return self.state.population
         if hasattr(self.state, "replay_buffer") and self.state.replay_buffer:
