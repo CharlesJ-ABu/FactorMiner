@@ -135,6 +135,8 @@ class RealDataClient:
             
         if not isinstance(df.index, pd.DatetimeIndex):
             df.index = pd.to_datetime(df.index)
+        if df.index.tz is not None:
+            df.index = df.index.tz_localize(None)
             
         # 根据时间段进行过滤并拼接
         sliced_dfs = []

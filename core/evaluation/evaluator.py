@@ -107,8 +107,8 @@ class ParallelEvaluator:
             elif isinstance(factor_values, pd.Series) and isinstance(returns, pd.Series):
                 # Sequential Single Mode
                 if not factor_values.isna().all() and not returns.isna().all():
-                    ic = factor_values.corr(returns, method='pearson')
-                    rank_ic = factor_values.corr(returns, method='spearman')
+                    ic = factor_values.corr(returns, method='pearson', min_periods=30)
+                    rank_ic = factor_values.corr(returns, method='spearman', min_periods=30)
                     
                     if pd.notna(ic):
                         metrics["IC"] = ic
