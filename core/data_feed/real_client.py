@@ -152,7 +152,7 @@ class RealDataClient:
             # ⚠️ 必须使用 shift(-1)：因子只能用当期的 OHLCV，而 returns 必须是「下一期」的涨跌幅
             # 若使用同期 pct_change()，因子中的 close_t 与 returns_t 天然相关，导致 IC 虚高（数据穿越）
             if 'close' in final_df.columns:
-                final_df['returns'] = final_df['close'].pct_change().shift(-1).fillna(0)
+                final_df['returns'] = final_df['close'].pct_change().shift(-1)
             return final_df
             
         return pd.DataFrame()
@@ -160,28 +160,37 @@ class RealDataClient:
     def get_data(self) -> Any:
         if self._mine_data is None:
             logger.warning("Mine data is empty!")
+            return None
             
-        # Check if DataFrame (sequential) or empty DataFrame
-        if isinstance(self._mine_data, pd.DataFrame) and self._mine_data.empty:
-            logger.warning("Mine data is empty DataFrame!")
+        if isinstance(self._mine_data, pd.DataFrame):
+            if self._mine_data.empty:
+                logger.warning("Mine data is empty DataFrame!")
+            return self._mine_data.drop(columns=['returns'], errors='ignore')
+        elif isinstance(self._mine_data, dict):
+            return {k: v for k, v in self._mine_data.items() if k != 'returns'}
             
         return self._mine_data
 
     def get_returns(self) -> Any:
         if self.mining_mode == "cross_asset":
-            return self._mine_data.get('returns') if self._mine_data else pd.DataFrame()
+            return self._mine_data.get('returns') if isinstance(self._mine_data, dict) else pd.DataFrame()
             
-        if self._mine_data is not None and 'returns' in self._mine_data.columns:
+        if isinstance(self._mine_data, pd.DataFrame) and 'returns' in self._mine_data.columns:
             return self._mine_data['returns']
         return pd.Series(dtype=float)
 
     def get_test_data(self) -> Any:
+        if isinstance(self._test_data, pd.DataFrame):
+            return self._test_data.drop(columns=['returns'], errors='ignore')
+        elif isinstance(self._test_data, dict):
+            return {k: v for k, v in self._test_data.items() if k != 'returns'}
+            
         return self._test_data
 
     def get_test_returns(self) -> Any:
         if self.mining_mode == "cross_asset":
-            return self._test_data.get('returns') if self._test_data else pd.DataFrame()
+            return self._test_data.get('returns') if isinstance(self._test_data, dict) else pd.DataFrame()
             
-        if self._test_data is not None and 'returns' in self._test_data.columns:
+        if isinstance(self._test_data, pd.DataFrame) and 'returns' in self._test_data.columns:
             return self._test_data['returns']
         return pd.Series(dtype=float)
