@@ -1,0 +1,53 @@
+{
+	"miner": "AdvancedSampleGP",
+	"population_size": 200,
+	"max_iterations": 100,
+	"data_feeds": {
+		"required_streams": [
+			"open",
+			"high",
+			"low",
+			"close",
+			"volume"
+		],
+		"exchange": "binance",
+		"instrument_type": "futures",
+		"timeframe": "5m",
+		"pairs": [
+			"BTC/USDT:USDT",
+			"SUI/USDT:USDT"
+		],
+		"mine_period": [
+			[
+				"2025-07-20",
+				"2025-08-01"
+			]
+		],
+		"test_period": [
+			[
+				"2025-08-02",
+				"2025-08-15"
+			]
+		],
+		"mining_mode": "sequential_single"
+	},
+	"search_space": {
+		"allowed_operators": [
+			"add",
+			"sub",
+			"mul",
+			"div",
+			"ts_frac_diff_05",
+			"ts_hurst_60",
+			"ts_sampen_20",
+			"ts_mean",
+			"ts_std"
+		]
+	},
+	"fitness": {
+		"hook": "my_bear_market_hunter"
+	},
+	"storage": {
+		"db_root": "factor_db_advanced"
+	}
+}
