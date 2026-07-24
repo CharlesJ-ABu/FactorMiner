@@ -278,7 +278,36 @@ factor = returns.rolling(20, min_periods=10).mean()
 
 #### NN：把训练权重物化为通道因子
 
-NN 的训练权重不是一个可以直接评分的因子。MyCustomNNMiner 的流程是：先以 channel=-1 的临时张量候选完成前向计算和反传；更新权重后，把每个输出 channel 物化成独立的 FactorExpressionTensor；评估这些通道，按 fitness 选出 Top-K 写入 state.population；最后由 Director 保存权重字节和通道元数据。这样 Tracker 和 Inspector 展示的是可审查的多个通道因子，而非笼统的“模型已训练”。
+NN 的训练权重不是一个可以直接评分的因子。参考 `MyCustomNNMiner` 会在
+`mine_period` 拟合标准化器和 NumPy MLP，把隐藏层 channel 物化为独立的
+`FactorExpressionTensor`，再使用 `test_period` 的样本外 fitness 排名。跨轮候选会做
+数值相关性过滤并保留全程 Top-K，而不是只返回最后一轮。
+
+模型以可恢复的 `factor_db/models/<model_version>.npz` 保存，其中包含权重、偏置、
+特征顺序、标准化参数、数据模式和 schema 版本；旧的 `.pt` 裸权重档案仍可由
+Inspector 识别。最终元数据继续使用 `dl_channel / model_version / channel`，所以
+Dashboard、Tracker 和 Inspector 的既有接口保持兼容。
+
+用户可以直接修改 `user_workspace/custom_miners/my_custom_nn.py`，也可以复制后注册新
+名称。共享引擎只要求最终表达式返回索引对齐的 `Series`（单品种）或 `DataFrame`
+（跨资产），模型提供 `predict_channel()`、`clone()` 和 `export_artifact()`。更换模型
+结构或存储格式时应升级 `model_format`/`schema_version`，并通过
+`register_nn_model_loader()` 注册对应加载器，以免破坏历史模型重载。若只覆盖参考
+Miner 的 `build_model()` 而保留其训练循环，新模型还需提供 `adapter.prepare()` 和
+`train()`；完整替换训练循环则不受这一内部约束。
+
+仓库同时提供进阶学习模板 `MyTemporalNN`：
+
+- 仅使用当期及历史数据构造 1/3/5/15/30/60 分钟收益、滚动波动率、量价
+  z-score、K 线振幅与时间周期特征；
+- 以可配置的未来 5 分钟收益为标签；
+- 第 0 通道是直接预测组合，其余通道是带去相关约束的隐藏表征；
+- 使用 `MSE + Pearson IC Loss` 联合目标，并以有符号 RankIC 筛选正向信号；
+- 模型格式 `numpy_temporal_ic_mlp_v1` 可完整重载。
+
+可复制的约 10 分钟单品种配置位于
+`user_workspace/configs/configNN_temporal_10min_template.json`。它是教学模板，不会覆盖
+基础 `MyCustomNN`，也不改变 GP、RL 或 LLM 的配置。
 
 ### 2. 注册并接入自定义算子
 

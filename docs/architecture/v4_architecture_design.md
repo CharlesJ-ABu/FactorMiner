@@ -747,9 +747,9 @@ def llm_factor_mining(data, max_iterations=50):
 
 DL 的训练中间产物不能直接当作因子落盘。以 `MyCustomNNMiner` 为例，`channel=-1` 表示完整模型输出，仅用于让 `ParallelEvaluator` 返回带梯度的原始张量并完成反向传播；它不是最终可查看或交易的单因子。
 
-每轮权重更新后，Miner 将每个输出通道物化为 `FactorExpressionTensor(model_version_id, channel_idx)`：通道 `compute()` 返回对齐行情索引的 `pd.Series`，因此会再次走标准 IC、RankIC、Turnover 与自定义 fitness 钩子。按 fitness 排序后的 Top-K 通道写入 `MinerState.population`，供 `BaseFactorMiner` 的进度回调、CLI 汇总和 Web Tracker 共用。
+每轮权重更新后，Miner 将冻结的模型快照的每个输出通道物化为 `FactorExpressionTensor(model_version_id, channel_idx)`：单品种通道返回对齐行情索引的 `pd.Series`，跨资产通道返回时间 × 资产的 `pd.DataFrame`。模型仅在 `mine_period` 拟合权重和标准化参数，通道使用 `test_period` 的样本外 IC、RankIC、Turnover 与自定义 fitness 排名；跨轮候选还会按数值相关性过滤并保留全程 Top-K。
 
-`model_version_id` 由更新后权重内容摘要生成；每个通道同时拥有由 `{"model_version", "channel"}` 导出的逻辑哈希。`FactorMinerDirector` 保存时会先把该版本权重写入 `factor_db/weights/<model_version>.pt`（同版本仅写一次），再将每个通道的 `FactorMetadata.logic_reference` 写为 `{"type": "dl_channel", "model_version": ..., "channel": ...}`。这样“模型权重 + 通道索引”才构成一个可追溯的 NN 因子，而不把训练临时张量误认为最终结果。
+`model_version_id` 由完整模型包内容摘要生成；每个通道同时拥有由 `{"model_version", "channel"}` 导出的逻辑哈希。`FactorMinerDirector` 保存时会把可恢复模型包写入 `factor_db/models/<model_version>.npz`，其中包含权重、偏置、特征顺序、标准化参数、数据模式和 schema 版本；每个通道仍使用兼容 WebUI 的 `{"type": "dl_channel", "model_version": ..., "channel": ...}`，并附加可选的 `model_file`、`model_format` 与特征元数据。旧的 `factor_db/weights/<model_version>.pt` 裸权重档案继续可读。
 
 <details><summary>底层逻辑参考实现</summary>
 
