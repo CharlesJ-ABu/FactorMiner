@@ -102,25 +102,46 @@ class FactorMinerDirector:
                 self.storage_client.save_rl_factor(cand.get_source(), b"", metadata)
             elif isinstance(cand, FactorExpressionTensor):
                 src = cand.get_source()
-                # Persist the model once alongside the channel metadata.  A
-                # channel ID alone cannot reproduce a trained neural factor.
-                weights = getattr(getattr(cand, "model_instance", None), "W", None)
-                if weights is not None:
+                artifact_reference = {}
+                artifact = cand.export_model_artifact()
+                if artifact is not None:
                     try:
-                        self.storage_client.save_model_weights(
-                            src["model_version"], weights.tobytes()
+                        filename = self.storage_client.save_model_artifact(
+                            src["model_version"],
+                            artifact.payload,
+                            artifact.extension,
                         )
+                        artifact_reference = artifact.logic_reference(filename)
                     except Exception as exc:
-                        logger.warning(
-                            "Failed to persist weights for model %s: %s",
-                            src["model_version"], exc,
-                        )
-                self.storage_client.save_dl_factor_channel(src["model_version"], src["channel"], metadata)
+                        raise RuntimeError(
+                            f"Failed to persist model artifact for "
+                            f"{src['model_version']}: {exc}"
+                        ) from exc
+                else:
+                    # Backward-compatible fallback for legacy custom miners.
+                    weights = getattr(getattr(cand, "model_instance", None), "W", None)
+                    if weights is not None:
+                        try:
+                            self.storage_client.save_model_weights(
+                                src["model_version"], weights.tobytes()
+                            )
+                        except Exception as exc:
+                            logger.warning(
+                                "Failed to persist weights for model %s: %s",
+                                src["model_version"], exc,
+                            )
+                self.storage_client.save_dl_factor_channel(
+                    src["model_version"],
+                    src["channel"],
+                    metadata,
+                    artifact_reference,
+                )
 
             self._save_factor_snapshot(factor_id, cand)
 
-    def _snapshot_lineage(self) -> Dict[str, Any]:
+    def _snapshot_lineage(self, evaluation_split: str = "mine") -> Dict[str, Any]:
         feeds = self.config.get("data_feeds", {})
+        periods_key = "test_period" if evaluation_split == "test" else "mine_period"
         return {
             "source": self.data_client.__class__.__name__,
             "exchange": feeds.get("exchange"),
@@ -129,6 +150,9 @@ class FactorMinerDirector:
             "pairs": feeds.get("pairs", []),
             "mining_mode": feeds.get("mining_mode", "sequential_single"),
             "mine_period": feeds.get("mine_period", []),
+            "test_period": feeds.get("test_period", []),
+            "evaluation_split": evaluation_split,
+            "evaluation_period": feeds.get(periods_key, []),
             "required_streams": feeds.get("required_streams", []),
             "forward_return_definition": "close.pct_change().shift(-1)",
         }
@@ -136,13 +160,28 @@ class FactorMinerDirector:
     def _save_factor_snapshot(self, factor_id: str, candidate: Any) -> None:
         """Persist the exact values and labels used for Phase II analysis."""
         try:
-            factor_values = candidate.compute(self.data_client.get_data())
-            forward_returns = self.data_client.get_returns()
+            evaluation_split = getattr(candidate, "evaluation_split", "mine")
+            if evaluation_split == "test":
+                evaluation_data = self.data_client.get_test_data()
+                forward_returns = self.data_client.get_test_returns()
+            else:
+                evaluation_data = self.data_client.get_data()
+                forward_returns = self.data_client.get_returns()
+            forward_returns = getattr(
+                candidate, "evaluation_returns", forward_returns
+            )
+            factor_values = candidate.compute(evaluation_data)
+            lineage = self._snapshot_lineage(evaluation_split)
+            lineage["forward_return_definition"] = getattr(
+                candidate,
+                "forward_return_definition",
+                lineage["forward_return_definition"],
+            )
             saved = self.storage_client.save_factor_snapshot(
                 factor_id,
                 factor_values,
                 forward_returns,
-                self._snapshot_lineage(),
+                lineage,
             )
             if not saved:
                 logger.warning("No Phase II snapshot persisted for factor %s", factor_id)

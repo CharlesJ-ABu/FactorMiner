@@ -64,8 +64,23 @@ class CLISmokeTests(unittest.TestCase):
             config["rl_config"] = {"learning_rate": 0.1, "max_depth": 2}
         if miner == "MyCustomLLM":
             config["population_size"] = 1
-        if miner == "MyCustomNN":
+        if miner in {"MyCustomNN", "MyTemporalNN"}:
             config.update({"population_size": 1, "hidden_dim": 2, "learning_rate": 0.01})
+            config["nn_training_epochs"] = 5
+            config["data_feeds"]["mine_period"] = [
+                ["2024-01-01", "2024-01-01 01:39:00"]
+            ]
+            config["data_feeds"]["test_period"] = [
+                ["2024-01-01 01:40:00", "2024-01-01 02:59:00"]
+            ]
+        if miner == "MyTemporalNN":
+            config["data_feeds"]["required_streams"] = [
+                "open", "high", "low", "close", "volume"
+            ]
+            config["nn_prediction_horizon"] = 5
+            config["nn_ic_loss_weight"] = 0.7
+            config["nn_min_fitness"] = -100.0
+            config["fitness"] = {"hook": "my_temporal_positive_ic"}
         return config
 
     def _run_miner(self, miner: str) -> None:
@@ -110,6 +125,20 @@ class CLISmokeTests(unittest.TestCase):
                 list((root / "factor_db" / "values").glob("*.parquet")),
                 msg=result.stdout + "\n" + result.stderr,
             )
+            if miner in {"MyCustomNN", "MyTemporalNN"}:
+                metadata_files = list((root / "factor_db" / "metadata").glob("*.json"))
+                metadata = json.loads(metadata_files[0].read_text(encoding="utf-8"))
+                logic = metadata["logic_reference"]
+                self.assertEqual(logic["type"], "dl_channel")
+                expected_format = (
+                    "numpy_temporal_ic_mlp_v1"
+                    if miner == "MyTemporalNN"
+                    else "numpy_mlp_factor_v1"
+                )
+                self.assertEqual(logic["model_format"], expected_format)
+                self.assertTrue((root / "factor_db" / "models" / logic["model_file"]).is_file())
+                self.assertEqual(metadata["metrics"]["out_of_sample"], 1.0)
+                self.assertEqual(metadata["data_lineage"]["evaluation_split"], "test")
 
     def test_gp_cli_smoke(self):
         self._run_miner("MyCustomGP")
@@ -122,6 +151,9 @@ class CLISmokeTests(unittest.TestCase):
 
     def test_nn_cli_smoke(self):
         self._run_miner("MyCustomNN")
+
+    def test_temporal_nn_cli_smoke(self):
+        self._run_miner("MyTemporalNN")
 
 
 if __name__ == "__main__":

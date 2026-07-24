@@ -1,0 +1,36 @@
+{
+    "_comment": "Learning template for MyTemporalNN: one BTC pair, temporal OHLCV features, 5-minute label, and an approximately ten-minute training budget on the reference machine.",
+    "_usage": "Copy this file, change pairs/periods and budget, then run with --miner MyTemporalNN.",
+    "population_size": 1,
+    "hidden_dim": 8,
+    "max_iterations": 56,
+    "learning_rate": 0.01,
+    "random_seed": 42,
+    "nn_training_epochs": 700,
+    "nn_min_samples": 30,
+    "nn_l2": 0.0001,
+    "nn_diversity_penalty": 0.001,
+    "nn_gradient_clip": 5.0,
+    "nn_early_stopping_patience": 700,
+    "nn_prediction_horizon": 5,
+    "nn_ic_loss_weight": 0.7,
+    "nn_min_fitness": 0.0,
+    "top_k_factors": 5,
+    "max_corr": 0.90,
+    "data_feeds": {
+        "required_streams": ["open", "high", "low", "close", "volume"],
+        "exchange": "binance",
+        "instrument_type": "futures",
+        "timeframe": "1m",
+        "pairs": ["BTC/USDT:USDT"],
+        "mine_period": [["2025-07-20", "2025-08-01"]],
+        "test_period": [["2025-08-02", "2025-08-15"]],
+        "mining_mode": "sequential_single"
+    },
+    "fitness": {
+        "hook": "my_temporal_positive_ic"
+    },
+    "storage": {
+        "db_root": "factor_db"
+    }
+}

@@ -22,9 +22,28 @@ class FactorStorageInterface(ABC):
     
     @abstractmethod
     def save_model_weights(self, model_version_id: str, model_weights: bytes) -> bool: pass
+
+    def save_model_artifact(
+        self,
+        model_version_id: str,
+        payload: bytes,
+        extension: str = ".npz",
+    ) -> str:
+        """Persist a portable NN artifact and return its relative filename."""
+        raise NotImplementedError
+
+    def load_model_artifact(self, filename: str) -> bytes:
+        """Load a portable NN artifact by its storage-relative filename."""
+        raise NotImplementedError
     
     @abstractmethod
-    def save_dl_factor_channel(self, model_version_id: str, channel_index: int, metadata: FactorMetadata) -> bool: pass
+    def save_dl_factor_channel(
+        self,
+        model_version_id: str,
+        channel_index: int,
+        metadata: FactorMetadata,
+        artifact_reference: Dict[str, Any] = None,
+    ) -> bool: pass
 
     @abstractmethod
     def save_factor_values(self, factor_id: str, values_df: Any) -> bool: pass
@@ -62,9 +81,10 @@ class LocalFactorStorage(FactorStorageInterface):
         self.meta_dir = os.path.join(db_root, "metadata")
         self.val_dir = os.path.join(db_root, "values")
         self.weights_dir = os.path.join(db_root, "weights")
+        self.models_dir = os.path.join(db_root, "models")
         self.src_dir = os.path.join(db_root, "sources")
         
-        for d in [self.meta_dir, self.val_dir, self.weights_dir, self.src_dir]:
+        for d in [self.meta_dir, self.val_dir, self.weights_dir, self.models_dir, self.src_dir]:
             os.makedirs(d, exist_ok=True)
             
     def _save_meta(self, metadata: FactorMetadata):
@@ -109,8 +129,45 @@ class LocalFactorStorage(FactorStorageInterface):
             logger.info(f"Saved DL model weights for {model_version_id}")
         return True
 
-    def save_dl_factor_channel(self, model_version_id: str, channel_index: int, metadata: FactorMetadata) -> bool:
-        metadata.logic_reference = {"type": "dl_channel", "model_version": model_version_id, "channel": channel_index}
+    def save_model_artifact(
+        self,
+        model_version_id: str,
+        payload: bytes,
+        extension: str = ".npz",
+    ) -> str:
+        if not extension.startswith(".") or "/" in extension or "\\" in extension:
+            raise ValueError(f"Invalid model artifact extension: {extension}")
+        filename = f"{model_version_id}{extension}"
+        model_path = os.path.join(self.models_dir, filename)
+        if not os.path.exists(model_path):
+            with open(model_path, "wb") as model_file:
+                model_file.write(payload)
+            logger.info("Saved NN model artifact for %s", model_version_id)
+        return filename
+
+    def load_model_artifact(self, filename: str) -> bytes:
+        safe_filename = os.path.basename(filename)
+        if safe_filename != filename:
+            raise ValueError("Model artifact filename must not contain a path.")
+        model_path = os.path.join(self.models_dir, safe_filename)
+        if not os.path.isfile(model_path):
+            raise FileNotFoundError(f"NN model artifact not found: {safe_filename}")
+        with open(model_path, "rb") as model_file:
+            return model_file.read()
+
+    def save_dl_factor_channel(
+        self,
+        model_version_id: str,
+        channel_index: int,
+        metadata: FactorMetadata,
+        artifact_reference: Dict[str, Any] = None,
+    ) -> bool:
+        metadata.logic_reference = {
+            "type": "dl_channel",
+            "model_version": model_version_id,
+            "channel": channel_index,
+            **(artifact_reference or {}),
+        }
         self._save_meta(metadata)
         logger.info(f"Saved DL channel metadata for {metadata.factor_id}")
         return True

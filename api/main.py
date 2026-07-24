@@ -212,14 +212,26 @@ def _factor_logic(metadata):
 
     if logic_type == "dl_channel":
         model_version = logic_ref.get("model_version")
-        weight_file = f"{model_version}.pt" if model_version else None
-        weight_path = Path("factor_db") / "weights" / weight_file if weight_file else None
+        model_file = logic_ref.get("model_file")
+        if model_file:
+            artifact_file = Path(model_file).name
+            artifact_path = Path("factor_db") / "models" / artifact_file
+        else:
+            artifact_file = f"{model_version}.pt" if model_version else None
+            artifact_path = (
+                Path("factor_db") / "weights" / artifact_file
+                if artifact_file
+                else None
+            )
         return {
             "kind": "dl_channel",
             "model_version": model_version,
             "channel": logic_ref.get("channel"),
-            "weights_file": weight_file,
-            "weights_available": bool(weight_path and weight_path.is_file()),
+            "weights_file": artifact_file,
+            "weights_available": bool(artifact_path and artifact_path.is_file()),
+            "model_format": logic_ref.get("model_format", "legacy_raw_weights"),
+            "features": logic_ref.get("features", []),
+            "schema_version": logic_ref.get("schema_version"),
         }
 
     return {"kind": "unknown", "reference": logic_ref}

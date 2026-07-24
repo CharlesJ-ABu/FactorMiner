@@ -144,11 +144,18 @@ class FactorExpressionTensor(FactorExpression):
         
     def get_source(self) -> Dict:
         return {"model_version": self.model_version_id, "channel": self.channel_idx}
+
+    def export_model_artifact(self):
+        """Return a portable artifact when the custom model supports the NN contract."""
+        exporter = getattr(self.model_instance, "export_artifact", None)
+        return exporter() if callable(exporter) else None
         
     def get_complexity(self) -> str:
         # 简单统计模型参数
         params = 0
-        if self.model_instance and hasattr(self.model_instance, 'parameters'):
+        if self.model_instance and hasattr(self.model_instance, 'get_parameter_count'):
+            params = int(self.model_instance.get_parameter_count())
+        elif self.model_instance and hasattr(self.model_instance, 'parameters'):
             params = sum(p.numel() for p in self.model_instance.parameters() if p.requires_grad)
         elif self.model_instance and hasattr(self.model_instance, 'W'):
             # Supports the NumPy-based reference miner as well as torch-like

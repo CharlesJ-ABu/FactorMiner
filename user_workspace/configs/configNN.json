@@ -5,6 +5,13 @@
     "hidden_dim": 8,
     "max_iterations": 5,
     "learning_rate": 0.01,
+    "random_seed": 42,
+    "nn_training_epochs": 50,
+    "nn_min_samples": 30,
+    "nn_l2": 0.0001,
+    "nn_diversity_penalty": 0.001,
+    "nn_gradient_clip": 5.0,
+    "nn_early_stopping_patience": 20,
     "data_feeds": {
         "required_streams": ["close", "volume"],
         "exchange": "binance",

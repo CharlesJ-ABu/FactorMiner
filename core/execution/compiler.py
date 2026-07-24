@@ -18,6 +18,28 @@ class FactorCompiler:
             
         miner_type = metadata.miner_type
         logic_ref = metadata.logic_reference
+
+        # Custom NN miners keep their own registry name (for example
+        # MyCustomNN), so dispatch by the stable logic contract first.
+        if logic_ref.get("type") == "dl_channel":
+            model_file = logic_ref.get("model_file")
+            model_format = logic_ref.get("model_format")
+            channel = logic_ref.get("channel")
+            if model_file and model_format:
+                from core.miner.nn import load_nn_model
+
+                payload = self.storage.load_model_artifact(model_file)
+                model = load_nn_model(model_format, payload)
+
+                def compiled_nn_factor(data):
+                    return model.predict_channel(data, channel)
+
+                return compiled_nn_factor
+            if miner_type != "DL":
+                raise ValueError(
+                    f"NN factor {factor_id} uses a legacy artifact that cannot be "
+                    "reconstructed. Re-run mining to create a portable model bundle."
+                )
         
         if miner_type == "GP":
             ast_dict = logic_ref.get("ast", {})

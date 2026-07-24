@@ -122,6 +122,20 @@ class ParallelEvaluator:
         return metrics
 
     def evaluate(self, candidates: List[FactorExpression]) -> EvaluationFeedback:
+        """Evaluate candidates on the configured mining split."""
+        return self.evaluate_on(
+            candidates,
+            self.data_client.get_data(),
+            self.data_client.get_returns(),
+        )
+
+    def evaluate_on(
+        self,
+        candidates: List[FactorExpression],
+        data: Any,
+        returns: Any,
+    ) -> EvaluationFeedback:
+        """Evaluate candidates on an explicit split without mutating the data client."""
         feedback = EvaluationFeedback()
         
         # 提取用户配置的自定义打分钩子
@@ -132,7 +146,6 @@ class ParallelEvaluator:
 
         def safe_compute(expr: FactorExpression) -> Dict:
             try:
-                data = self.data_client.get_data()
                 factor_values = expr.compute(data)
                 
                 # 如果是深度学习网络直接输出的 tensor (带有梯度图)
@@ -140,8 +153,6 @@ class ParallelEvaluator:
                     return {"status": "success", "raw_outputs": factor_values, "expr": expr}
 
                 # 标量评价
-                returns = self.data_client.get_returns()
-                
                 # 强制计算基础指标
                 base_metrics = self._calculate_built_in_metrics(factor_values, returns)
                 
