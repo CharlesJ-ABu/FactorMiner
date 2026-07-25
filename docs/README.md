@@ -15,11 +15,13 @@
 本区存放面向一线量化研究员的实操教程，帮助您快速上手，无需关注底层的复杂实现。
 
 *   **[FactorMiner 产品需求文档 (PRD)](file:///Users/charles/FactorMiner/docs/FactorMiner_PRD.md)**
-    *   项目整体演进路线、功能需求和四大挖掘流派（GP/RL/LLM/DL）的产品愿景。
+    *   项目整体演进路线、功能需求和四大挖掘流派（GP/RL/NN/LLM）的产品愿景。
 *   **[Web UI/UX 设计方案与前后端交互规范 (WEB_UI_PRD)](file:///Users/charles/FactorMiner/web/WEB_UI_PRD.md)**
     *   详述了指挥中心、任务发射台、执行控制台以及批量数据下载器沉浸式体验的前端产品定义。
 *   **[网络与环境配置指南](file:///Users/charles/FactorMiner/docs/guides/vpn_setup.md)**
     *   团队内部基础网络连通与代理设置指南。
+*   **[自定义 LLM 与实验留痕指南](guides/custom_llm_experiments.md)**
+    *   介绍 `MyCustomLLM` 的用户扩展点、环境变量凭证、独立 Recorder、无头运行和研究报告生成。
 *   *(待更新)* **Config-Driven 策略编写指南**
     *   如何通过 `config.json` 零代码启动一个挖掘闭环。
 *   *(待更新)* **自定义算子注册教程**

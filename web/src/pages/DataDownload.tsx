@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Download, Database, CheckCircle2, Info, Loader2 } from 'lucide-react';
+import { Download, CheckCircle2, Info, Loader2 } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';

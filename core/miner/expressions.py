@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Union, Optional
 class FactorExpression(ABC):
     """
     统一的因子中间体表达式
-    不论生成器是 GP 还是 LLM 还是 DL，最终吐出的都是该类的子类实例。
+    不论生成器是 GP、RL、LLM 还是 NN，最终吐出的都是该类的子类实例。
     """
     
     def __init__(self):
@@ -98,20 +98,37 @@ class FactorExpressionAST(FactorExpression, LineageTrackableMixIn):
 
 class FactorExpressionCode(FactorExpression, LineageTrackableMixIn, LLMReflectableMixIn):
     """供大语言模型 (LLM) 生成纯源码使用的表达式"""
-    def __init__(self, code_str: str, sandbox: Any = None, parent_ids: List[str] = None, reflection_history: str = ""):
+    def __init__(
+        self,
+        code_str: str,
+        sandbox: Any = None,
+        parent_ids: List[str] = None,
+        reflection_history: str = "",
+        provenance: Optional[Dict[str, Any]] = None,
+    ):
         FactorExpression.__init__(self)
         LineageTrackableMixIn.__init__(self, parent_ids)
         LLMReflectableMixIn.__init__(self, reflection_history)
         self.code_str = code_str
         self.sandbox = sandbox
+        self.provenance = provenance or {}
         
     def compute(self, data: pd.DataFrame):
-        if self.sandbox:
-            return self.sandbox.execute_factor_code(self.code_str, data)
-        # Fallback if no sandbox is provided
-        local_vars = {'df': data}
-        exec(self.code_str, {}, local_vars)
-        return local_vars.get('factor', pd.Series(index=data.index, data=0))
+        if not self.sandbox:
+            raise RuntimeError(
+                "FactorExpressionCode requires an explicit sandbox executor; "
+                "unsafe exec fallback is disabled"
+            )
+        return self.sandbox.execute_factor_code(self.code_str, data)
+
+    def set_reflection_history(self, reflection_history: str) -> None:
+        self._reflection_history = reflection_history
+
+    def get_provenance(self) -> Dict[str, Any]:
+        return dict(self.provenance)
+
+    def update_provenance(self, **values: Any) -> None:
+        self.provenance.update(values)
         
     def get_source(self) -> str:
         return self.code_str
@@ -127,7 +144,7 @@ class FactorExpressionCode(FactorExpression, LineageTrackableMixIn, LLMReflectab
         return s
 
 class FactorExpressionTensor(FactorExpression):
-    """供深度学习 (DL) 专用的网络计算表达式"""
+    """供 NN 范式使用的网络计算表达式。"""
     def __init__(self, model_version_id: str, channel_idx: int, model_instance: Any = None):
         FactorExpression.__init__(self)
         self.model_version_id = model_version_id
@@ -135,7 +152,7 @@ class FactorExpressionTensor(FactorExpression):
         self.model_instance = model_instance # PyTorch 模型实例
         
     def compute(self, data: pd.DataFrame):
-        # DL 流派不在这里截断计算，需要保留梯度图
+        # NN 训练阶段不在这里截断计算，需要保留梯度图
         if self.model_instance:
             # 假设 data 转为 tensor 传入
             # return self.model_instance(data)[:, self.channel_idx]

@@ -1,6 +1,6 @@
 # FactorMiner V4 待办事项
 
-> 🚀 **项目状态**: V4 架构底层引擎已搭建完毕，成功跑通 GP、RL、LLM、DL 四大异构挖掘范式！评估引擎 (`ParallelEvaluator` + `custom_fitness` 钩子) 也已通过沙盒与真实数据回测的闭环验证。目前正处于补齐“持久化存储”并向 Web UI 界面对接的阶段。
+> 🚀 **项目状态**: V4 架构底层引擎已搭建完毕，成功跑通 GP、RL、NN、LLM 四大异构挖掘范式！评估引擎 (`ParallelEvaluator` + `custom_fitness` 钩子) 也已通过沙盒与真实数据回测的闭环验证。目前正处于补齐“持久化存储”并向 Web UI 界面对接的阶段。
 
 ## 🔄 当前核心任务 (进行中)
 
@@ -20,7 +20,7 @@
 **说明**: 扩展现有的单品种串行计算能力。
 - [x] **Cross-Asset 截面计算**: 当 `mining_mode` 设置为 `cross_asset` 时，重构底层数据对其逻辑，支持横截面算子 (如 `cs_rank`, `cs_zscore`) 的计算。
 - [x] **用户算子端到端接入**: 动态加载的 OperatorRegistry 已接入 GP/RL 的搜索空间、按 arity 生成 AST、统一求值和运行期异常报告；MyCustomGP 默认使用四则运算、ts_mean/ts_std 和衰减、Z-score、变化、排名、波动率等用户时序算子。
-- [x] **扩展启动校验与四范式 CLI smoke tests**: CLI/Launchpad 会在读取数据前校验 Miner、算子、Fitness Hook 与用户模块加载错误；MyCustomGP、MyCustomRL、MyCustomLLM、MyCustomNN 均有真实 Feather 数据的一轮 CLI smoke test。
+- [x] **扩展启动校验与四范式 CLI smoke tests**: CLI/Launchpad 会在读取数据前校验 Miner、算子、Fitness Hook 与用户模块加载错误；MyCustomGP、MyCustomRL、MyCustomLLM、NN 均有真实 Feather 数据的一轮 CLI smoke test。
 - [x] **MyCustomGP 真实数据回归与指标契约核验**: 重启 FastAPI 后以当前 `config.json` 完整运行 BTC、SUI 永续挖掘，确认用户算子进入 AST、候选评分非零，并将 `IC`、`RankIC`、`Turnover`、`fitness_score` 与 Phase II 值/未来收益快照一同落盘。Tracker 重启后内存任务会清空，因子档案仍以 `factor_db` 为准。
 - [ ] **更多原生算子支持**: 在 `OperatorRegistry` 中预置更多金融界常用的基础算子库 (如 `ts_decay`, `ts_corr`)。
 
@@ -35,7 +35,7 @@
 **优先级**: 高
 **说明**: Inspector 已从静态演示升级为基于 `factor_db` 的真实因子目录、异构逻辑白盒详情、数据快照 Tearsheet 与批量审查工作流。
 - [x] **持久化因子目录**: 提供 FactorStorage 列表/生命周期更新能力与 `/api/factors`、`/api/factors/{id}` API；不依赖易失的任务内存。
-- [x] **异构逻辑详情**: 按 GP AST、LLM 源码、RL 动作轨迹与 DL 模型版本/通道呈现真实存储产物；Launchpad 结果可直接跳转审查页。
+- [x] **异构逻辑详情**: 按 GP AST、LLM 源码、RL 动作轨迹与 NN 模型版本/通道呈现真实存储产物；Launchpad 结果可直接跳转审查页。
 - [x] **审查状态流转**: 支持 `DISCOVERED`、`INSPECTED`、`PAPER_TRADING`、`LIVE`、`RETIRED` 的显式更新和持久化。
 - [x] **审查快照与 Tearsheet**: 因子入库时保存对齐的因子值、未来收益和数据血缘；据此提供真实滚动 IC、分位收益、换手率和数据范围。无快照档案明确要求重新挖掘，严禁模拟图表。
 - [x] **多因子比较与批量审查**: 支持选择 2–5 个有快照的因子比较滚动 IC，并可批量更新生命周期状态。
@@ -52,10 +52,10 @@
 - [x] **GP 范式落地**: 编写 `MyCustomGPMiner`，完成达尔文式的变异、交叉及精英保留闭环验证。
 - [x] **RL 范式落地**: 编写 `MyCustomRLMiner`，彻底解耦 PyTorch 依赖，通过 Policy Gradient 权重字典完成概率采样与反馈闭环验证。
 - [x] **LLM 范式落地**: 编写 `MyCustomLLMMiner`，实现大语言模型的自然反思机制 (Reflection) 及 API 容灾降级容错，直接生成 Python 源代码并通过安全沙盒评估。
-- [x] **DL 范式落地**: 编写可替换的 `MyCustomNNMiner` 参考实现，使用纯 NumPy MLP、反向传播、梯度裁剪、Early Stopping 与通道多样性约束，验证 V4 引擎对端到端神经因子的原生兼容性。
+- [x] **NN 范式落地**: 编写可替换的 `MyCustomNNMiner` 参考实现，使用纯 NumPy MLP、反向传播、梯度裁剪、Early Stopping 与通道多样性约束，验证 V4 引擎对端到端神经因子的原生兼容性。
 - [x] **NN 训练产物闭环**: 支持单品种与跨资产输入，在 `mine_period` 训练、按 `test_period` 样本外指标筛选；冻结跨轮最佳通道，并以包含权重、Scaler、特征 schema 的 `.npz` 模型包落盘，同时兼容旧 `.pt` 档案和现有 WebUI。
 - [x] **Temporal NN 教学模板**: 新增独立 `MyTemporalNN`，演示无泄漏多周期 OHLCV 特征、可配置远期收益标签、MSE + IC 联合目标、有符号 RankIC 筛选和自定义模型格式重载；提供约 10 分钟的单品种学习配置。
-- [x] **评估与沙盒闭环验证**: 成功剥离出 `user_workspace/custom_fitness/` 并在真实执行流中验证了 `EvaluatorRegistry` 钩子注入机制（如 `my_bear_market_hunter`）；跑通了防御性沙盒 `RestrictedSandbox` 及针对 DL 的张量短路评估机制。
+- [x] **评估与沙盒闭环验证**: 成功剥离出 `user_workspace/custom_fitness/` 并在真实执行流中验证了 `EvaluatorRegistry` 钩子注入机制（如 `my_bear_market_hunter`）；跑通了防御性沙盒 `RestrictedSandbox` 及针对 NN 的张量短路评估机制。
 - [x] **因子落盘与持久化存储**: 补全了 `LocalFactorStorage`，实现了每个 Epoch 结束时将优质因子、元数据及评价指标落盘至 `factor_db/` 数据库。
 - [x] **多品种序列及横截面挖掘引擎**: 实现了 `sequential_single` 以及基于矩阵计算的 `cross_asset` 并行截面 IC 计算，并在 CLI 终端完美输出跨资产综合战报。
 - [x] **数据自动拉取与补全**: 强化 `RealDataClient`，支持当本地缺失配置的行情 `.feather` 时，自动调用 `DataDownloader` 尝试后台无感下载并对齐目标数据段。

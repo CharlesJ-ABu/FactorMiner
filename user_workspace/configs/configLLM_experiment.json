@@ -1,0 +1,66 @@
+{
+  "_comment": "Reproducible real LLM experiment. Credentials are read from the environment and are never stored in this file.",
+  "paradigm": "MyCustomLLM",
+  "population_size": 3,
+  "max_iterations": 3,
+  "top_k_factors": 9,
+  "data_feeds": {
+    "required_streams": [
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume"
+    ],
+    "exchange": "binance",
+    "instrument_type": "futures",
+    "timeframe": "1m",
+    "pairs": [
+      "BTC/USDT:USDT"
+    ],
+    "mine_period": [
+      [
+        "2025-07-20",
+        "2025-08-01"
+      ]
+    ],
+    "test_period": [
+      [
+        "2025-08-02",
+        "2025-08-15"
+      ]
+    ],
+    "mining_mode": "sequential_single"
+  },
+  "llm_api_config": {
+    "keys_env": [
+      "AI_API_KEY",
+      "OPENAI_API_KEY"
+    ],
+    "model_env": "AI_MODEL",
+    "base_url_env": "AI_API_BASE",
+    "base_url": "https://api.openai.com/v1/chat/completions",
+    "model": "gpt-4.1-mini",
+    "max_concurrency": 3,
+    "max_retries": 2,
+    "timeout_seconds": 60
+  },
+  "llm_sandbox": {
+    "timeout_seconds": 5.0,
+    "cpu_seconds": 3,
+    "memory_mb": 1024
+  },
+  "evaluation": {
+    "max_workers": 3
+  },
+  "experiment": {
+    "name": "post12_real_llm_btc_1m",
+    "record_dir": "user_workspace/experiments/post12_llm_real_run",
+    "create_run_subdir": true,
+    "require_live_api": true,
+    "allow_fallback": false
+  },
+  "storage": {
+    "db_root": "factor_db"
+  }
+}

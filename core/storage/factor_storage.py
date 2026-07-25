@@ -10,6 +10,35 @@ from core.miner.entities import FactorMetadata
 
 logger = logging.getLogger(__name__)
 
+_SENSITIVE_PROVENANCE_KEYS = {
+    "api_key",
+    "apikey",
+    "authorization",
+    "credential",
+    "password",
+    "secret",
+    "token",
+}
+
+
+def _sanitize_provenance(value: Any) -> Any:
+    """Remove credentials recursively before generation metadata reaches disk."""
+    if isinstance(value, dict):
+        return {
+            key: _sanitize_provenance(item)
+            for key, item in value.items()
+            if not any(
+                marker in str(key).lower().replace("-", "_")
+                for marker in _SENSITIVE_PROVENANCE_KEYS
+            )
+        }
+    if isinstance(value, list):
+        return [_sanitize_provenance(item) for item in value]
+    if isinstance(value, tuple):
+        return [_sanitize_provenance(item) for item in value]
+    return value
+
+
 class FactorStorageInterface(ABC):
     @abstractmethod
     def save_gp_factor(self, ast_dict: Dict, metadata: FactorMetadata) -> bool: pass
@@ -18,7 +47,13 @@ class FactorStorageInterface(ABC):
     def save_rl_factor(self, action_sequence: List[str], agent_snapshot_bytes: bytes, metadata: FactorMetadata) -> bool: pass
     
     @abstractmethod
-    def save_llm_factor(self, python_code: str, reflection_log: str, metadata: FactorMetadata) -> bool: pass
+    def save_llm_factor(
+        self,
+        python_code: str,
+        reflection_log: str,
+        metadata: FactorMetadata,
+        provenance: Dict[str, Any] = None,
+    ) -> bool: pass
     
     @abstractmethod
     def save_model_weights(self, model_version_id: str, model_weights: bytes) -> bool: pass
@@ -35,15 +70,37 @@ class FactorStorageInterface(ABC):
     def load_model_artifact(self, filename: str) -> bytes:
         """Load a portable NN artifact by its storage-relative filename."""
         raise NotImplementedError
+
+    def load_llm_source(self, filename: str) -> str:
+        """Load persisted LLM source by its storage-relative filename."""
+        raise NotImplementedError
     
-    @abstractmethod
+    def save_nn_factor_channel(
+        self,
+        model_version_id: str,
+        channel_index: int,
+        metadata: FactorMetadata,
+        artifact_reference: Dict[str, Any] = None,
+    ) -> bool:
+        """Persist an NN channel; legacy backends may implement the old alias."""
+        return self.save_dl_factor_channel(
+            model_version_id,
+            channel_index,
+            metadata,
+            artifact_reference,
+        )
+
     def save_dl_factor_channel(
         self,
         model_version_id: str,
         channel_index: int,
         metadata: FactorMetadata,
         artifact_reference: Dict[str, Any] = None,
-    ) -> bool: pass
+    ) -> bool:
+        """Deprecated storage-backend compatibility hook."""
+        raise NotImplementedError(
+            "Implement save_nn_factor_channel(); save_dl_factor_channel() is deprecated."
+        )
 
     @abstractmethod
     def save_factor_values(self, factor_id: str, values_df: Any) -> bool: pass
@@ -110,13 +167,24 @@ class LocalFactorStorage(FactorStorageInterface):
         logger.info(f"Saved RL metadata for {metadata.factor_id}")
         return True
 
-    def save_llm_factor(self, python_code: str, reflection_log: str, metadata: FactorMetadata) -> bool:
+    def save_llm_factor(
+        self,
+        python_code: str,
+        reflection_log: str,
+        metadata: FactorMetadata,
+        provenance: Dict[str, Any] = None,
+    ) -> bool:
         code_file = f"{metadata.factor_id}.py"
         code_path = os.path.join(self.src_dir, code_file)
         with open(code_path, "w") as f:
             f.write(python_code)
             
-        metadata.logic_reference = {"type": "python_source", "source_file": code_file, "reflection": reflection_log}
+        metadata.logic_reference = {
+            "type": "python_source",
+            "source_file": code_file,
+            "reflection": reflection_log,
+            "provenance": _sanitize_provenance(provenance or {}),
+        }
         self._save_meta(metadata)
         logger.info(f"Saved LLM metadata and source for {metadata.factor_id}")
         return True
@@ -126,7 +194,7 @@ class LocalFactorStorage(FactorStorageInterface):
         if not os.path.exists(weight_path):
             with open(weight_path, "wb") as f:
                 f.write(model_weights)
-            logger.info(f"Saved DL model weights for {model_version_id}")
+            logger.info(f"Saved NN model weights for {model_version_id}")
         return True
 
     def save_model_artifact(
@@ -155,7 +223,17 @@ class LocalFactorStorage(FactorStorageInterface):
         with open(model_path, "rb") as model_file:
             return model_file.read()
 
-    def save_dl_factor_channel(
+    def load_llm_source(self, filename: str) -> str:
+        safe_filename = os.path.basename(filename)
+        if safe_filename != filename:
+            raise ValueError("LLM source filename must not contain a path.")
+        source_path = os.path.join(self.src_dir, safe_filename)
+        if not os.path.isfile(source_path):
+            raise FileNotFoundError(f"LLM source not found: {safe_filename}")
+        with open(source_path, "r", encoding="utf-8") as source_file:
+            return source_file.read()
+
+    def save_nn_factor_channel(
         self,
         model_version_id: str,
         channel_index: int,
@@ -163,14 +241,32 @@ class LocalFactorStorage(FactorStorageInterface):
         artifact_reference: Dict[str, Any] = None,
     ) -> bool:
         metadata.logic_reference = {
-            "type": "dl_channel",
+            "type": "nn_channel",
             "model_version": model_version_id,
             "channel": channel_index,
             **(artifact_reference or {}),
         }
         self._save_meta(metadata)
-        logger.info(f"Saved DL channel metadata for {metadata.factor_id}")
+        logger.info(f"Saved NN channel metadata for {metadata.factor_id}")
         return True
+
+    def save_dl_factor_channel(
+        self,
+        model_version_id: str,
+        channel_index: int,
+        metadata: FactorMetadata,
+        artifact_reference: Dict[str, Any] = None,
+    ) -> bool:
+        """Compatibility alias for pre-NN storage callers."""
+        logger.warning(
+            "save_dl_factor_channel() is deprecated; use save_nn_factor_channel()."
+        )
+        return self.save_nn_factor_channel(
+            model_version_id,
+            channel_index,
+            metadata,
+            artifact_reference,
+        )
 
     def save_factor_values(self, factor_id: str, values_df: Any) -> bool:
         """Legacy helper retained for callers that only have factor values."""

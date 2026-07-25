@@ -5,7 +5,7 @@ from typing import Dict, List, Any, Optional
 class FactorMetadata:
     """因子的元数据（灵魂）"""
     factor_id: str                   # 因子唯一全球标识 (例如: alp_llm_20260710_001)
-    miner_type: str                  # 流派标签: 'GP', 'RL', 'LLM', 'DL'
+    miner_type: str                  # 流派标签: 'GP', 'RL', 'LLM', 'NN'
     user_id: str                     # 提交/运行该任务的研究员ID
     
     # 因子生命周期状态机
@@ -26,12 +26,66 @@ class FactorMetadata:
     created_at: str = ""
 
 @dataclass
+class CandidateEvaluation:
+    """One immutable association between a candidate and its evaluation."""
+    candidate: Any
+    status: str
+    metrics: Dict[str, float] = field(default_factory=dict)
+    raw_outputs: Any = None
+    error_type: str = ""
+    error_message: str = ""
+    traceback: str = ""
+
+    @property
+    def succeeded(self) -> bool:
+        return self.status == "success"
+
+    def as_legacy_error(self) -> Dict[str, Any]:
+        return {
+            "status": self.status,
+            "expr": self.candidate,
+            "error_type": self.error_type,
+            "error_message": self.error_message,
+            "traceback": self.traceback,
+        }
+
+
+@dataclass
 class EvaluationFeedback:
-    """统一的评测反馈体，兼容标量指标和张量计算图"""
-    metrics: List[Dict[str, float]] = field(default_factory=list) # 传统指标（IC, Sharpe等）
-    execution_status: List[Dict[str, Any]] = field(default_factory=list) # 记录崩溃或错误的详细信息
-    raw_outputs: Any = None # DL流派前向传播直接吐出的 Tensor (避免引入torch依赖，设为Any)
+    """Candidate-aligned feedback, with compatibility views for older miners."""
+    results: List[CandidateEvaluation] = field(default_factory=list)
     raw_targets: Any = None # 用于DL计算Loss的次日收益率标签
+
+    def for_candidate(self, candidate: Any) -> Optional[CandidateEvaluation]:
+        return next(
+            (result for result in self.results if result.candidate is candidate),
+            None,
+        )
+
+    @property
+    def metrics(self) -> List[Dict[str, float]]:
+        return [
+            result.metrics
+            for result in self.results
+            if result.succeeded and result.metrics
+        ]
+
+    @property
+    def execution_status(self) -> List[Dict[str, Any]]:
+        return [
+            result.as_legacy_error()
+            for result in self.results
+            if not result.succeeded
+        ]
+
+    @property
+    def raw_outputs(self) -> Any:
+        outputs = [
+            result.raw_outputs
+            for result in self.results
+            if result.succeeded and result.raw_outputs is not None
+        ]
+        return outputs[-1] if outputs else None
 
 class MinerState:
     """
@@ -45,7 +99,7 @@ class MinerState:
         self.successful_reflections: List[Dict] = []
         self.failed_reflections: List[Dict] = []
         
-        # 3. 适用于 RL / DL
+        # 3. 适用于 RL / NN
         self.model_weights_bytes: Optional[bytes] = None
         self.replay_buffer: List[Any] = []
 
@@ -54,4 +108,9 @@ class MinerState:
         prompt = "Here are past successful examples:\n"
         for item in self.successful_reflections[-5:]: # 取最近5个
             prompt += f"Code: {item['code']}\nPerformance: {item['metrics']}\n"
+        prompt += "Here are recent failed examples to avoid:\n"
+        for item in self.failed_reflections[-5:]:
+            error_type = item.get("error_type", "ExecutionError")
+            error = str(item.get("error", ""))[:500]
+            prompt += f"Code: {item['code']}\nFailure: {error_type}: {error}\n"
         return prompt

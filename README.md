@@ -51,6 +51,8 @@ FactorMiner/
 ├── user_workspace/               # 用户实验区（核心不需要为策略修改）
 │   ├── configs/                  # 可复用挖掘任务配置
 │   ├── custom_miners/            # GP / RL / LLM / NN 自定义 Miner
+│   ├── experiment_tools/         # 可选实验留痕、汇总与测试窗口复评工具
+│   ├── experiments/              # 本地原始实验记录（默认被 Git 忽略）
 │   ├── custom_operators/         # 注册的时序或截面算子
 │   └── custom_fitness/           # 注册的 Fitness Hook
 ├── factor_db/                    # 已保存因子的 metadata、values（可选）和 weights
@@ -158,9 +160,15 @@ factorminer mine --miner GP --config user_workspace/configs/demo_config.json
 # 运行你在 user_workspace 中自己写的自定义挖掘器 (例如 MyCustomGP)
 factorminer mine --miner MyCustomGP --config user_workspace/configs/config.json --user-dir user_workspace
 
+# 运行自定义 LLM 实验；API 密钥从配置指定的环境变量读取
+factorminer mine --miner MyCustomLLM --config user_workspace/configs/configLLM_experiment.json --user-dir user_workspace
+
 # 运行自定义神经网络挖掘器；--iterations 可临时覆盖配置中的训练轮数
-factorminer mine --miner MyCustomNN --config user_workspace/configs/configNN.json --user-dir user_workspace --iterations 5
+factorminer mine --miner NN --config user_workspace/configs/configNN.json --user-dir user_workspace --iterations 5
 ```
+`DL` 是历史范式名称，现已弃用。旧命令或配置仍会暂时映射到 `NN` 并输出警告；
+所有新配置、文档和界面统一使用 `NN`。
+
 挖掘完成后，终端会直接打印全局大表 (Final Mining Summary)，记录所有存活的因子及其 IC 表现。
 
 **3. 命令行执行因子归因与审查 (Factor Inspector)**
@@ -197,6 +205,8 @@ user_workspace/
 ├── custom_miners/       # 四大范式或任意自定义 Miner
 ├── custom_operators/    # 可复用时序 / 截面算子
 ├── custom_fitness/      # 因子评分 Hook
+├── experiment_tools/    # 可选实验记录、汇总与复评
+├── experiments/         # 本地原始运行证据（Git 忽略）
 └── configs/             # 可复用的任务配置
 ~~~
 
@@ -267,14 +277,48 @@ RL 可以将选择算子、选择输入流、停止生成等步骤建模为 acti
 
 #### LLM：代码候选必须设置 factor
 
-LLM 范式使用 FactorExpressionCode。传入的代码以 pandas DataFrame 变量 df 为输入，最终必须创建名为 factor 的 pandas.Series，且不应有文件、网络或解释执行等副作用：
+LLM 范式使用 FactorExpressionCode。顺序模式下，代码以 pandas DataFrame 变量
+`df` 为输入，最终必须创建与输入索引一致、数值型且不含无穷值的
+`pandas.Series factor`：
 
 ~~~python
 returns = df["close"].pct_change()
 factor = returns.rolling(20, min_periods=10).mean()
 ~~~
 
-建议在将模型响应交给评估器前做语法和安全检查，并把提示词摘要、响应和反思结果写入自己的 history，方便 Inspector 溯源。MyCustomLLM 会将反思历史与高分代码候选分开保存：前者用于下一轮提示，后者按 Top-K 写入 state.population 供 Director 入库。
+`cross_asset` 模式下，`df` 是“特征名 → pandas.DataFrame”的映射，每张表均为
+“时间 × 资产”；`factor` 必须是轴完全一致的 DataFrame。所有 LLM 代码都必须通过
+AST 白名单和带超时/CPU/内存限制的独立进程沙盒，不允许无沙盒回退。
+
+正式因子档案只持久化 Prompt 的 SHA-256 摘要；成功与失败结果分别进入有界
+Reflection 记忆，候选级 provenance 落盘前会递归移除密钥。`MyCustomLLM` 将反思
+历史与高分代码候选分开保存：前者用于下一轮提示，后者按 Top-K 写入
+`state.population` 供 Director 入库。
+
+需要复盘完整生成过程时，可在配置中设置 `experiment.record_dir`，启用独立的
+`LLMExperimentRecorder`。Recorder 位于
+`user_workspace/experiment_tools/llm_recorder.py`，负责保存完整 Prompt、原始回答、
+候选代码、执行结果、Reflection、输出哈希与确定性回放；这些原始证据写入
+`user_workspace/experiments/`，该目录默认被 Git 忽略。Miner 本身仍只负责生成、
+评估和更新逻辑，用户无需修改 Recorder 即可替换 Prompt 或候选策略。
+
+LLM API 密钥应通过 `llm_api_config.keys_env` 指定的环境变量注入，不能直接写进
+JSON 或源码。完整配置、无头运行、留痕和报告生成示例见
+[自定义 LLM 与实验留痕指南](docs/guides/custom_llm_experiments.md)。
+
+评估线程数可通过 `evaluation.max_workers` 配置，必须是正整数。LLM 候选每个都会启动
+一个短生命周期沙盒进程，因此应结合机器内存设置并发数，例如：
+
+~~~json
+{
+  "evaluation": {"max_workers": 2},
+  "llm_sandbox": {
+    "timeout_seconds": 5,
+    "cpu_seconds": 3,
+    "memory_mb": 1024
+  }
+}
+~~~
 
 #### NN：把训练权重物化为通道因子
 
@@ -285,8 +329,8 @@ NN 的训练权重不是一个可以直接评分的因子。参考 `MyCustomNNMi
 
 模型以可恢复的 `factor_db/models/<model_version>.npz` 保存，其中包含权重、偏置、
 特征顺序、标准化参数、数据模式和 schema 版本；旧的 `.pt` 裸权重档案仍可由
-Inspector 识别。最终元数据继续使用 `dl_channel / model_version / channel`，所以
-Dashboard、Tracker 和 Inspector 的既有接口保持兼容。
+Inspector 识别。新元数据统一使用 `nn_channel / model_version / channel`；
+历史 `dl_channel` 档案继续兼容读取。
 
 用户可以直接修改 `user_workspace/custom_miners/my_custom_nn.py`，也可以复制后注册新
 名称。共享引擎只要求最终表达式返回索引对齐的 `Series`（单品种）或 `DataFrame`
@@ -398,7 +442,7 @@ factorminer mine --miner MyMomentumGP --config user_workspace/configs/configGP.j
 
 CLI 与 Launchpad 共享启动校验：动态加载失败、未知 Miner、缺失的必填数据流、无效的算子名称/arity，以及未知 Fitness Hook 都会在启动前以聚合错误报告返回。自定义 Operator 必须接收其声明 arity 所需的位置参数；Fitness Hook 必须接收 factor_values、returns、base_metrics 三个参数。
 
-仓库的 tests/test_cli_smoke.py 为 MyCustomGP、MyCustomRL、MyCustomLLM、MyCustomNN 分别创建临时 Feather 行情，通过公开 CLI 跑一轮，并验证至少一个因子元数据被写入临时 factor_db。可在提交前运行：
+仓库的 tests/test_cli_smoke.py 为 MyCustomGP、MyCustomRL、MyCustomLLM、NN 分别创建临时 Feather 行情，通过公开 CLI 跑一轮，并验证至少一个因子元数据被写入临时 factor_db。可在提交前运行：
 
 ~~~bash
 python -B -m unittest discover -s tests -v

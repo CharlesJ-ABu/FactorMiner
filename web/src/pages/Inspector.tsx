@@ -246,7 +246,7 @@ function LogicPanel({ detail }: { detail: FactorDetail }) {
     );
   }
 
-  if (logic.kind === 'dl_channel') {
+  if (logic.kind === 'nn_channel') {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-lg border border-border bg-secondary/20 p-4">

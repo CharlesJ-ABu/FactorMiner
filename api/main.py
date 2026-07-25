@@ -210,7 +210,7 @@ def _factor_logic(metadata):
             "weights_file": logic_ref.get("weights_file"),
         }
 
-    if logic_type == "dl_channel":
+    if logic_type in {"nn_channel", "dl_channel"}:
         model_version = logic_ref.get("model_version")
         model_file = logic_ref.get("model_file")
         if model_file:
@@ -224,7 +224,7 @@ def _factor_logic(metadata):
                 else None
             )
         return {
-            "kind": "dl_channel",
+            "kind": "nn_channel",
             "model_version": model_version,
             "channel": logic_ref.get("channel"),
             "weights_file": artifact_file,
@@ -244,7 +244,7 @@ def _factor_summary(metadata):
         display = logic.get("source_file") or "Python source unavailable"
     elif logic["kind"] == "actions":
         display = " → ".join(logic.get("actions") or []) or "Action trajectory"
-    elif logic["kind"] == "dl_channel":
+    elif logic["kind"] == "nn_channel":
         display = f"NNModel(v={logic.get('model_version')}) [Ch: {logic.get('channel')}]"
     else:
         display = "Stored factor reference"
@@ -546,6 +546,7 @@ async def run_mining_task_background(task_id: str, miner_name: str, config_name:
 
         load_report = load_user_modules("user_workspace")
         validate_mining_startup(config, load_report)
+        task["miner"] = config["paradigm"]
         
         from core.data_feed.real_client import RealDataClient
         data_client = RealDataClient(config)
@@ -656,7 +657,7 @@ async def get_data_coverage(exchange: str, symbol: str, timeframe: str, trade_ty
 
 @app.post("/api/download_data")
 async def download_data(req: DownloadRequest, background_tasks: BackgroundTasks):
-    task_id = f"DL-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+    task_id = f"DOWNLOAD-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
     background_tasks.add_task(
         run_batch_download_task_background,
         task_id, req.exchange, req.symbols, req.timeframes, req.start_date, req.end_date, req.trade_types, req.download_mode

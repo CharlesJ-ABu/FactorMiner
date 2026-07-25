@@ -2,9 +2,9 @@
 
 ## 核心设计理念
 
-为了兼容不同的因子挖掘流派（如遗传规划、强化学习、大模型、深度表征学习），FactorMiner V4 将“挖掘”动作高度抽象为一个通用的**“搜索与优化”闭环过程**：`生成候选 -> 回测评价 -> 模型更新 -> 再生成`。
+为了兼容 GP、RL、NN、LLM 四种因子挖掘范式，FactorMiner V4 将“挖掘”动作高度抽象为一个通用的**“搜索与优化”闭环过程**：`生成候选 -> 回测评价 -> 模型更新 -> 再生成`。
 
-为了解决“不同流派特性差异巨大”带来的工程落地挑战（如类型污染、DL 端到端评测闭环差异等），V4 架构引入了统一的表达式抽象和谱系追踪机制。**在终端对客层面，系统将所有底层流派完全封装，通过唯一的统一网关 `FactorMinerDirector` 提供纯声明式的策略驱动体验。**
+为了解决“不同流派特性差异巨大”带来的工程落地挑战（如类型污染、NN 端到端评测闭环差异等），V4 架构引入了统一的表达式抽象和谱系追踪机制。**在终端对客层面，系统将所有底层流派完全封装，通过唯一的统一网关 `FactorMinerDirector` 提供纯声明式的策略驱动体验。**
 
 ---
 
@@ -20,7 +20,7 @@ from typing import List, Dict, Any, Union, Optional
 class FactorExpression(ABC):
     """
     统一的因子中间体表达式
-    不论生成器是 GP 还是 LLM 还是 DL，最终吐出的都是该类的子类实例。
+    不论生成器是 GP、RL、NN 还是 LLM，最终吐出的都是该类的子类实例。
     """
     
     @abstractmethod
@@ -55,7 +55,7 @@ class LLMReflectableMixIn:
 
 ## 2. 核心抽象接口设计 (BaseMiner)
 
-为了彻底解决“深度学习流派评价断层”、“大模型同质化”以及“演进状态丢失”等架构痛点，V4 引入了统一的评测反馈结构 `EvaluationFeedback` 与 `DiversityFilter`。
+为了彻底解决“NN 范式评价断层”、“大模型同质化”以及“演进状态丢失”等架构痛点，V4 引入了统一的评测反馈结构 `EvaluationFeedback` 与 `DiversityFilter`。
 
 ```python
 from dataclasses import dataclass
@@ -93,7 +93,7 @@ class DiversityFilter:
 class BaseFactorMiner(ABC):
     """
     因子挖掘的通用基类范式
-    适用于 GP (遗传), RL (强化学习), LLM (大模型), DL (深度学习)
+    适用于 GP (遗传), RL (强化学习), NN (神经网络), LLM (大模型)
     """
     
     def __init__(self, data: pd.DataFrame, config: Dict):
@@ -121,7 +121,7 @@ class BaseFactorMiner(ABC):
         """
         3. 评价与打分 (Evaluate / Reward)
         - GP/LLM/RL: 返回传统的指标（IC、夏普等）。
-        - DL: 携带计算图 Tensor 原样返回，供 update_model 梯度计算。
+        - NN: 携带计算图 Tensor 原样返回，供 update_model 梯度计算。
         """
         pass
 
@@ -131,7 +131,7 @@ class BaseFactorMiner(ABC):
         4. 反馈与模型更新 (Feedback & Learn)
         - GP: 更新种群 (self.state.population = new_trees)
         - LLM: 更新反思记忆 (self.state.failed_reflections.append(...))
-        - DL: 执行反向传播 (loss.backward(); optimizer.step())
+        - NN: 执行反向传播 (loss.backward(); optimizer.step())
         """
         pass
 
@@ -182,7 +182,7 @@ from typing import List, Dict, Any, Optional
 @dataclass
 class FactorMetadata:
     factor_id: str                   # 因子唯一全球标识 (例如: alp_llm_20260710_001)
-    miner_type: str                  # 流派标签: 'GP', 'RL', 'LLM', 'DL'
+    miner_type: str                  # 流派标签: 'GP', 'RL', 'NN', 'LLM'
     user_id: str                     # 提交/运行该任务的研究员ID
     
     # 【新增】因子生命周期状态机
@@ -197,7 +197,7 @@ class FactorMetadata:
     logic_reference: Dict[str, Any] = field(default_factory=dict) 
     # 示例: 
     # GP -> {"storage_type": "json_ast", "path": "path/to/ast.json"}
-    # DL -> {"storage_type": "model_channel", "model_version": "v4.1", "channel_idx": 42}
+    # NN -> {"storage_type": "model_channel", "model_version": "v4.1", "channel_idx": 42}
     
     # 评测指标 (肉体成绩单)
     metrics: Dict[str, float] = field(default_factory=dict) # 留存当时的评估指标 (IC, IR, Sharpe等)
@@ -257,7 +257,7 @@ class FactorStorageInterface(ABC):
         pass
 
     @abstractmethod
-    def save_dl_factor_channel(self, model_version_id: str, channel_index: int, metadata: FactorMetadata) -> bool:
+    def save_nn_factor_channel(self, model_version_id: str, channel_index: int, metadata: FactorMetadata) -> bool:
         """
         动作二：极其轻量级的通道索引存储。
         【For 循环内调用】每次只传字符串版本号和索引 int，数据量仅几百字节，无网络压力。
@@ -401,53 +401,21 @@ class ParallelEvaluator:
 
 ## 5. 动态沙盒安全性 (RestrictedSandbox)
 
-针对 LLM 挖掘流派，`FactorExpressionCode` 的 `compute` 接口内部必然会调用 `eval()` 或 `exec()`。这是量化生产环境灾难的温床（例如 LLM 突然写出了 `import os; os.system('rm -rf /')`）。
+LLM 生成代码不能在 Miner、Evaluator 或 Inspector 进程中直接执行。当前实现位于
+`core/evaluation/code_sandbox.py`，采用以下四层边界：
 
-必须构建一个严格受限的执行上下文（White-listed Context），禁绝所有魔术方法和危险的系统调用。
+1. 使用 Python AST 白名单，只允许向量化的 pandas/NumPy 表达式和局部变量赋值；
+2. 禁止 import、循环、函数/类定义、文件访问、动态解释执行、私有属性和魔术方法；
+3. 在短生命周期的 `spawn` 子进程中执行，并设置墙钟超时、CPU、内存和文件描述符限制；
+4. 返回前严格验证类型、索引、列、数值 dtype、有限值和输入对齐关系。
 
-```python
-import builtins
+`FactorExpressionCode` 采用 fail-closed 语义：没有显式传入
+`RestrictedSandbox` 时直接拒绝计算，不存在退回裸 `exec()` 的兼容路径。顺序模式要求
+`factor` 是与输入索引完全一致的 `pandas.Series`；`cross_asset` 模式要求它是与所有特征
+DataFrame 的时间索引和资产列完全一致的 `pandas.DataFrame`。
 
-class RestrictedSandbox:
-    """安全的 Python 因子代码执行沙盒"""
-    def __init__(self):
-        # 严格限制能调用的内置函数
-        self.safe_globals = {
-            '__builtins__': {
-                'abs': builtins.abs,
-                'min': builtins.min,
-                'max': builtins.max,
-                'len': builtins.len,
-                'range': builtins.range,
-                'list': builtins.list,
-                'dict': builtins.dict,
-            }
-        }
-        # 注入标准量化计算库
-        import numpy as np
-        import pandas as pd
-        self.safe_globals['np'] = np
-        self.safe_globals['pd'] = pd
-        # 还可以注入自定义算子库, 如 self.safe_globals['ts_mean'] = ta.ts_mean
-
-    def execute_factor_code(self, code_str: str, data: pd.DataFrame) -> pd.Series:
-        # 创建局部变量空间，传入行情数据
-        local_vars = {'df': data}
-        
-        # 检查代码中是否包含恶意关键字
-        forbidden = ['import', 'eval', 'exec', 'open', 'getattr', '__']
-        if any(word in code_str for word in forbidden):
-            raise SecurityError(f"Detected unsafe keyword in code: {code_str}")
-            
-        # 在受限的环境中执行
-        exec(code_str, self.safe_globals, local_vars)
-        
-        # 约定：LLM 生成的代码最终必须将结果赋予变量 `factor`
-        if 'factor' not in local_vars:
-            raise ValueError("The generated code must assign the result to the variable 'factor'")
-            
-        return local_vars['factor']
-```
+字符串关键字黑名单不是安全边界，也不得重新引入。新增 pandas/NumPy 能力时，应在 AST
+属性白名单中逐项开放，并同时增加允许用例和逃逸负向测试。
 
 ---
 
@@ -473,7 +441,7 @@ class MinerState:
         self.successful_reflections: List[Dict] = []
         self.failed_reflections: List[Dict] = []
         
-        # 3. 适用于 RL / DL
+        # 3. 适用于 RL / NN
         self.model_weights_bytes: Optional[bytes] = None
         self.replay_buffer: List[Any] = []
 
@@ -718,7 +686,7 @@ def llm_factor_mining(data, max_iterations=50):
 ```
 </details>
 
-### 8.4 深度表征学习 (Deep Representation Learning)
+### 8.4 NN：神经网络与深度表征学习
 
 **核心思想**:
 放弃寻找“明确的数学公式”。直接把全市场的股票数据切片张量，喂给深度神经网络。网络最后一层输出的隐变量 (Latent Variable) 直接作为因子的截面打分。
@@ -745,11 +713,11 @@ def llm_factor_mining(data, max_iterations=50):
 
 ### 8.4.1 训练张量与可保存因子的边界
 
-DL 的训练中间产物不能直接当作因子落盘。以 `MyCustomNNMiner` 为例，`channel=-1` 表示完整模型输出，仅用于让 `ParallelEvaluator` 返回带梯度的原始张量并完成反向传播；它不是最终可查看或交易的单因子。
+NN 的训练中间产物不能直接当作因子落盘。以 `MyCustomNNMiner` 为例，`channel=-1` 表示完整模型输出，仅用于让 `ParallelEvaluator` 返回带梯度的原始张量并完成反向传播；它不是最终可查看或交易的单因子。
 
 每轮权重更新后，Miner 将冻结的模型快照的每个输出通道物化为 `FactorExpressionTensor(model_version_id, channel_idx)`：单品种通道返回对齐行情索引的 `pd.Series`，跨资产通道返回时间 × 资产的 `pd.DataFrame`。模型仅在 `mine_period` 拟合权重和标准化参数，通道使用 `test_period` 的样本外 IC、RankIC、Turnover 与自定义 fitness 排名；跨轮候选还会按数值相关性过滤并保留全程 Top-K。
 
-`model_version_id` 由完整模型包内容摘要生成；每个通道同时拥有由 `{"model_version", "channel"}` 导出的逻辑哈希。`FactorMinerDirector` 保存时会把可恢复模型包写入 `factor_db/models/<model_version>.npz`，其中包含权重、偏置、特征顺序、标准化参数、数据模式和 schema 版本；每个通道仍使用兼容 WebUI 的 `{"type": "dl_channel", "model_version": ..., "channel": ...}`，并附加可选的 `model_file`、`model_format` 与特征元数据。旧的 `factor_db/weights/<model_version>.pt` 裸权重档案继续可读。
+`model_version_id` 由完整模型包内容摘要生成；每个通道同时拥有由 `{"model_version", "channel"}` 导出的逻辑哈希。`FactorMinerDirector` 保存时会把可恢复模型包写入 `factor_db/models/<model_version>.npz`，其中包含权重、偏置、特征顺序、标准化参数、数据模式和 schema 版本；新通道使用 `{"type": "nn_channel", "model_version": ..., "channel": ...}`，并附加可选的 `model_file`、`model_format` 与特征元数据。历史 `dl_channel` 和 `factor_db/weights/<model_version>.pt` 裸权重档案继续可读。
 
 <details><summary>底层逻辑参考实现</summary>
 
@@ -790,7 +758,7 @@ def dl_factor_mining(train_loader, epochs=100):
 | **GP** | 随机或交叉变异产生的 AST 公式树 | 多进程跑树解析，计算标量 IC/IR | 精英留存，强制淘汰低分树 | 优质的基因树种群 (Population) |
 | **RL** | Policy 网络采样出的一组 Action 轨迹 | 快速计算因子多空收益的夏普比率 | 计算优势函数，利用策略梯度更新网络 | 策略网络的权重与 Replay Buffer |
 | **LLM** | 提取 Markdown 得到的 Python 源码 | 沙盒执行代码，拦截危险指令并测算 IC | 将表现或报错信息转化为文本反思日志 | 成功与失败的 Few-shot 案例库 |
-| **DL** | 特征提取网络前向传播得到的 Tensor 隐通道 | 保持计算图不塌陷，计算 Batch IC Loss | 执行 `loss.backward()` 与权重更新 | 神经网络本身的参数字典 (.pt 权重) |
+| **NN** | 特征提取网络前向传播得到的 Tensor 隐通道 | 保持计算图不塌陷，计算 Batch IC Loss | 执行 `loss.backward()` 与权重更新 | 神经网络本身的参数字典 (.pt 权重) |
 
 ---
 
@@ -951,7 +919,7 @@ factorminer mine --miner MyCustomGP --config user_workspace/configs/demo_config.
 
 - DynamicLoader 返回模块加载报告；CLI 和 WebUI Launchpad 在创建数据客户端前汇总模块导入错误、Miner 存在性、data_feeds 基础字段、算子注册/arity、Fitness Hook 名称。
 - 算子注册只允许 arity 为 1 或 2，函数签名必须覆盖声明的参数数量；Fitness Hook 必须接收 factor_values、returns、base_metrics。未知配置会失败并返回可行动的错误，而非回退为零因子或默认评分。
-- tests/test_cli_smoke.py 在临时目录写入最小 Feather 数据，实际调用公开 CLI 验证 MyCustomGP、MyCustomRL、MyCustomLLM、MyCustomNN 均能完成一轮并落盘因子元数据。
+- tests/test_cli_smoke.py 在临时目录写入最小 Feather 数据，实际调用公开 CLI 验证 MyCustomGP、MyCustomRL、MyCustomLLM、NN 均能完成一轮并落盘因子元数据。
 - 真实运行的档案指标采用稳定键名 `IC`、`RankIC`、`Turnover`、`fitness_score`。前端摘要、任务结果和 Inspector 必须直接消费该契约；不能以不存在的小写别名读取并将缺失值误呈现为零。变更 Python 执行链路后需重启 FastAPI；重启只丢弃 `TaskManager` 的内存 Tracker，不影响 `LocalFactorStorage` 的 metadata 和 values 快照。
 
 README 的目录地图以该边界为准：`core/` 只承担研究执行，`api/` 负责服务与任务可观测性，`web/` 负责研究工作台，`user_workspace/` 是策略、算子和评分的用户扩展面，`factor_db/` 只保存可追溯的研究产物。
@@ -973,44 +941,34 @@ class FactorCompiler:
     """
     因子上线编译器：将存储的因子逻辑转化为实盘极速推理模块
     """
-    def __init__(self, storage_client: FactorStorageInterface):
+    def __init__(self, storage_client, sandbox):
         self.storage = storage_client
+        self.sandbox = sandbox
 
     def compile_for_live_trading(self, factor_id: str):
         metadata = self.storage.get_metadata(factor_id)
-        
-        if metadata.miner_type == "GP":
-            # 将 JSON AST 编译为 numexpr 表达式或 C++ 算子
-            ast_dict = self.storage.get_gp_logic(factor_id)
-            return self._compile_ast_to_numexpr(ast_dict)
-            
-        elif metadata.miner_type == "LLM":
-            # 将 Python 字符串预编译为 Bytecode，避免实盘重复解析
-            code_str = self.storage.get_llm_logic(factor_id)
-            return compile(code_str, f"<{factor_id}>", "exec")
-            
-        elif metadata.miner_type == "DL":
-            # 将 PyTorch 权重导出为 ONNX 或 TensorRT 引擎以加速实盘前向传播
-            pt_model = self.storage.get_dl_model(metadata.logic_reference['model_version_id'])
-            return self._export_to_onnx(pt_model)
+        logic = metadata.logic_reference
+
+        # 按稳定的 logic_reference.type 分流，而不是按可自定义的 Miner 名称分流。
+        if logic["type"] == "json_ast":
+            return FactorExpressionAST(logic["ast"]).compute
+        if logic["type"] == "python_source":
+            code = self.storage.load_llm_source(logic["source_file"])
+            self.sandbox.validate_code(code)
+            return FactorExpressionCode(code, sandbox=self.sandbox).compute
+        if logic["type"] in {"nn_channel", "dl_channel"}:
+            model = load_portable_model(self.storage, logic)
+            return lambda data: model.predict_channel(data, logic["channel"])
+        raise NotImplementedError("该产物不能重建为可执行因子")
 
     def deploy_to_live_server(self, factor_id: str, server_target: str):
-        """
-        【进阶扩充】将编译好的因子逻辑与标准交易脚手架（Trader SDK）打包，
-        生成独立的执行容器，一键推送到实盘计算节点。
-        """
-        compiled_engine = self.compile_for_live_trading(factor_id)
-        
-        # 【对齐输出】无论底层是 NumExpr、Bytecode 还是 ONNX，都在外围包一层统一的 gRPC 接口或 C-Wrapper，
-        # 让实盘极速交易网关（如 C++/Rust 网关）能够用同一种姿势调用所有因子
-        wrapped_engine = self._wrap_with_grpc_interface(compiled_engine)
-        
-        # 生成标准化策略包 (Strategy Container)
-        strategy_package = self._build_execution_container(wrapped_engine)
-        # 推送至实盘云服务器节点
-        self._push_to_server(strategy_package, server_target)
-        return {"status": "success", "endpoint": server_target}
+        self.compile_for_live_trading(factor_id)  # 只验证能否重建
+        raise NotImplementedError("尚未实现部署传输层，因子没有被推送")
 ```
+
+当前仓库只负责把持久化产物安全地重建为本地 callable。真正的镜像构建、签名、审批、
+推送、回滚和远端健康检查尚未实现，因此接口不得返回“部署成功”。接入真实传输层后，
+只有收到远端节点确认并记录部署版本时才能转为成功状态。
 
 ### 10.2 补齐“怎么看”：FactorInspector (白盒化审查台)
 
@@ -1040,8 +998,8 @@ class FactorInspector:
         elif metadata.miner_type == "LLM":
             print("生成代码:\n", self.storage.get_llm_logic(factor_id))
             print("\n大模型反思日志:\n", self.storage.get_llm_reflection(factor_id))
-        elif metadata.miner_type == "DL":
-            print(f"深度学习提取特征通道: {metadata.logic_reference['channel_index']}")
+        elif metadata.logic_reference.get("type") in {"nn_channel", "dl_channel"}:
+            print(f"NN 提取特征通道: {metadata.logic_reference['channel_index']}")
             # 可拓展特征归因分析 (Feature Importance / SHAP 值)
 ```
 
@@ -1054,7 +1012,7 @@ class FactorInspector:
 - **GP (MyCustomGPMiner)**: 验证了基于抽象语法树的进化、变异和交叉，能够根据配置进行因子繁衍。
 - **RL (MyCustomRLMiner)**: 验证了策略梯度思想，通过概率权重字典实现了无 PyTorch 依赖的轻量级强化学习寻优闭环。
 - **LLM (MyCustomLLMMiner)**: 成功实现了大语言模型反思记忆（Reflection Loop）驱动的代码生成。验证了并行执行沙盒 `RestrictedSandbox` 的安全性，并在缺乏真实 API Key 时，验证了系统的容灾限流及优雅降级机制。
-- **DL (MyCustomNNMiner)**: 基于纯 NumPy 构建了包含反向传播（Backpropagation）能力的微型张量机制 `MockTensor`。训练完成后，模型输出会按通道物化、评分、保留 Top-K，并将权重与通道元数据一同持久化，已打通 CLI 与 Web 的统一结果链路。
+- **NN (MyCustomNNMiner)**: 基于纯 NumPy 构建了包含反向传播（Backpropagation）能力的微型张量机制 `MockTensor`。训练完成后，模型输出会按通道物化、评分、保留 Top-K，并将权重与通道元数据一同持久化，已打通 CLI 与 Web 的统一结果链路。
 - **并行评估与沙盒引擎 (ParallelEvaluator)**: 全面打通了回测评分闭环。验证了 `EvaluatorRegistry` 对于外部自定义挂钩 (`custom_fitness`) 的无缝动态注入（如实现了惩罚换手率的 `my_bear_market_hunter`），保证了回测评价维度的无限扩展。
 - **因子归因与审查引擎 (FactorInspectorEngine)**: 实现了 `core/inspector/` 独立审查模块与 `factorminer inspect` CLI 命令。支持从 Factor ID、AST 字典字符串或 Python 源码解析因子，在多币种与样本外 (OOS) 时间段计算 Coverage（有效覆盖率）、Pearson/RankIC (Mean/Std/IR/t-stat)、Lag 1..10 延迟衰减、5-Quantile 组间收益与换手率，并利用 Rich 库输出终端卡片面板。
 
@@ -1090,7 +1048,7 @@ Inspector 不能读取 `TaskManager` 中的临时任务结果作为因子档案�
 - `GET /api/factors/{factor_id}`：返回元数据、按存储类型还原的逻辑引用，以及因子值审查快照是否存在；
 - `PATCH /api/factors/{factor_id}/lifecycle`：持久化 `DISCOVERED → INSPECTED → PAPER_TRADING → LIVE / RETIRED` 等人工审查状态。
 
-前端根据 `logic_reference.type` 而不是笼统的 Miner 名称呈现白盒内容：`json_ast` 绘制 AST 树并展示表达式，`python_source` 读取受控源码文件，`rl_actions` 展示动作轨迹，`dl_channel` 展示模型版本、输出通道和权重工件是否存在。Launchpad 的已保存因子 ID 使用 `/inspector?factor=<id>` 直接跳转到对应档案。
+前端根据 `logic_reference.type` 而不是笼统的 Miner 名称呈现白盒内容：`json_ast` 绘制 AST 树并展示表达式，`python_source` 读取受控源码文件，`rl_actions` 展示动作轨迹，`nn_channel` 展示模型版本、输出通道和权重工件是否存在；历史 `dl_channel` 会在 API 层归一化为 `nn_channel`。Launchpad 的已保存因子 ID 使用 `/inspector?factor=<id>` 直接跳转到对应档案。
 
 Phase II 在 Director 落盘逻辑工件后，重新以该候选和同一数据客户端物化因子值，并和 `RealDataClient.get_returns()` 返回的未来收益对齐，写入 `factor_db/values/<factor_id>.parquet`。标准 schema 为 `timestamp, asset（截面模式）, factor, forward_return`；`FactorMetadata.data_lineage` 同时记录数据源、交易对、市场类型、周期、输入流、样本范围和 `close.pct_change().shift(-1)` 的收益定义。
 

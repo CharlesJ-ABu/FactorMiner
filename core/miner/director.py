@@ -14,6 +14,9 @@ class FactorMinerDirector:
     负责组装数据源、配置、评价器，并驱动底层具体流派的 Miner 跑完闭环。
     """
     def __init__(self, config: Dict, data_client: Any):
+        from core.startup_validation import normalize_deprecated_miner
+
+        normalize_deprecated_miner(config)
         self.config = config
         self.data_client = data_client
         self.storage_client = get_global_storage()
@@ -48,12 +51,14 @@ class FactorMinerDirector:
         elif paradigm == "LLM":
             from .paradigms.llm_miner import LLMFactorMiner
             return LLMFactorMiner(data, config)
-        elif paradigm == "DL":
-            from .paradigms.dl_miner import DLFactorMiner
-            return DLFactorMiner(data, config)
         elif paradigm == "RL":
             from .paradigms.rl_miner import RLFactorMiner
             return RLFactorMiner(data, config)
+        elif paradigm == "NN":
+            raise ValueError(
+                "NN miner implementation is not registered. Load user modules "
+                "and use the bundled NN/MyCustomNN implementation."
+            )
         else:
             raise ValueError(f"Unknown paradigm: {paradigm}. Did you forget to register it?")
 
@@ -97,7 +102,12 @@ class FactorMinerDirector:
             if isinstance(cand, FactorExpressionAST):
                 self.storage_client.save_gp_factor(cand.get_source(), metadata)
             elif isinstance(cand, FactorExpressionCode):
-                self.storage_client.save_llm_factor(cand.get_source(), cand.get_reflection_history(), metadata)
+                self.storage_client.save_llm_factor(
+                    cand.get_source(),
+                    cand.get_reflection_history(),
+                    metadata,
+                    provenance=cand.get_provenance(),
+                )
             elif isinstance(cand, FactorExpressionAction):
                 self.storage_client.save_rl_factor(cand.get_source(), b"", metadata)
             elif isinstance(cand, FactorExpressionTensor):
@@ -130,7 +140,7 @@ class FactorMinerDirector:
                                 "Failed to persist weights for model %s: %s",
                                 src["model_version"], exc,
                             )
-                self.storage_client.save_dl_factor_channel(
+                self.storage_client.save_nn_factor_channel(
                     src["model_version"],
                     src["channel"],
                     metadata,

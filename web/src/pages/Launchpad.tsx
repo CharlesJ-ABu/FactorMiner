@@ -34,7 +34,7 @@ export function Launchpad() {
         return [lastMessage.task, ...prev];
       });
       // Also update selected task if it's currently open
-      setSelectedTask(current => {
+      setSelectedTask((current: any | null) => {
         if (current && current.id === lastMessage.task.id) {
           return lastMessage.task;
         }
@@ -231,7 +231,7 @@ export function Launchpad() {
               {tasks.length === 0 && (
                 <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">No tasks running.</td></tr>
               )}
-              {tasks.map((row, i) => (
+              {tasks.map((row) => (
                 <tr 
                   key={row.id} 
                   className="hover:bg-secondary/50 transition-colors cursor-pointer"

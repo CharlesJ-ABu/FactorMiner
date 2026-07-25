@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, Iterable
 
 from core.miner.operator_runtime import OperatorRuntimeError, resolve_operator_specs
@@ -13,7 +14,25 @@ class StartupValidationError(ValueError):
     """A user-facing aggregation of launch configuration problems."""
 
 
-NATIVE_MINERS = {"GP", "RL", "LLM", "DL"}
+logger = logging.getLogger(__name__)
+
+NATIVE_MINERS = {"GP", "RL", "LLM"}
+DEPRECATED_MINER_ALIASES = {"DL": "NN"}
+
+
+def normalize_deprecated_miner(config: Dict[str, Any]) -> str | None:
+    """Mutate deprecated public miner names to their supported replacement."""
+    paradigm = config.get("paradigm")
+    replacement = DEPRECATED_MINER_ALIASES.get(paradigm)
+    if replacement:
+        logger.warning(
+            "Miner '%s' is deprecated and will be removed; using '%s'. "
+            "Update the configuration.",
+            paradigm,
+            replacement,
+        )
+        config["paradigm"] = replacement
+    return replacement
 
 
 def _as_error_list(value: Any, label: str) -> list[str]:
@@ -25,6 +44,7 @@ def _as_error_list(value: Any, label: str) -> list[str]:
 def validate_mining_startup(config: Dict[str, Any], load_report: ModuleLoadReport | None = None) -> None:
     """Validate dynamic extensions and the parts of config that select them."""
     errors: list[str] = []
+    normalize_deprecated_miner(config)
 
     if load_report:
         errors.extend(load_report.errors)

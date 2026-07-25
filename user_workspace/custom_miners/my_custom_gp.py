@@ -121,9 +121,10 @@ class MyCustomGPMiner(BaseFactorMiner):
         logger.info("MyCustomGP: Updating population based on fitness (Elitism)...")
         
         scored = []
-        for idx, expr in enumerate(candidates):
-            if idx < len(feedback.metrics):
-                score = feedback.metrics[idx].get("fitness_score", 0)
+        for expr in candidates:
+            result = feedback.for_candidate(expr)
+            if result and result.succeeded:
+                score = result.metrics.get("fitness_score", 0)
                 scored.append((score, expr))
                 
         # 按照 fitness_score 降序排列

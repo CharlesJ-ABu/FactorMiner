@@ -42,6 +42,7 @@ class MyNNExpression(FactorExpressionTensor):
         return self.model_instance.predict_channel(data, self.channel_idx)
 
 
+@MinerRegistry.register("NN")
 @MinerRegistry.register("MyCustomNN")
 class MyCustomNNMiner(BaseFactorMiner):
     """Extensible reference NN miner with OOS selection and portable artifacts."""

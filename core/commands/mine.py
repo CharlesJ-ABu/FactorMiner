@@ -51,7 +51,8 @@ def run_miner(args):
         sys.exit(1)
     
     # 3. 初始化并启动
-    logger.info(f"Starting FactorMiner execution for miner: {args.miner}")
+    selected_miner = config_dict["paradigm"]
+    logger.info(f"Starting FactorMiner execution for miner: {selected_miner}")
     from core.data_feed.real_client import RealDataClient
     
     mining_mode = config_dict.get("data_feeds", {}).get("mining_mode", "sequential_single")
@@ -114,7 +115,7 @@ def run_miner(args):
                             metrics = cand.metrics
                             fitness = f"{metrics.get('fitness_score', 0):.4f}"
                             ic = f"{metrics.get('IC', 0):.4f}"
-                            paradigm = args.miner
+                            paradigm = selected_miner
                             logic = cand.to_display_string(max_length=None)
                             
                             table.add_row(str(idx + 1), f_id, paradigm, logic, fitness, ic)
@@ -159,7 +160,7 @@ def run_miner(args):
                     metrics = cand.metrics
                     fitness = f"{metrics.get('fitness_score', 0):.4f}"
                     ic = f"{metrics.get('IC', 0):.4f}"
-                    paradigm = args.miner
+                    paradigm = selected_miner
                     logic = cand.to_display_string(max_length=None)
                     
                     table.add_row(str(idx + 1), f_id, paradigm, logic, fitness, ic)

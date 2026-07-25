@@ -3,6 +3,7 @@ import json
 import logging
 from typing import Any, Dict, Union
 
+from core.evaluation.code_sandbox import RestrictedSandbox
 from core.miner.expressions import FactorExpression, FactorExpressionAST, FactorExpressionCode
 from core.storage.factor_storage import FactorStorageInterface, LocalFactorStorage
 
@@ -13,8 +14,13 @@ class FactorResolver:
     """
     因子解析器：将 Factor ID、AST 字典字符串或 Python 代码解析为统一的 FactorExpression 对象。
     """
-    def __init__(self, storage: FactorStorageInterface = None):
+    def __init__(
+        self,
+        storage: FactorStorageInterface = None,
+        sandbox: RestrictedSandbox = None,
+    ):
         self.storage = storage or LocalFactorStorage()
+        self.sandbox = sandbox or RestrictedSandbox()
 
     def resolve(
         self,
@@ -39,13 +45,14 @@ class FactorResolver:
             if l_type == "json_ast" and "ast" in logic_ref:
                 return FactorExpressionAST(ast_dict=logic_ref["ast"])
             elif l_type == "python_source" and "source_file" in logic_ref:
-                import os
-                src_path = os.path.join("factor_db", "src", logic_ref["source_file"])
-                if os.path.exists(src_path):
-                    with open(src_path, "r") as f:
-                        code_content = f.read()
-                    return FactorExpressionCode(code_str=code_content)
-                raise ValueError(f"Source file {src_path} for factor {factor_id} not found.")
+                source_file = logic_ref["source_file"]
+                code_content = self.storage.load_llm_source(source_file)
+                return FactorExpressionCode(
+                    code_str=code_content,
+                    sandbox=self.sandbox,
+                    reflection_history=logic_ref.get("reflection", ""),
+                    provenance=logic_ref.get("provenance", {}),
+                )
             elif "ast_dict" in logic_ref:
                 return FactorExpressionAST(ast_dict=logic_ref["ast_dict"])
             elif "expression" in logic_ref:
@@ -76,6 +83,6 @@ class FactorResolver:
         # 3. 从 Python 代码解析
         if code_str:
             logger.info("Resolving factor from Python code string...")
-            return FactorExpressionCode(code_str=code_str)
+            return FactorExpressionCode(code_str=code_str, sandbox=self.sandbox)
 
         raise ValueError("Must provide at least one of factor_id, ast_str, ast_dict, or code_str to resolve a factor.")

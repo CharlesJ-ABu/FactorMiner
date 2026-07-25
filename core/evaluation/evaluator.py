@@ -1,57 +1,20 @@
 import concurrent.futures
 import traceback
-import builtins
 import logging
 from typing import List, Dict, Any
 
 from core.miner.expressions import FactorExpression
-from core.miner.entities import EvaluationFeedback
+from core.miner.entities import CandidateEvaluation, EvaluationFeedback
 from core.miner.registry import EvaluatorRegistry
+from core.evaluation.code_sandbox import (
+    FactorOutputError,
+    RestrictedSandbox,
+    SandboxExecutionError,
+    SandboxTimeoutError,
+    SecurityError,
+)
 
 logger = logging.getLogger(__name__)
-
-class SecurityError(Exception):
-    pass
-
-class RestrictedSandbox:
-    """安全的 Python 因子代码执行沙盒"""
-    def __init__(self):
-        # 严格限制能调用的内置函数
-        self.safe_globals = {
-            '__builtins__': {
-                'abs': builtins.abs,
-                'min': builtins.min,
-                'max': builtins.max,
-                'len': builtins.len,
-                'range': builtins.range,
-                'list': builtins.list,
-                'dict': builtins.dict,
-            }
-        }
-        # 注入标准量化计算库
-        import numpy as np
-        import pandas as pd
-        self.safe_globals['np'] = np
-        self.safe_globals['pd'] = pd
-
-    def execute_factor_code(self, code_str: str, data: Any) -> Any:
-        # 创建局部变量空间，传入行情数据
-        local_vars = {'df': data}
-        
-        # 检查代码中是否包含恶意关键字
-        forbidden = ['import', 'eval', 'exec', 'open', 'getattr', '__']
-        for word in forbidden:
-            if word in code_str:
-                raise SecurityError(f"Detected unsafe keyword in code: {word}")
-            
-        # 在受限的环境中执行
-        exec(code_str, self.safe_globals, local_vars)
-        
-        # 约定：LLM 生成的代码最终必须将结果赋予变量 `factor`
-        if 'factor' not in local_vars:
-            raise ValueError("The generated code must assign the result to the variable 'factor'")
-            
-        return local_vars['factor']
 
 class ParallelEvaluator:
     """
@@ -61,6 +24,19 @@ class ParallelEvaluator:
     def __init__(self, data_client: Any, config: Dict):
         self.data_client = data_client
         self.config = config
+        configured_workers = self.config.get("evaluation", {}).get("max_workers", 8)
+        if isinstance(configured_workers, bool):
+            raise ValueError("evaluation.max_workers must be a positive integer")
+        try:
+            self.max_workers = int(configured_workers)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "evaluation.max_workers must be a positive integer"
+            ) from exc
+        if not 1 <= self.max_workers <= 64:
+            raise ValueError(
+                "evaluation.max_workers must be an integer between 1 and 64"
+            )
 
     @staticmethod
     def _calculate_built_in_metrics(factor_values: Any, returns: Any) -> Dict:
@@ -73,18 +49,6 @@ class ParallelEvaluator:
         if factor_values is None or returns is None:
             return metrics
             
-        # 兼容性检查
-        if not isinstance(factor_values, pd.Series):
-            try:
-                factor_values = pd.Series(factor_values)
-            except:
-                pass
-        if not isinstance(returns, pd.Series):
-            try:
-                returns = pd.Series(returns)
-            except:
-                pass
-                
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=Warning)
             if isinstance(factor_values, pd.DataFrame) and isinstance(returns, pd.DataFrame):
@@ -121,6 +85,51 @@ class ParallelEvaluator:
                     
         return metrics
 
+    @staticmethod
+    def _validate_metric_inputs(factor_values: Any, returns: Any) -> None:
+        """Reject shape/index coercion before metrics can silently realign data."""
+        import numpy as np
+        import pandas as pd
+
+        if isinstance(returns, pd.Series):
+            if not isinstance(factor_values, pd.Series):
+                raise FactorOutputError(
+                    "Factor output must be pandas.Series when returns is pandas.Series"
+                )
+            if not factor_values.index.equals(returns.index):
+                raise FactorOutputError("Factor and returns indexes must match exactly")
+            objects = [factor_values, returns]
+        elif isinstance(returns, pd.DataFrame):
+            if not isinstance(factor_values, pd.DataFrame):
+                raise FactorOutputError(
+                    "Factor output must be pandas.DataFrame when returns is pandas.DataFrame"
+                )
+            if (
+                not factor_values.index.equals(returns.index)
+                or not factor_values.columns.equals(returns.columns)
+            ):
+                raise FactorOutputError(
+                    "Factor and returns indexes and columns must match exactly"
+                )
+            objects = [factor_values, returns]
+        else:
+            raise FactorOutputError(
+                f"Returns must be pandas.Series or pandas.DataFrame, received "
+                f"{type(returns).__name__}"
+            )
+
+        for value in objects:
+            if value.index.has_duplicates:
+                raise FactorOutputError("Metric inputs must not contain duplicate indexes")
+            dtypes = [value.dtype] if isinstance(value, pd.Series) else list(value.dtypes)
+            if any(not pd.api.types.is_numeric_dtype(dtype) for dtype in dtypes):
+                raise FactorOutputError("Metric inputs must contain numeric values only")
+            numeric = value.to_numpy(dtype=float, na_value=float("nan"))
+            if bool((~np.isnan(numeric) & ~np.isfinite(numeric)).any()):
+                raise FactorOutputError("Metric inputs must not contain infinite values")
+        if factor_values.notna().to_numpy().sum() == 0:
+            raise FactorOutputError("Factor output must contain at least one finite value")
+
     def evaluate(self, candidates: List[FactorExpression]) -> EvaluationFeedback:
         """Evaluate candidates on the configured mining split."""
         return self.evaluate_on(
@@ -137,6 +146,8 @@ class ParallelEvaluator:
     ) -> EvaluationFeedback:
         """Evaluate candidates on an explicit split without mutating the data client."""
         feedback = EvaluationFeedback()
+        if not candidates:
+            return feedback
         
         # 提取用户配置的自定义打分钩子
         fitness_hook_name = self.config.get("fitness", {}).get("hook")
@@ -144,15 +155,20 @@ class ParallelEvaluator:
         if fitness_hook_name:
             fitness_func = EvaluatorRegistry._registry.get(fitness_hook_name)
 
-        def safe_compute(expr: FactorExpression) -> Dict:
+        def safe_compute(expr: FactorExpression) -> CandidateEvaluation:
             try:
                 factor_values = expr.compute(data)
                 
                 # 如果是深度学习网络直接输出的 tensor (带有梯度图)
                 if hasattr(factor_values, 'requires_grad') and factor_values.requires_grad:
-                    return {"status": "success", "raw_outputs": factor_values, "expr": expr}
+                    return CandidateEvaluation(
+                        candidate=expr,
+                        status="success",
+                        raw_outputs=factor_values,
+                    )
 
                 # 标量评价
+                self._validate_metric_inputs(factor_values, returns)
                 # 强制计算基础指标
                 base_metrics = self._calculate_built_in_metrics(factor_values, returns)
                 
@@ -181,22 +197,27 @@ class ParallelEvaluator:
                     metrics = {**base_metrics, "coverage": coverage, "fitness_score": float(fitness_score)}
                 
                 expr.metrics = metrics
-                return {"status": "success", "metrics": metrics, "expr": expr}
+                return CandidateEvaluation(
+                    candidate=expr,
+                    status="success",
+                    metrics=metrics,
+                )
             except Exception as e:
                 # 记录详细报错供 LLM 反思或排查
-                return {"status": "error", "traceback": traceback.format_exc(), "expr": expr}
+                return CandidateEvaluation(
+                    candidate=expr,
+                    status="error",
+                    error_type=type(e).__name__,
+                    error_message=str(e),
+                    traceback=traceback.format_exc(),
+                )
 
-        # 简单使用线程池并行求值，生产环境可替换为 Ray 集群
-        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        worker_count = min(self.max_workers, len(candidates))
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=worker_count,
+            thread_name_prefix="factor-evaluator",
+        ) as executor:
             results = list(executor.map(safe_compute, candidates))
             
-        for res in results:
-            if res["status"] == "error":
-                feedback.execution_status.append(res)
-            else:
-                if "raw_outputs" in res:
-                    feedback.raw_outputs = res["raw_outputs"] # 粗略演示：取最后一个或者集成
-                else:
-                    feedback.metrics.append(res["metrics"])
-                    
+        feedback.results.extend(results)
         return feedback

@@ -3,7 +3,12 @@ import unittest
 import pandas as pd
 
 from core.miner.operator_runtime import OperatorRuntimeError, evaluate_ast, resolve_operator_specs
-from core.miner.registry import EvaluatorRegistry, ExtensionRegistrationError, OperatorRegistry
+from core.miner.registry import (
+    EvaluatorRegistry,
+    ExtensionRegistrationError,
+    MinerRegistry,
+    OperatorRegistry,
+)
 from core.startup_validation import StartupValidationError, validate_mining_startup
 from core.utils.dynamic_loader import load_user_modules
 
@@ -63,6 +68,21 @@ class OperatorRuntimeTests(unittest.TestCase):
 
         with self.assertRaisesRegex(StartupValidationError, "Unknown Miner 'MissingMiner'"):
             validate_mining_startup(config, self.report)
+
+    def test_deprecated_dl_name_is_mapped_to_nn(self):
+        config = {
+            "paradigm": "DL",
+            "max_iterations": 1,
+            "data_feeds": {
+                "pairs": ["BTC/USDT:USDT"],
+                "required_streams": ["close", "volume"],
+            },
+        }
+        with self.assertLogs("core.startup_validation", level="WARNING") as logs:
+            validate_mining_startup(config, self.report)
+        self.assertEqual(config["paradigm"], "NN")
+        self.assertIn("deprecated", "\n".join(logs.output))
+        self.assertIn("NN", MinerRegistry._registry)
 
     def test_invalid_extension_signatures_fail_at_registration(self):
         with self.assertRaisesRegex(ExtensionRegistrationError, "arity must be 1 or 2"):

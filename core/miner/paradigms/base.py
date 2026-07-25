@@ -40,7 +40,7 @@ class DiversityFilter:
 class BaseFactorMiner(ABC):
     """
     因子挖掘的通用基类范式
-    适用于 GP (遗传), RL (强化学习), LLM (大模型), DL (深度学习)
+    适用于 GP (遗传), RL (强化学习), LLM (大模型), NN (神经网络)
     """
     
     def __init__(self, data: Any, config: Dict):
@@ -91,7 +91,7 @@ class BaseFactorMiner(ABC):
         """
         3. 评价与打分 (Evaluate / Reward)
         - GP/LLM/RL: 返回传统的指标（IC、夏普等）。
-        - DL: 携带计算图 Tensor 原样返回，供 update_model 梯度计算。
+        - NN: 携带计算图 Tensor 原样返回，供 update_model 梯度计算。
         """
         pass
 
@@ -101,7 +101,7 @@ class BaseFactorMiner(ABC):
         4. 反馈与模型更新 (Feedback & Learn)
         - GP: 更新种群 (self.state.population = new_trees)
         - LLM: 更新反思记忆 (self.state.failed_reflections.append(...))
-        - DL: 执行反向传播 (loss.backward(); optimizer.step())
+        - NN: 执行反向传播 (loss.backward(); optimizer.step())
         """
         pass
 
@@ -124,6 +124,7 @@ class BaseFactorMiner(ABC):
 
         
         for epoch in range(n_iterations):
+            self.current_epoch = epoch
             # 1. 提案
             raw_candidates = self.generate_candidates()
             
@@ -140,10 +141,11 @@ class BaseFactorMiner(ABC):
             feedback = self.evaluate_candidates(candidates)
             
             # 2.5 搜集本轮高分因子放入名人堂 (Hall of Fame)
-            if feedback and feedback.metrics:
-                for idx, cand in enumerate(candidates):
-                    if idx < len(feedback.metrics):
-                        metrics = feedback.metrics[idx]
+            if feedback:
+                for cand in candidates:
+                    result = feedback.for_candidate(cand)
+                    if result and result.succeeded and result.metrics:
+                        metrics = result.metrics
                         score = metrics.get("fitness_score", 0.0)
                         cand.metrics = metrics
                         self._update_hall_of_fame(cand, score)

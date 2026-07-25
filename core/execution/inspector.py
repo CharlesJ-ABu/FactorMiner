@@ -38,8 +38,8 @@ class FactorInspector:
             src_file = logic_ref.get("source_file")
             print(f"LLM Generated Source File: {src_file}")
             print(f"LLM Reflection Log: {logic_ref.get('reflection')}")
-        elif miner_type == "DL":
-            print(f"DL Extraction Channel: {logic_ref.get('channel')} from model {logic_ref.get('model_version')}")
+        elif logic_ref.get("type") in {"nn_channel", "dl_channel"}:
+            print(f"NN Extraction Channel: {logic_ref.get('channel')} from model {logic_ref.get('model_version')}")
         elif miner_type == "RL":
             print(f"RL Action Trajectory: {logic_ref.get('actions')}")
             

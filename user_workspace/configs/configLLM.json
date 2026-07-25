@@ -13,7 +13,9 @@
         "mining_mode": "sequential_single"
     },
     "llm_api_config": {
-        "keys": ["sk-dummy_api_key_for_testing"], 
+        "keys_env": ["AI_API_KEY", "OPENAI_API_KEY"],
+        "model_env": "AI_MODEL",
+        "base_url_env": "AI_API_BASE",
         "base_url": "https://api.openai.com/v1/chat/completions",
         "model": "gpt-4",
         "max_concurrency": 2,

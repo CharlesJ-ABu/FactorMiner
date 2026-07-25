@@ -64,7 +64,7 @@ class CLISmokeTests(unittest.TestCase):
             config["rl_config"] = {"learning_rate": 0.1, "max_depth": 2}
         if miner == "MyCustomLLM":
             config["population_size"] = 1
-        if miner in {"MyCustomNN", "MyTemporalNN"}:
+        if miner in {"NN", "MyCustomNN", "MyTemporalNN"}:
             config.update({"population_size": 1, "hidden_dim": 2, "learning_rate": 0.01})
             config["nn_training_epochs"] = 5
             config["data_feeds"]["mine_period"] = [
@@ -125,11 +125,11 @@ class CLISmokeTests(unittest.TestCase):
                 list((root / "factor_db" / "values").glob("*.parquet")),
                 msg=result.stdout + "\n" + result.stderr,
             )
-            if miner in {"MyCustomNN", "MyTemporalNN"}:
+            if miner in {"NN", "MyCustomNN", "MyTemporalNN"}:
                 metadata_files = list((root / "factor_db" / "metadata").glob("*.json"))
                 metadata = json.loads(metadata_files[0].read_text(encoding="utf-8"))
                 logic = metadata["logic_reference"]
-                self.assertEqual(logic["type"], "dl_channel")
+                self.assertEqual(logic["type"], "nn_channel")
                 expected_format = (
                     "numpy_temporal_ic_mlp_v1"
                     if miner == "MyTemporalNN"
@@ -150,7 +150,7 @@ class CLISmokeTests(unittest.TestCase):
         self._run_miner("MyCustomLLM")
 
     def test_nn_cli_smoke(self):
-        self._run_miner("MyCustomNN")
+        self._run_miner("NN")
 
     def test_temporal_nn_cli_smoke(self):
         self._run_miner("MyTemporalNN")

@@ -192,7 +192,7 @@ class NNMinerTests(unittest.TestCase):
                     "nn_new", artifact.payload, artifact.extension
                 )
                 metadata = FactorMetadata("new", "MyCustomNN", "tester")
-                storage.save_dl_factor_channel(
+                storage.save_nn_factor_channel(
                     "nn_new",
                     0,
                     metadata,
@@ -210,7 +210,7 @@ class NNMinerTests(unittest.TestCase):
 
                 storage.save_model_weights("nn_legacy", b"legacy")
                 legacy_metadata = FactorMetadata("legacy", "MyCustomNN", "tester")
-                storage.save_dl_factor_channel("nn_legacy", 1, legacy_metadata)
+                storage.save_nn_factor_channel("nn_legacy", 1, legacy_metadata)
                 legacy_logic = _factor_logic(storage.get_metadata("legacy"))
                 self.assertTrue(legacy_logic["weights_available"])
                 self.assertEqual(legacy_logic["model_format"], "legacy_raw_weights")

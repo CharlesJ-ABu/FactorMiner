@@ -2,6 +2,7 @@ import logging
 import asyncio
 import random
 import json
+import re
 import time
 from typing import List, Dict, Any, Optional
 # aiohttp is typically used for high concurrency async HTTP requests.
@@ -51,6 +52,30 @@ class LLMAPIManager:
         """从密钥池中随机挑选一个，摊薄单 Key 压力"""
         return random.choice(self.api_keys)
 
+    def _redact_sensitive_text(self, value: Any, max_length: int = 500) -> str:
+        """Return a bounded diagnostic string without credentials or bearer tokens."""
+        text = str(value).replace("\r", " ").replace("\n", " ")
+        for api_key in self.api_keys:
+            if api_key:
+                text = text.replace(api_key, "[REDACTED]")
+        text = re.sub(
+            r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+",
+            "Bearer [REDACTED]",
+            text,
+        )
+        text = re.sub(
+            r"\bsk-[A-Za-z0-9_-]+",
+            "sk-[REDACTED]",
+            text,
+        )
+        text = re.sub(
+            r'(?i)(["\']?(?:api[_-]?key|token|secret|password)["\']?\s*[:=]\s*)'
+            r'(["\']?)[^,\s}\]]+\2',
+            r"\1[REDACTED]",
+            text,
+        )
+        return text[:max_length]
+
     async def _call_single_prompt(self, session: aiohttp.ClientSession, prompt: str, semaphore: asyncio.Semaphore) -> Optional[str]:
         payload = {
             "model": self.model,
@@ -76,12 +101,19 @@ class LLMAPIManager:
                         elif response.status == 429:
                             # 触发限流，进入指数退避
                             wait_time = (2 ** attempt) + random.uniform(0, 1)
-                            logger.warning(f"Rate limited (429) on key {api_key[:8]}... Retrying in {wait_time:.2f}s")
+                            logger.warning(
+                                "Rate limited (429). Retrying in %.2fs",
+                                wait_time,
+                            )
                             await asyncio.sleep(wait_time)
                             
                         else:
                             error_text = await response.text()
-                            logger.error(f"API Error {response.status}: {error_text}")
+                            logger.error(
+                                "LLM API error %s: %s",
+                                response.status,
+                                self._redact_sensitive_text(error_text),
+                            )
                             # 遇到非 429 错误也尝试退避，可能是网关错误
                             await asyncio.sleep(2 ** attempt)
                             
@@ -89,7 +121,11 @@ class LLMAPIManager:
                     logger.warning(f"Timeout on attempt {attempt+1}/{self.max_retries}")
                     await asyncio.sleep(1)
                 except Exception as e:
-                    logger.error(f"Unexpected error calling LLM API: {str(e)}")
+                    logger.error(
+                        "Unexpected error calling LLM API (%s): %s",
+                        type(e).__name__,
+                        self._redact_sensitive_text(e),
+                    )
                     await asyncio.sleep(1)
                     
         logger.error("Max retries exceeded for prompt.")

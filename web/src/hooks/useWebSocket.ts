@@ -11,7 +11,7 @@ export function useWebSocket(url: string, autoReconnect: boolean = true): WebSoc
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<any>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
     try {
@@ -26,7 +26,7 @@ export function useWebSocket(url: string, autoReconnect: boolean = true): WebSoc
         try {
           const data = JSON.parse(event.data);
           setLastMessage(data);
-        } catch (e) {
+        } catch {
           setLastMessage(event.data);
         }
       };

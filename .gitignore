@@ -99,6 +99,7 @@ data/
 !data/binance/futures/.gitkeep
 factor_db/
 !factor_db/.gitkeep
+user_workspace/experiments/
 web/node_modules/
 web/dist/
 .env
