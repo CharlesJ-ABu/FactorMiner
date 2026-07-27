@@ -111,7 +111,8 @@
 
 - 检查 DataClient、Evaluator 和 Inspector 的真实 forward-return 定义；
 - 用顶层 `target` 明确写出 `next_open` 入场与 `horizon_bars: 3`；
-- 只在 `user_workspace` 中创建最薄的 3-bar 标签和 Inspector 适配；
+- 当前 Target Builder 已能表达该标签时，不创建自定义标签或 Inspector 适配器；
+- 只有目标定义超出 Target Builder 支持范围时，才在 `user_workspace` 创建最薄的用户态适配；
 - 元数据、快照和复评都使用同一公式；
 - 不把 1-bar 指标报告成 3-bar 结果；
 - 在运行前用确定性样本断言 `entry=t+1 open`、`exit=t+3 close`。
