@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Iterable
 
+from core.evaluation.targets import TargetConfigError, target_from_config
 from core.miner.operator_runtime import OperatorRuntimeError, resolve_operator_specs
 from core.miner.registry import EvaluatorRegistry, MinerRegistry
 from core.utils.dynamic_loader import ModuleLoadReport
@@ -61,6 +62,11 @@ def validate_mining_startup(config: Dict[str, Any], load_report: ModuleLoadRepor
     iterations = config.get("max_iterations", 1)
     if not isinstance(iterations, int) or iterations <= 0:
         errors.append("max_iterations must be a positive integer.")
+
+    try:
+        target_from_config(config)
+    except TargetConfigError as exc:
+        errors.append(str(exc))
 
     data_feeds = config.get("data_feeds")
     if not isinstance(data_feeds, dict):

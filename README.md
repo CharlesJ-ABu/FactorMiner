@@ -168,6 +168,30 @@ factorminer mine --miner MyCustomLLM --config user_workspace/configs/configLLM_e
 # 运行自定义神经网络挖掘器；--iterations 可临时覆盖配置中的训练轮数
 factorminer mine --miner NN --config user_workspace/configs/configNN.json --user-dir user_workspace --iterations 5
 ```
+
+**预测标签**
+
+所有 Miner 与 Inspector 共用顶层 `target` 配置。未配置时保持历史兼容，标签为
+`close[t+1] / close[t] - 1`。例如，从下一根开盘进入并持有到第 3 根
+bar 收盘：
+
+```json
+{
+  "target": {
+    "type": "forward_return",
+    "entry_price": "next_open",
+    "exit_price": "close",
+    "horizon_bars": 3,
+    "return_type": "simple"
+  }
+}
+```
+
+当前支持 `current_close` / `next_open` 入场、`close` 出场，以及
+`simple` / `log` 收益。标签会在每个 `mine_period` / `test_period`
+内独立构造，尾部没有足够未来数据的样本为 `NaN` 并从评价中排除，不会跨越不连续区间。
+因子入库时会把规范化后的 `target` 和精确公式写入数据血缘；Inspector 按 factor ID
+审查时默认继承该标签。只有在 Inspector 配置中显式提供 `target` 才会覆盖，并在口径不一致时记录警告。
 `DL` 是历史范式名称，现已弃用。旧命令或配置仍会暂时映射到 `NN` 并输出警告；
 所有新配置、文档和界面统一使用 `NN`。
 
@@ -452,7 +476,7 @@ python -B -m unittest discover -s tests -v
 
 ### 5. Phase II 快照与审查口径
 
-每个成功入库的因子会在 `factor_db/values/<factor_id>.parquet` 保存其计算值和同一评估切片的未来收益；元数据中的 `data_lineage` 保存数据来源、交易对、市场类型、周期、样本范围、输入流和收益定义。Inspector 的 API 仅从该 parquet 快照生成滚动 IC、分位收益和换手率。
+每个成功入库的因子会在 `factor_db/values/<factor_id>.parquet` 保存其计算值和同一评估切片的未来收益；元数据中的 `data_lineage` 保存数据来源、交易对、市场类型、周期、样本范围、输入流、规范化 `target` 和精确收益公式。Inspector 的 API 仅从该 parquet 快照生成滚动 IC、分位收益和换手率。
 
 这意味着删除旧档案后，只有新的挖掘任务会产生可审查的 Tearsheet。若因子没有快照，先重新运行挖掘，而不要把旧的指标或前端演示图当作研究证据。
 

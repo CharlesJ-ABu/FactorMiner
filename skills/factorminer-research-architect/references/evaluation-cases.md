@@ -110,7 +110,7 @@
 预期：
 
 - 检查 DataClient、Evaluator 和 Inspector 的真实 forward-return 定义；
-- 若当前默认仍是下一根 close-to-close 收益，明确指出配置不足；
+- 用顶层 `target` 明确写出 `next_open` 入场与 `horizon_bars: 3`；
 - 只在 `user_workspace` 中创建最薄的 3-bar 标签和 Inspector 适配；
 - 元数据、快照和复评都使用同一公式；
 - 不把 1-bar 指标报告成 3-bar 结果；

@@ -3,6 +3,7 @@ import logging
 from typing import Any, Dict, List, Union
 
 from core.data_feed.real_client import RealDataClient
+from core.evaluation.targets import ForwardReturnTarget
 from core.inspector.metrics import InspectorMetricEngine
 from core.inspector.reporter import InspectorReporter
 from core.inspector.resolver import FactorResolver
@@ -18,6 +19,28 @@ class FactorInspectorEngine:
     def __init__(self, base_config: Dict[str, Any] = None):
         self.base_config = base_config or {}
         self.resolver = FactorResolver()
+
+    def _resolve_target(self, factor_id: str = None) -> ForwardReturnTarget:
+        explicit = self.base_config.get("target")
+        stored = None
+        if factor_id:
+            metadata = self.resolver.storage.get_metadata(factor_id)
+            if metadata:
+                stored = (getattr(metadata, "data_lineage", {}) or {}).get("target")
+
+        if explicit is not None:
+            explicit_target = ForwardReturnTarget.from_config(explicit)
+            if stored is not None:
+                stored_target = ForwardReturnTarget.from_config(stored)
+                if explicit_target != stored_target:
+                    logger.warning(
+                        "Inspector target override differs from factor metadata: "
+                        "stored=%s override=%s",
+                        stored_target.as_dict(),
+                        explicit_target.as_dict(),
+                    )
+            return explicit_target
+        return ForwardReturnTarget.from_config(stored)
 
     def inspect(
         self,
@@ -43,6 +66,8 @@ class FactorInspectorEngine:
         )
         expression_display = expression.to_display_string()
         logger.info("Inspecting Factor Expression: %s", expression_display)
+        target_spec = self._resolve_target(factor_id)
+        logger.info("Inspection target: %s", target_spec.definition())
 
         # 2. 参数处理
         df_cfg = self.base_config.get("data_feeds", {})
@@ -58,6 +83,7 @@ class FactorInspectorEngine:
         for pair in target_pairs:
             logger.info("Inspecting pair: %s (Timeframe: %s)", pair, target_tf)
             cfg = {
+                "target": target_spec.as_dict(),
                 "data_feeds": {
                     "exchange": target_exchange,
                     "instrument_type": target_inst,
@@ -85,7 +111,11 @@ class FactorInspectorEngine:
                     factor_values=factor_values,
                     returns=returns,
                     close_prices=close_prices,
+                    price_data=data,
+                    target_spec=target_spec,
                 )
+                metrics["target"] = target_spec.as_dict()
+                metrics["forward_return_definition"] = target_spec.definition()
                 results_by_pair[pair] = metrics
             except Exception as e:
                 logger.error("Failed to evaluate factor on pair %s: %s", pair, e, exc_info=True)

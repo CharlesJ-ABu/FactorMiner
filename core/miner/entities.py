@@ -54,7 +54,7 @@ class CandidateEvaluation:
 class EvaluationFeedback:
     """Candidate-aligned feedback, with compatibility views for older miners."""
     results: List[CandidateEvaluation] = field(default_factory=list)
-    raw_targets: Any = None # 用于DL计算Loss的次日收益率标签
+    raw_targets: Any = None  # 用于 DL 计算 Loss 的配置化未来收益标签
 
     def for_candidate(self, candidate: Any) -> Optional[CandidateEvaluation]:
         return next(

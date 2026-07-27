@@ -12,11 +12,17 @@
     "nn_diversity_penalty": 0.001,
     "nn_gradient_clip": 5.0,
     "nn_early_stopping_patience": 700,
-    "nn_prediction_horizon": 5,
     "nn_ic_loss_weight": 0.7,
     "nn_min_fitness": 0.0,
     "top_k_factors": 5,
     "max_corr": 0.90,
+    "target": {
+        "type": "forward_return",
+        "entry_price": "current_close",
+        "exit_price": "close",
+        "horizon_bars": 5,
+        "return_type": "simple"
+    },
     "data_feeds": {
         "required_streams": ["open", "high", "low", "close", "volume"],
         "exchange": "binance",

@@ -2,6 +2,13 @@
     "_comment_universe": "CRYPTO_PERP_TOP50 (Deprecated, using data_feeds.pairs)",
     "population_size": 50,
     "max_iterations": 100,
+    "target": {
+        "type": "forward_return",
+        "entry_price": "current_close",
+        "exit_price": "close",
+        "horizon_bars": 1,
+        "return_type": "simple"
+    },
     "data_feeds": {
         "required_streams": ["close", "volume"],
         "exchange": "binance",

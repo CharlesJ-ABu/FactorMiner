@@ -4,6 +4,7 @@ import pandas as pd
 from typing import Dict, List, Any
 from pathlib import Path
 from core.data_feed.naming import data_path
+from core.evaluation.targets import ForwardReturnTarget, target_from_config
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class RealDataClient:
         self.mine_periods = self.data_feed_config.get("mine_period", [])
         self.test_periods = self.data_feed_config.get("test_period", [])
         self.mining_mode = self.data_feed_config.get("mining_mode", "sequential_single")
+        self.target_spec = target_from_config(config)
         
         # 预先加载好的缓存
         self._mine_data = None
@@ -143,16 +145,12 @@ class RealDataClient:
         for period in periods:
             if len(period) == 2:
                 start_dt, end_dt = pd.to_datetime(period[0]), pd.to_datetime(period[1])
-                sliced_df = df[(df.index >= start_dt) & (df.index <= end_dt)]
+                sliced_df = df[(df.index >= start_dt) & (df.index <= end_dt)].copy()
+                sliced_df["returns"] = self.target_spec.build(sliced_df)
                 sliced_dfs.append(sliced_df)
                 
         if sliced_dfs:
             final_df = pd.concat(sliced_dfs)
-            # 添加 Forward Return（下一根 K 线的收益率）作为因子评估标签
-            # ⚠️ 必须使用 shift(-1)：因子只能用当期的 OHLCV，而 returns 必须是「下一期」的涨跌幅
-            # 若使用同期 pct_change()，因子中的 close_t 与 returns_t 天然相关，导致 IC 虚高（数据穿越）
-            if 'close' in final_df.columns:
-                final_df['returns'] = final_df['close'].pct_change().shift(-1)
             return final_df
             
         return pd.DataFrame()
@@ -194,3 +192,9 @@ class RealDataClient:
         if isinstance(self._test_data, pd.DataFrame) and 'returns' in self._test_data.columns:
             return self._test_data['returns']
         return pd.Series(dtype=float)
+
+    def get_target_spec(self) -> ForwardReturnTarget:
+        return self.target_spec
+
+    def get_forward_return_definition(self) -> str:
+        return self.target_spec.definition()

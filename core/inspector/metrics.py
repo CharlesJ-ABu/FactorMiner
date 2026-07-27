@@ -5,6 +5,8 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 import pandas as pd
 
+from core.evaluation.targets import ForwardReturnTarget
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,6 +22,8 @@ class InspectorMetricEngine:
         close_prices: Any = None,
         lags: List[int] = [1, 2, 3, 5, 10],
         n_quantiles: int = 5,
+        price_data: Any = None,
+        target_spec: ForwardReturnTarget | Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
         """
         计算全套审查指标字典。
@@ -101,8 +105,27 @@ class InspectorMetricEngine:
         result["spearman"] = calc_stats(rolling_spearman, s_ic)
 
         # 3. 因子衰减分析 (Lag IC Decay)
-        # Lag k: factor_values[t] 与 close.pct_change(k).shift(-k) 的相关性
-        if close_prices is not None and isinstance(close_prices, pd.Series):
+        # 优先保持 entry/exit/return_type 不变，仅改变 horizon。
+        if isinstance(price_data, pd.DataFrame) and target_spec is not None:
+            normalized_target = (
+                target_spec
+                if isinstance(target_spec, ForwardReturnTarget)
+                else ForwardReturnTarget.from_config(target_spec)
+            )
+            for lag in lags:
+                lag_ret = normalized_target.with_horizon(lag).build(price_data)
+                mask_k = factor_values.notna() & lag_ret.notna()
+                if mask_k.sum() >= 10:
+                    ric_k = factor_values[mask_k].corr(
+                        lag_ret[mask_k],
+                        method="spearman",
+                    )
+                    result["decay"][f"Lag_{lag}"] = (
+                        float(ric_k) if pd.notna(ric_k) else 0.0
+                    )
+                else:
+                    result["decay"][f"Lag_{lag}"] = 0.0
+        elif close_prices is not None and isinstance(close_prices, pd.Series):
             for lag in lags:
                 lag_ret = close_prices.pct_change(lag).shift(-lag)
                 mask_k = factor_values.notna() & lag_ret.notna()

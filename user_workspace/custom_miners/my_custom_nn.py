@@ -14,6 +14,7 @@ from typing import Any, List
 import numpy as np
 import pandas as pd
 
+from core.evaluation.targets import target_from_config
 from core.miner.entities import EvaluationFeedback
 from core.miner.expressions import FactorExpressionTensor
 from core.miner.nn import NumpyMLPFactorModel
@@ -49,6 +50,7 @@ class MyCustomNNMiner(BaseFactorMiner):
 
     def initialize_search_space(self) -> None:
         feeds = self.config.get("data_feeds", {})
+        self.target_spec = target_from_config(self.config)
         self.terminals = feeds.get("required_streams", ["close", "volume"])
         self.mining_mode = feeds.get("mining_mode", "sequential_single")
         self.hidden_dim = int(self.config.get("hidden_dim", 8))
@@ -106,7 +108,7 @@ class MyCustomNNMiner(BaseFactorMiner):
         return default_returns
 
     def get_forward_return_definition(self) -> str:
-        return "close.pct_change().shift(-1)"
+        return self.target_spec.definition()
 
     def generate_candidates(self) -> List[FactorExpressionTensor]:
         return [
@@ -235,6 +237,7 @@ class MyCustomNNMiner(BaseFactorMiner):
             head._selection_values = head.compute(selection_data)
             head.evaluation_split = "test" if has_test else "mine"
             head.evaluation_returns = test_returns if has_test else train_returns
+            head.evaluation_target = self.target_spec
             head.forward_return_definition = self.get_forward_return_definition()
             valid_heads.append(head)
 

@@ -77,7 +77,13 @@ class CLISmokeTests(unittest.TestCase):
             config["data_feeds"]["required_streams"] = [
                 "open", "high", "low", "close", "volume"
             ]
-            config["nn_prediction_horizon"] = 5
+            config["target"] = {
+                "type": "forward_return",
+                "entry_price": "next_open",
+                "exit_price": "close",
+                "horizon_bars": 5,
+                "return_type": "simple",
+            }
             config["nn_ic_loss_weight"] = 0.7
             config["nn_min_fitness"] = -100.0
             config["fitness"] = {"hook": "my_temporal_positive_ic"}
@@ -139,6 +145,46 @@ class CLISmokeTests(unittest.TestCase):
                 self.assertTrue((root / "factor_db" / "models" / logic["model_file"]).is_file())
                 self.assertEqual(metadata["metrics"]["out_of_sample"], 1.0)
                 self.assertEqual(metadata["data_lineage"]["evaluation_split"], "test")
+                if miner == "MyTemporalNN":
+                    expected_target = {
+                        "type": "forward_return",
+                        "entry_price": "next_open",
+                        "exit_price": "close",
+                        "horizon_bars": 5,
+                        "return_type": "simple",
+                    }
+                    self.assertEqual(
+                        metadata["data_lineage"]["target"],
+                        expected_target,
+                    )
+                    self.assertEqual(
+                        metadata["data_lineage"]["forward_return_definition"],
+                        "close[t+5] / open[t+1] - 1",
+                    )
+                    snapshot_file = root / "factor_db" / "values" / (
+                        metadata["data_lineage"]["snapshot_file"]
+                    )
+                    snapshot = pd.read_parquet(snapshot_file)
+                    prices = pd.read_feather(
+                        data_path(
+                            root / "data",
+                            "binance",
+                            PAIR,
+                            "1m",
+                            "futures",
+                        )
+                    ).set_index("date")
+                    first = snapshot.iloc[0]
+                    location = prices.index.get_loc(pd.Timestamp(first["timestamp"]))
+                    expected_return = (
+                        prices["close"].iloc[location + 5]
+                        / prices["open"].iloc[location + 1]
+                        - 1.0
+                    )
+                    self.assertAlmostEqual(
+                        first["forward_return"],
+                        expected_return,
+                    )
 
     def test_gp_cli_smoke(self):
         self._run_miner("MyCustomGP")

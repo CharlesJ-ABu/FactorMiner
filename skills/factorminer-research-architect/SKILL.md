@@ -119,7 +119,8 @@ description: Turn a trading intuition, factor formula, feature idea, or factor i
    - 缺少安全的数据变换：创建 Custom Operator；
    - “好因子”的定义发生变化：创建 Fitness Hook；
    - 候选生成或学习机制发生变化：创建 Custom Miner；
-   - 标签、horizon 或审查口径无法由配置表达：使用 `user_workspace/experiment_tools` 或最薄的用户态适配器，并明确为什么配置不足；
+   - 标签可由顶层 `target` 表达：让挖掘、快照和 Inspector 共用该配置；
+   - 标签、horizon 或审查口径超出当前 Target Builder：使用 `user_workspace/experiment_tools` 或最薄的用户态适配器，并明确为什么配置不足；
    - 只需复查已有结果：使用 Inspector。
 5. 约束搜索空间，使所有允许候选仍符合研究语义。例如“正向放量确认”不得允许除以接近零的成交量惊喜、取反或绕过确认门控；对照因子应单独标记，不能混入主候选。
 6. 默认只在 `user_workspace/` 下创建或修改用户资产。除非用户明确要求，不修改 `core/`、`api/` 或 `web/`。

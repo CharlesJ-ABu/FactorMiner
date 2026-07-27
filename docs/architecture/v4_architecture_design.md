@@ -67,7 +67,7 @@ class EvaluationFeedback:
     """统一的评测反馈体，兼容标量指标和张量计算图"""
     metrics: List[Dict[str, float]]          # 传统指标（IC, Sharpe等）
     raw_outputs: Optional[torch.Tensor] = None # DL流派前向传播直接吐出的 Tensor
-    raw_targets: Optional[torch.Tensor] = None # 用于DL计算Loss的次日收益率标签
+    raw_targets: Optional[torch.Tensor] = None # 用于 DL 计算 Loss 的配置化未来收益标签
 
 class DiversityFilter:
     """因子正交性与多样性过滤器"""
@@ -543,7 +543,7 @@ class LLMFactorMiner(BaseFactorMiner):
 **V4 接口映射**:
 - **`initialize`**: 定义可用的常量范围、底层基础行情数据列（open, close）以及算子原语库。限制树的最大深度。
 - **`generate`**: 从 `MinerState.population` 中读取上一代的“精英树”，通过交叉或变异来批量繁衍出一批新候选树。
-- **`evaluate`**: 并行引擎反序列化 AST 树。每个节点计算出全截面时序面值，并与次日收益率计算 RankIC。
+- **`evaluate`**: 并行引擎反序列化 AST 树。每个节点计算出全截面时序面值，并与配置化未来收益标签计算 RankIC。
 - **`update`**: 淘汰得分垫底的后 80%，将得分最高的前 20% 精英树存入 `MinerState.population`。
 
 <details><summary>底层逻辑参考实现</summary>
@@ -699,7 +699,7 @@ def llm_factor_mining(data, max_iterations=50):
                                           [ 隐空间输出 (因子截面打分) ]
                                                         |
                                                         v
-[ 次日真实收益率标签 ] ------------> [ 计算 Batch IC / Rank Loss (目标函数) ]
+[ 配置化未来收益标签 ] ------------> [ 计算 Batch IC / Rank Loss (目标函数) ]
                                                         |
                                                         v
                                           [ 梯度传导反向传播，更新模型权重 ]
@@ -708,7 +708,7 @@ def llm_factor_mining(data, max_iterations=50):
 **V4 接口映射**:
 - **`initialize`**: 实例化深度时间序列网络（特征提取器），初始化网络权重。初始化训练优化器和 Loss 函数。
 - **`generate`**: 将行情数据（张量切片）喂给神经网络执行一次前向传播 (Forward)。网络输出一个形状为 `[Batch, Seq, Output_Channels]` 的连续 Tensor。每一个 Channel 代表一个“黑盒因子表达式”。
-- **`evaluate`**: 绝不能切断计算图。直接在 GPU 上让网络的输出 Tensor 与未来的次日收益率 Tensor 计算目标 Loss。将 loss 张量对象和计算图原封不动装入 `EvaluationFeedback.raw_outputs` 回传。
+- **`evaluate`**: 绝不能切断计算图。直接在 GPU 上让网络的输出 Tensor 与配置化未来收益 Tensor 计算目标 Loss。将 loss 张量对象和计算图原封不动装入 `EvaluationFeedback.raw_outputs` 回传。
 - **`update`**: 取出带有计算图的 Loss，执行标准深度学习反向传播更新：`loss.backward()` 传导梯度，随后调用 `optimizer.step()` 更新模型权重。
 
 ### 8.4.1 训练张量与可保存因子的边界
@@ -1050,7 +1050,7 @@ Inspector 不能读取 `TaskManager` 中的临时任务结果作为因子档案�
 
 前端根据 `logic_reference.type` 而不是笼统的 Miner 名称呈现白盒内容：`json_ast` 绘制 AST 树并展示表达式，`python_source` 读取受控源码文件，`rl_actions` 展示动作轨迹，`nn_channel` 展示模型版本、输出通道和权重工件是否存在；历史 `dl_channel` 会在 API 层归一化为 `nn_channel`。Launchpad 的已保存因子 ID 使用 `/inspector?factor=<id>` 直接跳转到对应档案。
 
-Phase II 在 Director 落盘逻辑工件后，重新以该候选和同一数据客户端物化因子值，并和 `RealDataClient.get_returns()` 返回的未来收益对齐，写入 `factor_db/values/<factor_id>.parquet`。标准 schema 为 `timestamp, asset（截面模式）, factor, forward_return`；`FactorMetadata.data_lineage` 同时记录数据源、交易对、市场类型、周期、输入流、样本范围和 `close.pct_change().shift(-1)` 的收益定义。
+Phase II 在 Director 落盘逻辑工件后，重新以该候选和同一数据客户端物化因子值，并和 `RealDataClient.get_returns()` 返回的未来收益对齐，写入 `factor_db/values/<factor_id>.parquet`。标准 schema 为 `timestamp, asset（截面模式）, factor, forward_return`；`FactorMetadata.data_lineage` 同时记录数据源、交易对、市场类型、周期、输入流、样本范围、规范化 `target` 和精确收益公式。统一 Target Builder 支持 `current_close` / `next_open` 入场、`close` 出场、可配置 `horizon_bars` 以及 simple / log return；省略配置时保持 `close[t+1] / close[t] - 1` 的历史行为。每个数据区间独立生成标签，Inspector 按 factor ID 默认继承入库时的目标定义。
 
 对 MyCustomGP 的真实 Feather 回归应检查完整闭环：配置允许的用户算子会生成符合 arity 的 AST；AST runtime 产生可对齐的序列；Evaluator 写入上述四项指标；Director 最后将同一候选的逻辑、指标、数据血缘及 values/forward-return 快照持久化。只看到模块成功导入或任务完成并不足以证明该链路有效。
 

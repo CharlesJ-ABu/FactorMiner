@@ -248,7 +248,13 @@ class NNMinerTests(unittest.TestCase):
             "learning_rate": 0.01,
             "random_seed": 9,
             "nn_training_epochs": 3,
-            "nn_prediction_horizon": 5,
+            "target": {
+                "type": "forward_return",
+                "entry_price": "current_close",
+                "exit_price": "close",
+                "horizon_bars": 5,
+                "return_type": "simple",
+            },
             "nn_ic_loss_weight": 0.7,
             "data_feeds": {
                 "required_streams": ["open", "high", "low", "close", "volume"],
@@ -265,6 +271,7 @@ class NNMinerTests(unittest.TestCase):
         miner.initialize_search_space()
         target = miner.build_target_returns(train, client.get_returns(), "mine")
         expected = train["close"].shift(-5) / train["close"] - 1.0
+        expected.name = "returns"
         pd.testing.assert_series_equal(target, expected)
 
         prepared = miner.model.adapter.prepare(train, target)

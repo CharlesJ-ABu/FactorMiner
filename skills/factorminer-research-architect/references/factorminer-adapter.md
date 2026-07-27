@@ -64,7 +64,8 @@
 
 ### 标签或 horizon 适配
 
-先检查 `RealDataClient`、Evaluator 和 Inspector 实际使用的 forward return。若用户要求的 entry、exit 或 horizon 不能由配置表达：
+先检查 `RealDataClient`、Evaluator 和 Inspector 实际使用的 forward return。优先用顶层
+`target` 表达 entry、exit、horizon 和 return type。若要求仍超出当前 Target Builder 的能力：
 
 - 不得静默接受默认下一期收益；
 - 优先在 `user_workspace/experiment_tools` 中创建可审计的评价入口；
@@ -167,7 +168,22 @@ Custom Miner 继承 `BaseFactorMiner` 并实现：
 
 不要机械复制日期、币种和 hook；按研究任务生成。FactorMiner 当前主要使用 `mine_period` 和 `test_period`，但研究设计仍应区分训练、候选选择用验证集和最终留出集。若配置接口不能原生表达三段切分，使用独立配置、实验工具或分阶段运行，并准确命名各时期角色。
 
-截至 2026-07-27，仓库中的 `RealDataClient` 默认构造 `close.pct_change().shift(-1)`，即下一根 bar 的 close-to-close 收益；普通配置字段不能把它改为任意 horizon 或 next-open entry。使用前复核当前代码。若用户要求例如 `close[t+3] / open[t+1] - 1`，必须显式适配并把公式写入元数据，不能把默认 1-bar 指标冒充 3-bar 结果。
+FactorMiner 的顶层 `target` 配置由挖掘、快照和 Inspector 共用。省略时保持历史默认
+`close[t+1] / close[t] - 1`；例如下一根开盘入场、第三根 bar 收盘退出：
+
+```json
+"target": {
+  "type": "forward_return",
+  "entry_price": "next_open",
+  "exit_price": "close",
+  "horizon_bars": 3,
+  "return_type": "simple"
+}
+```
+
+当前支持 `current_close` / `next_open` 入场、`close` 出场和 `simple` / `log`
+收益。每个研究区间独立生成标签，区间尾部无足够未来数据的记录会被排除。运行后仍要核对
+`data_lineage.target` 与 `forward_return_definition`，不能把默认 1-bar 指标冒充 3-bar 结果。
 
 执行入口通常为：
 
@@ -209,7 +225,10 @@ factorminer inspect --ast "{...}" --pairs "BTC/USDT:USDT,ETH/USDT:USDT" \
 - 挖掘评分与 Inspector 复评是否一致；
 - 缺少快照或数据时不得补造图表或指标。
 
-标准 Inspector 也可能通过 `RealDataClient` 重新生成默认 1-bar 标签。自定义 horizon 时，先验证 Inspector 的实际 returns；必要时在 `user_workspace/experiment_tools` 中复用 `FactorResolver`、`InspectorMetricEngine` 和 `InspectorReporter`，传入与挖掘完全相同的标签。报告中把它称为用户态 Inspector 适配，并保留原始 JSON 与日志。
+按 factor ID 使用标准 Inspector 时，它会从因子元数据继承原始 `target` 并用同一口径重建标签；
+若 Inspector 配置显式提供不同 `target`，该配置会覆盖元数据并记录警告。审查 AST 或代码而没有
+factor ID 时，则使用 Inspector 配置中的 `target`，未提供时采用兼容默认值。报告中保留实际
+`target`、精确公式、原始 JSON 与日志。
 
 最终留出集必须由单独的锁定步骤保护：
 

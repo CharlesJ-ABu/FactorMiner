@@ -16,6 +16,7 @@ from core.miner.nn import (
     NumpyMLPFactorModel,
     register_nn_model_loader,
 )
+from core.evaluation.targets import target_from_config
 from core.miner.registry import MinerRegistry
 from user_workspace.custom_miners.my_custom_nn import MyCustomNNMiner
 
@@ -375,12 +376,20 @@ class MyTemporalNNMiner(MyCustomNNMiner):
             != "sequential_single"
         ):
             raise ValueError("MyTemporalNN currently supports sequential_single only.")
-        self.prediction_horizon = int(
-            self.config.get("nn_prediction_horizon", 5)
-        )
+        if "target" not in self.config:
+            legacy_horizon = int(self.config.get("nn_prediction_horizon", 5))
+            self.config["target"] = {
+                "type": "forward_return",
+                "entry_price": "current_close",
+                "exit_price": "close",
+                "horizon_bars": legacy_horizon,
+                "return_type": "simple",
+            }
+        self.target_spec = target_from_config(self.config)
+        self.prediction_horizon = self.target_spec.horizon_bars
         self.ic_loss_weight = float(self.config.get("nn_ic_loss_weight", 0.7))
         if self.prediction_horizon <= 0:
-            raise ValueError("nn_prediction_horizon must be positive.")
+            raise ValueError("target.horizon_bars must be positive.")
         if not 0.0 <= self.ic_loss_weight <= 1.0:
             raise ValueError("nn_ic_loss_weight must be between 0 and 1.")
         super().initialize_search_space()
@@ -399,15 +408,12 @@ class MyTemporalNNMiner(MyCustomNNMiner):
         default_returns: Any,
         split: str,
     ) -> pd.Series:
-        if not isinstance(data, pd.DataFrame) or "close" not in data.columns:
+        if not isinstance(data, pd.DataFrame):
             return pd.Series(dtype=float)
-        close = pd.to_numeric(data["close"], errors="coerce")
-        return close.shift(-self.prediction_horizon) / close - 1.0
+        return self.target_spec.build(data)
 
     def get_forward_return_definition(self) -> str:
-        return (
-            f"close.shift(-{self.prediction_horizon}) / close - 1"
-        )
+        return self.target_spec.definition()
 
     def update_model(self, candidates, feedback) -> None:
         super().update_model(candidates, feedback)

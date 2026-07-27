@@ -149,9 +149,35 @@ class FactorMinerDirector:
 
             self._save_factor_snapshot(factor_id, cand)
 
-    def _snapshot_lineage(self, evaluation_split: str = "mine") -> Dict[str, Any]:
+    def _snapshot_lineage(
+        self,
+        evaluation_split: str = "mine",
+        candidate: Any = None,
+    ) -> Dict[str, Any]:
         feeds = self.config.get("data_feeds", {})
         periods_key = "test_period" if evaluation_split == "test" else "mine_period"
+        target_spec = getattr(candidate, "evaluation_target", None)
+        if target_spec is None:
+            getter = getattr(self.data_client, "get_target_spec", None)
+            target_spec = getter() if callable(getter) else None
+        if hasattr(target_spec, "as_dict"):
+            target_payload = target_spec.as_dict()
+        elif isinstance(target_spec, dict):
+            target_payload = target_spec
+        else:
+            target_payload = None
+        definition = getattr(candidate, "forward_return_definition", None)
+        if not definition:
+            definition_getter = getattr(
+                self.data_client,
+                "get_forward_return_definition",
+                None,
+            )
+            definition = (
+                definition_getter()
+                if callable(definition_getter)
+                else "close[t+1] / close[t] - 1"
+            )
         return {
             "source": self.data_client.__class__.__name__,
             "exchange": feeds.get("exchange"),
@@ -164,7 +190,8 @@ class FactorMinerDirector:
             "evaluation_split": evaluation_split,
             "evaluation_period": feeds.get(periods_key, []),
             "required_streams": feeds.get("required_streams", []),
-            "forward_return_definition": "close.pct_change().shift(-1)",
+            "target": target_payload,
+            "forward_return_definition": definition,
         }
 
     def _save_factor_snapshot(self, factor_id: str, candidate: Any) -> None:
@@ -181,12 +208,7 @@ class FactorMinerDirector:
                 candidate, "evaluation_returns", forward_returns
             )
             factor_values = candidate.compute(evaluation_data)
-            lineage = self._snapshot_lineage(evaluation_split)
-            lineage["forward_return_definition"] = getattr(
-                candidate,
-                "forward_return_definition",
-                lineage["forward_return_definition"],
-            )
+            lineage = self._snapshot_lineage(evaluation_split, candidate)
             saved = self.storage_client.save_factor_snapshot(
                 factor_id,
                 factor_values,
