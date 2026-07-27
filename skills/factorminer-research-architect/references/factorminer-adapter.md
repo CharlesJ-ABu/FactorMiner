@@ -62,6 +62,16 @@
 
 只有候选生成、搜索状态、反馈学习或产物保存机制需要改变时选择。优先复制同范式示例。
 
+### 标签或 horizon 适配
+
+先检查 `RealDataClient`、Evaluator 和 Inspector 实际使用的 forward return。若用户要求的 entry、exit 或 horizon 不能由配置表达：
+
+- 不得静默接受默认下一期收益；
+- 优先在 `user_workspace/experiment_tools` 中创建可审计的评价入口；
+- 只有搜索循环必须使用该标签时，才创建最薄的 Custom Miner 或用户态数据适配器；
+- 在候选上保留准确的 `forward_return_definition` 和实际评价切片；
+- 确保 Inspector 复评使用同一标签公式，而不是回落到框架默认值。
+
 ### Inspector
 
 当已有因子只需要跨标的、跨时期、衰减、分组收益和换手审查时选择，不创建新 Miner。
@@ -157,6 +167,8 @@ Custom Miner 继承 `BaseFactorMiner` 并实现：
 
 不要机械复制日期、币种和 hook；按研究任务生成。FactorMiner 当前主要使用 `mine_period` 和 `test_period`，但研究设计仍应区分训练、候选选择用验证集和最终留出集。若配置接口不能原生表达三段切分，使用独立配置、实验工具或分阶段运行，并准确命名各时期角色。
 
+截至 2026-07-27，仓库中的 `RealDataClient` 默认构造 `close.pct_change().shift(-1)`，即下一根 bar 的 close-to-close 收益；普通配置字段不能把它改为任意 horizon 或 next-open entry。使用前复核当前代码。若用户要求例如 `close[t+3] / open[t+1] - 1`，必须显式适配并把公式写入元数据，不能把默认 1-bar 指标冒充 3-bar 结果。
+
 执行入口通常为：
 
 ```bash
@@ -196,6 +208,16 @@ factorminer inspect --ast "{...}" --pairs "BTC/USDT:USDT,ETH/USDT:USDT" \
 - Coverage、IC、RankIC、IR、Decay、Quantiles 和 Turnover；
 - 挖掘评分与 Inspector 复评是否一致；
 - 缺少快照或数据时不得补造图表或指标。
+
+标准 Inspector 也可能通过 `RealDataClient` 重新生成默认 1-bar 标签。自定义 horizon 时，先验证 Inspector 的实际 returns；必要时在 `user_workspace/experiment_tools` 中复用 `FactorResolver`、`InspectorMetricEngine` 和 `InspectorReporter`，传入与挖掘完全相同的标签。报告中把它称为用户态 Inspector 适配，并保留原始 JSON 与日志。
+
+最终留出集必须由单独的锁定步骤保护：
+
+1. 冻结公式、搜索空间、标签、代码、配置和验收标准；
+2. 记录此前所有查看过的时期；
+3. 只选择从未产生过结果的时期作为 untouched holdout；
+4. 查看后不再修改方案；
+5. 若实现错误导致必须修改，旧区间降级为诊断数据，另选新留出集或降低结论等级。
 
 ## 7. 证据和修改边界
 
