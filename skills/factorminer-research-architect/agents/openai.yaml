@@ -1,0 +1,4 @@
+interface:
+  display_name: "FactorMiner 因子研究设计师"
+  short_description: "独立设计量化因子实验，接入 FactorMiner 后可执行与审查"
+  default_prompt: "使用 $factorminer-research-architect 把我的因子想法整理成一份严谨的研究任务卡。"

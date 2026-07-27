@@ -20,6 +20,7 @@ FactorMiner 是一个面向量化研究的因子挖掘工作台。V4 以配置�
 - 🧬 **四种可扩展挖掘范式**：GP、RL、LLM、NN 统一输出 `FactorExpression`，可使用 `user_workspace` 中的自定义 Miner、算子和 Fitness Hook 扩展。
 - ⚖️ **统一评估与可追溯结果**：评估器计算 IC、RankIC、Turnover 和 fitness；每个因子将逻辑、指标和来源保存为元数据，NN 同时保存权重与通道信息。
 - 🖥️ **研究工作台与 CLI**：Dashboard 汇总真实任务/档案数据，Launchpad 发起并跟踪任务，Inspector 审查因子逻辑与生命周期；同一执行引擎也可从 CLI 调用。
+- 🧭 **可独立使用的研究 Skills**：把交易直觉转化为框架无关的实验方案；接入 FactorMiner 后可继续生成配置、用户扩展并审查真实结果。
 - 📡 **行情与命名规范**：支持本地 Feather 行情读取、缺口补全与下载。文件统一为 `{safe_symbol}-{timeframe}-{trade_type}.feather`；永续标的使用 CCXT 格式，例如 `BTC/USDT:USDT`。
 - 🛡️ **已知执行边界**：当前去重是源代码 MD5 硬去重，相关性软去重尚未实现；评估使用固定 8 线程，尚未接入 Ray/Celery 分布式后端。
 
@@ -55,6 +56,7 @@ FactorMiner/
 │   ├── experiments/              # 本地原始实验记录（默认被 Git 忽略）
 │   ├── custom_operators/         # 注册的时序或截面算子
 │   └── custom_fitness/           # 注册的 Fitness Hook
+├── skills/                       # 可独立使用、可由 FactorMiner 增强的 Agent Skills
 ├── factor_db/                    # 已保存因子的 metadata、values（可选）和 weights
 ├── data/                         # 本地历史行情：{safe_symbol}-{timeframe}-{trade_type}.feather
 ├── docs/
@@ -453,6 +455,28 @@ python -B -m unittest discover -s tests -v
 每个成功入库的因子会在 `factor_db/values/<factor_id>.parquet` 保存其计算值和同一评估切片的未来收益；元数据中的 `data_lineage` 保存数据来源、交易对、市场类型、周期、样本范围、输入流和收益定义。Inspector 的 API 仅从该 parquet 快照生成滚动 IC、分位收益和换手率。
 
 这意味着删除旧档案后，只有新的挖掘任务会产生可审查的 Tearsheet。若因子没有快照，先重新运行挖掘，而不要把旧的指标或前端演示图当作研究证据。
+
+---
+
+## 🧭 FactorMiner Skills
+
+仓库内置的 Agent Skills 位于 [`skills/`](skills/)。
+
+首款 **FactorMiner 因子研究设计师** 采用双模式：
+
+- 没有安装 FactorMiner 时，把交易直觉、公式或代码整理成可交给任意量化框架实施的研究任务卡；
+- 检测到当前目录是 FactorMiner 时，进一步检查现有算子，选择配置、Operator、Fitness Hook、Custom Miner 或 Inspector 路径，并基于真实运行产物形成实验报告。
+
+它不是 FactorMiner 的使用说明书，而是一套可以独立使用的因子研究方法；FactorMiner 是其最完整的执行后端。
+
+调用示例：
+
+```text
+使用 $factorminer-research-architect：
+我认为放量突破后，短期价格会延续。请帮我设计一个严谨的实验。
+```
+
+安装、贡献和完整能力说明见 [`skills/README.md`](skills/README.md)。
 
 ---
 
