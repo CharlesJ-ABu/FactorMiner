@@ -13,6 +13,8 @@ export function Launchpad() {
   const [selectedConfig, setSelectedConfig] = useState<string>('');
   const [availableConfigs, setAvailableConfigs] = useState<string[]>([]);
   const [configDetails, setConfigDetails] = useState<Record<string, any>>({});
+  const [isLaunching, setIsLaunching] = useState(false);
+  const [launchError, setLaunchError] = useState('');
 
   const [tasks, setTasks] = useState<any[]>([]);
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
@@ -119,19 +121,29 @@ export function Launchpad() {
       .catch(err => console.error('Failed to fetch tasks:', err));
   }, []);
 
-  const handleLaunch = () => {
-    if (!selectedMiner || !selectedConfig) return;
-    
-    fetch('http://localhost:8000/api/launch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ miner: selectedMiner, config: selectedConfig })
-    })
-    .then(res => res.json())
-    .then(data => {
-      console.log('Task launched:', data.task_id);
-    })
-    .catch(err => console.error('Failed to launch task:', err));
+  const handleLaunch = async () => {
+    if (!selectedMiner || !selectedConfig || isLaunching) return;
+    setIsLaunching(true);
+    setLaunchError('');
+    try {
+      const response = await fetch('http://localhost:8000/api/launch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ miner: selectedMiner, config: selectedConfig })
+      });
+      if (!response.ok) {
+        setLaunchError(`Launch request failed (HTTP ${response.status}). Check the selected configuration.`);
+        return;
+      }
+      const result = await response.json();
+      if (typeof result?.task_id !== 'string' || !result.task_id) {
+        setLaunchError('Launch was not confirmed. Check the tracker before trying again.');
+      }
+    } catch {
+      setLaunchError('Launch was not confirmed. Check the backend connection and the tracker before trying again.');
+    } finally {
+      setIsLaunching(false);
+    }
   };
 
   const getTaskLogs = (task: any): string[] => taskData[task.id]?.logs || task.logs || [];
@@ -213,10 +225,13 @@ export function Launchpad() {
         <div className="pt-4 border-t border-border mt-2">
           <button 
             onClick={handleLaunch}
+            disabled={isLaunching || !selectedMiner || !selectedConfig}
+            aria-busy={isLaunching}
             className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 rounded-md font-bold hover:opacity-90 transition-opacity text-base"
           >
             <Play className="w-5 h-5 fill-current" /> Start Mining
           </button>
+          {launchError && <p role="alert" className="mt-2 text-sm text-red-400">{launchError}</p>}
         </div>
       </div>
 

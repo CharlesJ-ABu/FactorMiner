@@ -82,7 +82,9 @@ async function downloadPage({ component = 'DataDownload', initialTasks = [], def
     },
   };
   const fakeFetch = url => {
-    if (url.endsWith('/api/download_data')) return new Promise((resolve, reject) => requests.push({ resolve, reject }));
+    if (url.endsWith('/api/download_data') || url.endsWith('/api/launch')) {
+      return new Promise((resolve, reject) => requests.push({ resolve, reject }));
+    }
     if (url.endsWith('/api/tasks')) {
       if (deferInitialTasks) return new Promise(resolve => taskRequests.push(resolve));
       return Promise.resolve({ json: async () => ({ tasks: initialTasks }) });
@@ -195,6 +197,18 @@ async function downloadPage({ component = 'DataDownload', initialTasks = [], def
     unmount() { mounted = false; effects.forEach(effect => effect.cleanup?.()); },
     updatesAfterUnmount() { return updatesAfterUnmount; },
   };
+}
+
+for (const kind of ['http', 'network', 'missing-id']) {
+  test(`Launchpad reports an unconfirmed ${kind} submission and allows retry`, async () => {
+    const page = await downloadPage({ component: 'Launchpad' });
+    page.click('Start Mining');
+    await page.fail(kind);
+    assert.match(page.screen(), /Launch request failed|Launch was not confirmed/);
+    page.click('Start Mining');
+    await page.accept();
+    assert.doesNotMatch(page.screen(), /Launch request failed|Launch was not confirmed/);
+  });
 }
 
 test('page receives every event before the submit response, including a terminal followed by another task', async () => {
