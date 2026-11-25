@@ -289,6 +289,14 @@ class DataHealthChecker:
         issues = []
         warnings = []
         
+        # Required market values must be finite even when a small missing-value
+        # ratio would otherwise fall below the existing warning thresholds.
+        for col in ['open', 'high', 'low', 'close', 'volume']:
+            if col in df.columns and pd.api.types.is_numeric_dtype(df[col]):
+                non_finite_count = int((~np.isfinite(df[col])).fillna(True).sum())
+                if non_finite_count:
+                    issues.append(f'列 {col} 包含非有限数值: {non_finite_count} 条记录')
+
         # 检查缺失值
         missing_stats = {}
         for col in df.columns:
@@ -315,7 +323,7 @@ class DataHealthChecker:
                 (df['close'] > df['high'])
             )
             
-            invalid_count = invalid_ohlc.sum() if 'invalid_count' in locals() else 0
+            invalid_count = int(invalid_ohlc.sum())
             if invalid_count > 0:
                 invalid_ratio = invalid_count / len(df)
                 if invalid_ratio > self.health_thresholds['max_outlier_ratio']:

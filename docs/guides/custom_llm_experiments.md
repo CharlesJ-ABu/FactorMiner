@@ -4,6 +4,8 @@
 Reflection 和 Top-K 选择，而不需要改动 `core/`。实验文件写入、JSONL 事件和输出
 诊断由独立的 `LLMExperimentRecorder` 负责，避免研究留痕逻辑淹没自定义 Miner。
 
+先按[产品指南](../FactorMiner_Product_Report_ZH.md)从源码 checkout 安装核心依赖。本文依赖随源码提供的 user_workspace，不是 wheel 自带的工作区。
+
 ## 文件分工
 
 | 文件 | 职责 | 通常是否需要修改 |
@@ -44,7 +46,7 @@ Recorder 只观察这些事件，不参与候选排名，也不会改变因子�
 
 运行时会按顺序读取可用密钥；环境变量提供的模型和地址可以覆盖默认值。
 OpenAI-compatible 根地址会自动补全 `/chat/completions`。不要把真实密钥写入
-JSON、Python、README 或提交记录。
+JSON、Python、README 或提交记录。仅创建 `.env` 不会自动加载；需在启动 CLI/后端的进程环境中设置。
 
 项目 `.gitignore` 默认忽略：
 
@@ -53,7 +55,7 @@ JSON、Python、README 或提交记录。
 - `user_workspace/experiments/`。
 
 Recorder 的 Manifest 只保存模型、地址和环境变量名称，不保存密钥值。正式因子
-provenance 在落盘前也会递归移除凭证字段。
+provenance 在落盘前也会递归移除凭证字段，并记录实际 live API 模型标识；回退候选不冒充该模型生成。父代引用保留 Miner 声明值，未必是可解析的已入库 Factor ID。
 
 ## 启用或关闭实验留痕
 
@@ -124,6 +126,6 @@ python user_workspace/experiment_tools/audit_llm_holdout.py \
 ## 证据边界
 
 - 代码通过沙盒不代表研究解释正确；
-- 测试窗口 RankIC 为正不代表因子可以交易；
+- 测试窗口 RankIC 为正不代表因子可以交易；若窗口已用于候选选择或调参，它是验证集，不能再称未见的最终 holdout；
 - 注释不同但输出相同的代码不能算作独立发现；
 - 未加入手续费、滑点、资金费率和组合构建前，不应给出实盘结论。

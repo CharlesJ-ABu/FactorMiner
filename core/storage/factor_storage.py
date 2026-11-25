@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import pandas as pd
+import tempfile
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List
 import dataclasses
@@ -146,8 +147,35 @@ class LocalFactorStorage(FactorStorageInterface):
             
     def _save_meta(self, metadata: FactorMetadata):
         path = os.path.join(self.meta_dir, f"{metadata.factor_id}.json")
-        with open(path, "w") as f:
-            json.dump(dataclasses.asdict(metadata), f, indent=4)
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=self.meta_dir,
+                prefix=f".{metadata.factor_id}.", suffix=".tmp", delete=False,
+            ) as file:
+                temporary = file.name
+                json.dump(dataclasses.asdict(metadata), file, indent=4)
+            os.replace(temporary, path)
+        finally:
+            if temporary and os.path.exists(temporary):
+                os.unlink(temporary)
+
+    def _update_snapshot_state(self, factor_id: str, status: str, error: str = "") -> None:
+        metadata = self.get_metadata(factor_id)
+        if metadata is None:
+            return
+        metadata.data_lineage["snapshot_status"] = status
+        if status in {"pending", "failed"}:
+            for key in ("snapshot_file", "snapshot_schema", "snapshot_rows", "snapshot_start", "snapshot_end"):
+                metadata.data_lineage.pop(key, None)
+        metadata.data_lineage.pop("snapshot_error", None)
+        if error:
+            metadata.data_lineage["snapshot_error"] = error[:1000]
+        self._save_meta(metadata)
+
+    def record_snapshot_failure(self, factor_id: str, error: str) -> None:
+        """Keep an incomplete archive visible without claiming it can be analyzed."""
+        self._update_snapshot_state(factor_id, "failed", error)
             
     def save_gp_factor(self, ast_dict: Dict, metadata: FactorMetadata) -> bool:
         metadata.logic_reference = {"type": "json_ast", "ast": ast_dict}
@@ -315,14 +343,23 @@ class LocalFactorStorage(FactorStorageInterface):
         forward_returns: Any,
         data_lineage: Dict[str, Any],
     ) -> bool:
+        temporary = None
         try:
             snapshot = self._snapshot_frame(factor_values, forward_returns)
             if snapshot.empty:
-                logger.warning("No aligned snapshot rows to save for %s", factor_id)
-                return False
+                raise ValueError("No aligned snapshot rows to save")
 
+            # Persist pending before touching values, so a failed metadata update
+            # after publication cannot expose values under the old lineage.
+            self._update_snapshot_state(factor_id, "pending")
             path = os.path.join(self.val_dir, f"{factor_id}.parquet")
-            snapshot.to_parquet(path, index=False)
+            with tempfile.NamedTemporaryFile(
+                dir=self.val_dir, prefix=f".{factor_id}.", suffix=".tmp", delete=False,
+            ) as file:
+                temporary = file.name
+            snapshot.to_parquet(temporary, index=False)
+            os.replace(temporary, path)
+            temporary = None
 
             metadata = self.get_metadata(factor_id)
             if metadata:
@@ -333,14 +370,23 @@ class LocalFactorStorage(FactorStorageInterface):
                     "snapshot_rows": int(len(snapshot)),
                     "snapshot_start": snapshot["timestamp"].min().isoformat(),
                     "snapshot_end": snapshot["timestamp"].max().isoformat(),
+                    "snapshot_status": "available",
                 }
+                metadata.data_lineage.pop("snapshot_error", None)
                 self._save_meta(metadata)
 
             logger.info("Saved factor snapshot for %s to %s", factor_id, path)
             return True
         except Exception as exc:
+            try:
+                self.record_snapshot_failure(factor_id, str(exc))
+            except Exception:
+                logger.exception("Failed to record snapshot failure for %s", factor_id)
             logger.warning("Failed to save factor snapshot for %s: %s", factor_id, exc)
             return False
+        finally:
+            if temporary and os.path.exists(temporary):
+                os.unlink(temporary)
 
     def get_metadata(self, factor_id: str) -> FactorMetadata:
         path = os.path.join(self.meta_dir, f"{factor_id}.json")
@@ -375,6 +421,9 @@ class LocalFactorStorage(FactorStorageInterface):
         return metadata
 
     def load_factor_values(self, factor_id: str) -> Any:
+        metadata = self.get_metadata(factor_id)
+        if metadata and metadata.data_lineage.get("snapshot_status") in {"pending", "failed"}:
+            return None
         path = os.path.join(self.val_dir, f"{factor_id}.parquet")
         if os.path.exists(path):
             return pd.read_parquet(path)
@@ -388,6 +437,8 @@ class LocalFactorStorage(FactorStorageInterface):
                 try:
                     with open(path, "r") as f:
                         data = json.load(f)
+                        if data.get("data_lineage", {}).get("snapshot_status") in {"pending", "failed"}:
+                            continue
                         if "logic_hash" in data and data["logic_hash"]:
                             hashes.add(data["logic_hash"])
                 except Exception as e:

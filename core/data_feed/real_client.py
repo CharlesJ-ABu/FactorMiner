@@ -3,10 +3,22 @@ import logging
 import pandas as pd
 from typing import Dict, List, Any
 from pathlib import Path
+from core.data_feed.processor import from_epoch_milliseconds
 from core.data_feed.naming import data_path
 from core.evaluation.targets import ForwardReturnTarget, target_from_config
 
 logger = logging.getLogger(__name__)
+
+
+def validate_mining_mode(mode: Any) -> str:
+    """Require an explicit supported data shape for every configured mode."""
+    if not isinstance(mode, str) or mode not in ("sequential_single", "cross_asset"):
+        raise ValueError(
+            "data_feeds.mining_mode must be 'sequential_single' or 'cross_asset'; "
+            f"got {mode!r}."
+        )
+    return mode
+
 
 class RealDataClient:
     def __init__(self, config: Dict):
@@ -19,7 +31,9 @@ class RealDataClient:
         self.pairs = self.data_feed_config.get("pairs", [])
         self.mine_periods = self.data_feed_config.get("mine_period", [])
         self.test_periods = self.data_feed_config.get("test_period", [])
-        self.mining_mode = self.data_feed_config.get("mining_mode", "sequential_single")
+        self.mining_mode = validate_mining_mode(
+            self.data_feed_config.get("mining_mode", "sequential_single")
+        )
         self.target_spec = target_from_config(config)
         
         # 预先加载好的缓存
@@ -68,12 +82,6 @@ class RealDataClient:
                 
             self._mine_data = load_and_pivot(self.mine_periods)
             self._test_data = load_and_pivot(self.test_periods)
-            
-        else:
-            logger.warning(f"Mining mode '{self.mining_mode}' is not fully supported yet. Falling back to sequential_single.")
-            primary_pair = self.pairs[0]
-            self._mine_data = self._load_periods_for_pair(primary_pair, self.mine_periods)
-            self._test_data = self._load_periods_for_pair(primary_pair, self.test_periods)
 
     def _load_periods_for_pair(self, pair: str, periods: List[List[str]]) -> pd.DataFrame:
         if not periods:
@@ -96,19 +104,23 @@ class RealDataClient:
             all_dates = []
             for p in all_periods:
                 if len(p) >= 2:
-                    all_dates.append(pd.to_datetime(p[0]))
-                    all_dates.append(pd.to_datetime(p[1]))
+                    all_dates.append(pd.to_datetime(p[0], utc=True))
+                    all_dates.append(pd.to_datetime(p[1], utc=True))
                     
             if not all_dates:
                 return pd.DataFrame()
                 
-            start_date = min(all_dates).strftime('%Y-%m-%d')
-            end_date = max(all_dates).strftime('%Y-%m-%d')
-            
+            import ccxt
             from core.data_feed.data_downloader import DataDownloader
             downloader = DataDownloader()
+            interval = pd.Timedelta(seconds=ccxt.Exchange.parse_timeframe(self.timeframe))
+            # Period slices include their final bar. Request only the matching
+            # UTC bar opens, rather than truncating or extending by a whole day.
+            start_date = min(all_dates).ceil(interval).isoformat()
+            end_date = (max(all_dates).floor(interval) + interval).isoformat()
             
             res = downloader.download_ohlcv(
+                exchange_id=self.exchange,
                 symbol=pair,
                 timeframe=self.timeframe,
                 start_date=start_date,
@@ -116,7 +128,7 @@ class RealDataClient:
                 trade_type=self.instrument_type
             )
             
-            if not file_path.exists():
+            if not res.get('success') or not file_path.exists():
                 logger.error(f"Failed to auto-download {pair} data or file still missing.")
                 return pd.DataFrame()
             else:
@@ -127,24 +139,24 @@ class RealDataClient:
         
         # 标准化索引
         if 'date' in df.columns:
-            df.set_index('date', inplace=True)
+            df = df.set_index('date')
         elif 'time' in df.columns:
-            df.set_index('time', inplace=True)
+            df = df.set_index('time')
         elif 'timestamp' in df.columns:
-            df['date'] = pd.to_datetime(df['timestamp'], unit='ms')
-            df.set_index('date', inplace=True)
-            df.drop('timestamp', axis=1, inplace=True)
+            df['date'] = from_epoch_milliseconds(df['timestamp'])
+            df = df.set_index('date')
+            df = df.drop(columns='timestamp')
             
-        if not isinstance(df.index, pd.DatetimeIndex):
-            df.index = pd.to_datetime(df.index)
-        if df.index.tz is not None:
-            df.index = df.index.tz_localize(None)
+        # Stored naive timestamps mean UTC. Convert aware legacy files to the
+        # same physical instants before removing the timezone for slicing.
+        df.index = pd.to_datetime(df.index, utc=True).tz_localize(None)
             
         # 根据时间段进行过滤并拼接
         sliced_dfs = []
         for period in periods:
             if len(period) == 2:
-                start_dt, end_dt = pd.to_datetime(period[0]), pd.to_datetime(period[1])
+                start_dt = pd.to_datetime(period[0], utc=True).tz_localize(None)
+                end_dt = pd.to_datetime(period[1], utc=True).tz_localize(None)
                 sliced_df = df[(df.index >= start_dt) & (df.index <= end_dt)].copy()
                 sliced_df["returns"] = self.target_spec.build(sliced_df)
                 sliced_dfs.append(sliced_df)

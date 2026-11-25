@@ -30,15 +30,22 @@ def run_inspector(args):
     # 1. 动态加载用户自定义算子与模型
     if os.path.exists(args.user_dir):
         logger.info("Loading user modules from %s...", args.user_dir)
-        load_user_modules(args.user_dir)
+        load_report = load_user_modules(args.user_dir)
+        if load_report.errors:
+            logger.error("Inspection startup failed while loading user modules:\n%s", "\n".join(load_report.errors))
+            sys.exit(1)
 
     base_config = {}
-    if args.config and os.path.exists(args.config):
-        with open(args.config, "r") as f:
-            try:
+    if args.config is not None:
+        try:
+            with open(args.config, "r", encoding="utf-8") as f:
                 base_config = json.load(f)
-            except Exception as e:
-                logger.warning("Failed to load base config %s: %s", args.config, e)
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            logger.error("Failed to load base config %r: %s", args.config, exc)
+            sys.exit(1)
+        if not isinstance(base_config, dict):
+            logger.error("Base config %r must be a JSON object.", args.config)
+            sys.exit(1)
 
     # 2. 解析 CLI 命令行参数覆盖
     pairs_list = [p.strip() for p in args.pairs.split(",")] if args.pairs else None
@@ -47,7 +54,7 @@ def run_inspector(args):
     # 3. 运行引擎
     engine = FactorInspectorEngine(base_config=base_config)
     try:
-        engine.inspect(
+        results = engine.inspect(
             factor_id=args.factor,
             ast_str=args.ast,
             code_str=args.code,
@@ -57,6 +64,12 @@ def run_inspector(args):
         )
     except Exception as e:
         logger.error("Inspection failed: %s", e, exc_info=True)
+        sys.exit(1)
+
+    failures = {pair: metrics["error"] for pair, metrics in results.items() if "error" in metrics}
+    if failures:
+        details = "\n".join(f"- {pair}: {error}" for pair, error in failures.items())
+        logger.error("Inspection failed for %d of %d requested pairs:\n%s", len(failures), len(results), details)
         sys.exit(1)
 
 

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -5,11 +6,14 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
 
 from core.data_feed.naming import data_path
+from core.cli import setup_parser
+from core.commands.download import run_downloader
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +23,40 @@ PAIR = "BTC/USDT:USDT"
 
 class CLISmokeTests(unittest.TestCase):
     """Run every shipped custom paradigm through the public CLI on fixture data."""
+
+    def test_empty_download_targets_are_rejected_before_start(self):
+        for symbols, timeframes in [("", "1h"), ("BTC/USDT", "1h,")]:
+            with self.subTest(symbols=symbols, timeframes=timeframes):
+                args = setup_parser().parse_args([
+                    "download", "--symbols", symbols, "--timeframes", timeframes,
+                    "--start", "2024-01-01", "--end", "2024-01-02",
+                ])
+                with patch("core.commands.download.SmartBatchDownloader") as downloader:
+                    with self.assertRaises(SystemExit) as result:
+                        asyncio.run(run_downloader(args))
+                    self.assertEqual(result.exception.code, 1)
+                    downloader.assert_not_called()
+
+    def test_console_entry_loads_modules_from_the_selected_workspace(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            self._write_fixture_data(work)
+            plugins = work / "project" / "research_plugins"
+            (plugins / "custom_operators").mkdir(parents=True)
+            (plugins / "helpers.py").write_text("WINDOW = 5\n")
+            (plugins / "custom_operators" / "example.py").write_text(
+                "from research_plugins.helpers import WINDOW\n"
+            )
+            # -I omits cwd and PYTHONPATH, as with a separately installed CLI.
+            command = [
+                sys.executable, "-I", "-c",
+                "import sys; sys.path.insert(0, sys.argv.pop(1)); from core.cli import main; main()",
+                str(PROJECT_ROOT), "inspect", "--user-dir", str(plugins),
+                "--ast", "'close'", "--pairs", PAIR, "--timeframe", "1m",
+                "--start", "2024-01-01", "--end", "2024-01-01 02:30",
+            ]
+            result = subprocess.run(command, cwd=work, capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def _write_fixture_data(self, root: Path) -> None:
         dates = pd.date_range("2024-01-01", periods=180, freq="min")

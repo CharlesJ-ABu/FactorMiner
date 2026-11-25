@@ -92,7 +92,8 @@ class LLMFactorMiner(BaseFactorMiner):
                 parent_ids=["llm_batch_generate"],
                 provenance={
                     "generator": self.__class__.__name__,
-                    "model": self.config.get("llm_api_config", {}).get("model", ""),
+                    "model": self.api_manager.model if self.api_manager else "",
+                    "generation_source": "live_api" if self.api_manager else "mock",
                     "prompt_sha256": prompt_hash,
                     "iteration": getattr(self, "current_epoch", 0),
                 },

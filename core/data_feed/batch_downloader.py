@@ -7,16 +7,16 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional, Union, Tuple
-from pathlib import Path
 import ccxt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 
 from .data_downloader import DataDownloader
 from .health_checker import health_checker
-from .processor import data_processor
+from .processor import data_processor, from_epoch_milliseconds
 from .naming import data_filename, data_path
 
 
@@ -39,7 +39,7 @@ class SmartBatchDownloader(DataDownloader):
         
         # 为不同时间框架配置分批策略
         self.batch_configs = {
-            '1m': BatchConfig('1m', 1, 1000, 1.0, 3),      # 1分钟：每天一批，最多1000根K线
+            '1m': BatchConfig('1m', 1, 1000, 1.0, 3),      # 1分钟：每天一批，每页最多1000根K线
             '5m': BatchConfig('5m', 3, 1000, 0.8, 3),      # 5分钟：每3天一批
             '15m': BatchConfig('15m', 7, 1000, 0.6, 3),    # 15分钟：每周一批
             '30m': BatchConfig('30m', 14, 1000, 0.5, 3),   # 30分钟：每2周一批
@@ -64,8 +64,8 @@ class SmartBatchDownloader(DataDownloader):
         Returns:
             (每批天数, 总批次数)
         """
-        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+        start_dt = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+        end_dt = datetime.strptime(end_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
         total_days = (end_dt - start_dt).days
         
         config = self.get_batch_config(timeframe)
@@ -115,10 +115,13 @@ class SmartBatchDownloader(DataDownloader):
             exchange = self.get_exchange_instance(config_id, exchange_id, trade_type=trade_type)
             if not exchange:
                 return {'success': False, 'error': '无法创建交易所实例'}
+            self.exchange_id = exchange.id
+            # Keep this call's identity independent of the instance's mutable fields.
+            save_path = data_path("data", exchange.id, symbol, timeframe, trade_type).resolve()
             
             # 转换日期格式
-            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
             
             # 获取分批配置
             batch_days, total_batches = self.calculate_optimal_batch_size(timeframe, start_date, end_date)
@@ -133,78 +136,24 @@ class SmartBatchDownloader(DataDownloader):
             current_dt = start_dt
             batch_count = 0
             
+            if end_dt <= start_dt:
+                raise ValueError("end_date must be later than start_date (UTC, end exclusive).")
             while current_dt < end_dt:
-                try:
-                    batch_count += 1
-                    
-                    # 计算本次下载的结束时间
-                    batch_end = min(current_dt + timedelta(days=batch_days), end_dt)
-                    
-                    # 计算进度
-                    progress = min(95, int((current_dt - start_dt).days / (end_dt - start_dt).days * 90))
-                    
-                    if progress_callback:
-                        progress_callback(progress, f"下载第 {batch_count}/{total_batches} 批: "
-                                        f"{current_dt.strftime('%Y-%m-%d')} 到 {batch_end.strftime('%Y-%m-%d')}")
-                    
-                    # 下载数据
-                    ohlcv = exchange.fetch_ohlcv(
-                        symbol, 
-                        timeframe, 
-                        int(current_dt.timestamp() * 1000),
-                        limit=config.max_candles_per_batch
-                    )
-                    
-                    if ohlcv:
-                        all_data.extend(ohlcv)
-                        if progress_callback:
-                            progress_callback(progress + 5, f"第 {batch_count} 批完成，"
-                                            f"当前总计: {len(all_data)} 条数据")
-                    else:
-                        self.logger.warning(f"第 {batch_count} 批没有数据")
-                    
-                    # 移动到下一批
-                    current_dt = batch_end
-                    
-                    # 限速和延迟
+                batch_count += 1
+                batch_end = min(current_dt + timedelta(days=batch_days), end_dt)
+                progress = int((current_dt - start_dt) / (end_dt - start_dt) * 85)
+                if progress_callback:
+                    progress_callback(progress, f"下载第 {batch_count}/{total_batches} 批...")
+                all_data.extend(self._fetch_ohlcv_range(
+                    exchange, symbol, timeframe,
+                    int(current_dt.timestamp() * 1000), int(batch_end.timestamp() * 1000),
+                    limit=config.max_candles_per_batch, retry_attempts=config.retry_attempts,
+                    delay_seconds=config.delay_seconds,
+                ))
+                current_dt = batch_end
+                if current_dt < end_dt:
                     time.sleep(config.delay_seconds)
-                    
-                    # 检查是否需要重试
-                    if batch_count % 10 == 0:  # 每10批检查一次
-                        time.sleep(config.delay_seconds * 2)  # 额外延迟
-                    
-                except Exception as e:
-                    self.logger.error(f"第 {batch_count} 批下载失败: {e}")
-                    
-                    # 重试逻辑
-                    retry_count = 0
-                    while retry_count < config.retry_attempts:
-                        try:
-                            time.sleep(config.delay_seconds * 2)
-                            retry_count += 1
-                            
-                            if progress_callback:
-                                progress_callback(progress, f"第 {batch_count} 批重试 {retry_count}/{config.retry_attempts}")
-                            
-                            ohlcv = exchange.fetch_ohlcv(
-                                symbol, 
-                                timeframe, 
-                                int(current_dt.timestamp() * 1000),
-                                limit=config.max_candles_per_batch
-                            )
-                            
-                            if ohlcv:
-                                all_data.extend(ohlcv)
-                                break
-                            else:
-                                self.logger.warning(f"第 {batch_count} 批重试 {retry_count} 次后仍无数据")
-                                
-                        except Exception as retry_e:
-                            self.logger.error(f"第 {batch_count} 批重试 {retry_count} 失败: {retry_e}")
-                    
-                    # 如果重试失败，继续下一批
-                    current_dt = batch_end
-            
+
             if not all_data:
                 return {'success': False, 'error': '没有下载到数据'}
             
@@ -213,17 +162,11 @@ class SmartBatchDownloader(DataDownloader):
             
             # 转换为DataFrame - 直接命名为 date，避免后续复杂操作
             df = pd.DataFrame(all_data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            # 转换时间戳并处理时区问题 - 直接命名为 date
-            df['date'] = pd.to_datetime(df['timestamp'], unit='ms')
+            # Stored naive datetimes consistently represent UTC.
+            df['date'] = from_epoch_milliseconds(df['timestamp'])
             
-            # 如果时间戳是UTC时间，转换为本地时间
-            # 注意：CCXT返回的时间戳通常是UTC时间
-            if df['date'].dt.tz is None:
-                # 假设是UTC时间，转换为本地时间
-                df['date'] = df['date'].dt.tz_localize('UTC').dt.tz_convert('Asia/Shanghai')
-            
-            df.set_index('date', inplace=True)  # 设置 date 为索引
-            df.drop('timestamp', axis=1, inplace=True)
+            df = df.set_index('date')  # 设置 date 为索引
+            df = df.drop(columns='timestamp')
             
             print(f"原始下载数据: {len(df)} 条")
             print(f"数据时间范围: {df.index.min()} 到 {df.index.max()}")
@@ -232,48 +175,56 @@ class SmartBatchDownloader(DataDownloader):
             df = df[~df.index.duplicated(keep='last')].sort_index()
             print(f"去重后数据: {len(df)} 条")
             
-            # 阶段1: 与现有数据合并和验证
-            df_merged = self._merge_with_existing_data(df, symbol, timeframe, start_date, end_date)
+            with self._target_update_lock(save_path):
+                # 阶段1: 与现有数据合并和验证
+                df_merged = (df if download_mode == 'overwrite' else
+                             self._merge_with_existing_data(
+                                 df, symbol, timeframe, start_date, end_date, save_path=save_path))
             
-            # 阶段2: 检测和补全数据间断
-            df_complete = self._fill_data_gaps(df_merged, symbol, timeframe, start_date, end_date, progress_callback)
+                # 阶段2: 检测和补全数据间断
+                df_complete = self._fill_data_gaps(df_merged, symbol, timeframe, start_date, end_date, progress_callback, exchange=exchange)
+                self._validate_requested_range(df_complete, timeframe, start_date, end_date, exchange)
             
-            # 阶段3: 最终验证 - 只有100分才能保存
-            if not self._final_validation(df_complete, timeframe, symbol):
-                print("⚠️ 数据验证失败，开始自动修复...")
-                df_complete = self._auto_fix_data_issues(df_complete, timeframe, symbol, max_retries=20)
-                
-                # 再次验证
+                # 阶段3: 最终验证 - 只有100分才能保存
                 if not self._final_validation(df_complete, timeframe, symbol):
-                    return {'success': False, 'error': '数据验证失败，自动修复后仍无法达到100分标准'}
-                
-                print("🎉 自动修复成功，数据达到100分标准！")
-            
-            # 准备保存数据
-            print("=== 保存前数据检查 ===")
-            print(f"df_complete 索引名: {df_complete.index.name}")
-            print(f"df_complete 列名: {df_complete.columns.tolist()}")
-            print(f"df_complete 形状: {df_complete.shape}")
-            print(f"df_complete 数据类型:")
-            print(df_complete.dtypes)
-            print("========================")
-            
-            # 检查是否需要重置索引
-            # if df_complete.index.name == 'date' and 'date' in df_complete.columns:
-            #     print("⚠️ 检测到 date 索引和 date 列冲突，需要重置索引")
-            #     df_save = df_complete.reset_index()
-            # else:
-            #     print("✅ 没有索引和列冲突，直接使用原数据")
-            #     df_save = df_complete.copy()
-            df_save = df_complete.copy()
+                    print("⚠️ 数据验证失败，开始自动修复...")
+                    df_complete = self._auto_fix_data_issues(df_complete, timeframe, symbol, max_retries=20, exchange=exchange)
 
-            print(f"最终验证通过，准备保存: {len(df_save)} 条数据")
+                    # 再次验证
+                    if not self._final_validation(df_complete, timeframe, symbol):
+                        return {'success': False, 'error': '数据验证失败，自动修复后仍无法达到100分标准'}
+                
+                    print("🎉 自动修复成功，数据达到100分标准！")
+
+                # 准备保存数据
+                print("=== 保存前数据检查 ===")
+                print(f"df_complete 索引名: {df_complete.index.name}")
+                print(f"df_complete 列名: {df_complete.columns.tolist()}")
+                print(f"df_complete 形状: {df_complete.shape}")
+                print(f"df_complete 数据类型:")
+                print(df_complete.dtypes)
+                print("========================")
+
+                # 检查是否需要重置索引
+                # if df_complete.index.name == 'date' and 'date' in df_complete.columns:
+                #     print("⚠️ 检测到 date 索引和 date 列冲突，需要重置索引")
+                #     df_save = df_complete.reset_index()
+                # else:
+                #     print("✅ 没有索引和列冲突，直接使用原数据")
+                #     df_save = df_complete.copy()
+                df_save = df_complete.copy()
+
+                print(f"最终验证通过，准备保存: {len(df_save)} 条数据")
             
-            if progress_callback:
-                progress_callback(98, f"数据处理完成，准备保存...")
+                if progress_callback:
+                    progress_callback(98, f"数据处理完成，准备保存...")
             
-            # 保存数据
-            save_result = self._save_data_with_merge(df_save, symbol, timeframe, start_date, end_date, download_mode)
+                # 保存数据
+                save_result = self._save_data_with_merge(
+                    df_save, symbol, timeframe, start_date, end_date, download_mode, save_path=save_path)
+                if not save_result.get('success', False):
+                    return save_result
+
             
             if progress_callback:
                 progress_callback(100, f"下载完成！{save_result.get('message', '数据已保存')}")
@@ -302,14 +253,16 @@ class SmartBatchDownloader(DataDownloader):
             return {'success': False, 'error': error_msg}
     
     def _save_data_with_merge(self, df_save: pd.DataFrame, symbol: str, timeframe: str, 
-                             start_date: str, end_date: str, download_mode: str = 'merge') -> Dict:
-        """保存数据并处理合并逻辑"""
+                             start_date: str, end_date: str, download_mode: str = 'merge',
+                             save_path: Optional[Path] = None) -> Dict:
+        """Persist the already merged and validated frame without rereading old data."""
         # 直接保存数据，避免重复调用
         try:
-            filename = data_filename(symbol, timeframe, self.trade_type)
+            if save_path is None:
+                save_path = data_path("data", self.exchange_id, symbol, timeframe, self.trade_type)
+            filename = save_path.name
             print(f"完成构建文件名: {filename}")
 
-            save_path = data_path("data", self.exchange_id, symbol, timeframe, self.trade_type)
             print(f"生成保存路径: {save_path}")
             
             # 检查现有文件并合并
@@ -327,34 +280,7 @@ class SmartBatchDownloader(DataDownloader):
                 if hasattr(df_save['date'], 'dt') and df_save['date'].dt.tz is not None:
                     df_save['date'] = df_save['date'].dt.tz_convert('UTC').dt.tz_localize(None)
 
-            if save_path.exists() and download_mode != 'overwrite':
-                try:
-                    existing_df = pd.read_feather(save_path)
-                    print(f"读取到现有数据: {len(existing_df)} 条")
-                    existing_df = existing_df.drop(columns=[c for c in ['level_0', 'index'] if c in existing_df.columns])
-                    
-                    if 'date' in existing_df.columns and len(existing_df) > 0:
-                        existing_df['date'] = pd.to_datetime(existing_df['date'])
-                        if hasattr(existing_df['date'], 'dt') and existing_df['date'].dt.tz is not None:
-                            existing_df['date'] = existing_df['date'].dt.tz_convert('UTC').dt.tz_localize(None)
-
-                    # 合并数据，按 date 去重，保留最新的数据
-                    combined_df = pd.concat([existing_df, df_save], ignore_index=True)
-                    combined_df = combined_df.drop_duplicates(subset=['date'], keep='last').sort_values('date')
-
-                    print(f"合并完成：原数据 {len(existing_df)} 行，新数据 {len(df_save)} 行，合并后 {len(combined_df)} 行")
-                    df_save = combined_df
-                    
-                except Exception as e:
-                    print(f"合并数据失败，将另存为新文件: {e}")
-                    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
-                    save_path = save_path.with_name(f"{save_path.stem}-new-{ts}{save_path.suffix}")
-            elif download_mode == 'overwrite':
-                print("强制覆盖模式：忽略本地数据")
-            
-            # 保存数据（确保没有双重 reset_index 导致的 level_0 / index 列）
-            save_path.parent.mkdir(parents=True, exist_ok=True)
-            df_save.to_feather(save_path)
+            self._write_feather_atomic(df_save, save_path)
             print(f"保存数据成功，共 {len(df_save)} 条记录")
 
             return {
@@ -442,7 +368,7 @@ class SmartBatchDownloader(DataDownloader):
             for col in ['open', 'high', 'low', 'close']:
                 if col in df_fixed.columns:
                     df_fixed[col] = df_fixed[col].replace([0, -np.inf, np.inf], np.nan)
-                    df_fixed[col] = df_fixed[col].fillna(method='ffill')
+                    df_fixed[col] = df_fixed[col].ffill()
             
             return df_fixed
         except Exception as e:
@@ -467,11 +393,11 @@ class SmartBatchDownloader(DataDownloader):
                             # 如果转换失败，用前一个有效值填充
                             if df_fixed[col].isna().all():
                                 print(f"❌ 无法修复 {col} 列，将使用前一个有效值")
-                                df_fixed[col] = df_fixed[col].fillna(method='ffill')
+                                df_fixed[col] = df_fixed[col].ffill()
                         except Exception as e:
                             print(f"❌ 修复 {col} 列失败: {e}")
                             # 使用前一个有效值填充
-                            df_fixed[col] = df_fixed[col].fillna(method='ffill')
+                            df_fixed[col] = df_fixed[col].ffill()
             
             return df_fixed
             

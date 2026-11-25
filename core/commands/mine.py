@@ -130,7 +130,7 @@ def run_miner(args):
             logger.info("=== Mining Target: ALL (Cross-Asset) ===")
             data_client = RealDataClient(config_dict)
             director = FactorMinerDirector(config_dict, data_client)
-            best_candidates = director.run(max_iterations=args.iterations)
+            best_candidates = director.run(max_iterations=config_dict.get("max_iterations", 5))
             
             try:
                 from rich.console import Console

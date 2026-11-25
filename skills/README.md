@@ -64,17 +64,11 @@ rm -rf "${CODEX_HOME:-$HOME/.codex}/skills/factorminer-research-architect"
 - 真实执行前应检查依赖、数据覆盖、成本和授权范围。Skill 不包含行情、API 密钥或真实实验指标。
 - Skill 本身不主动上传本地行情；实际上下文和文件如何处理取决于用户选择的 Agent、模型和运行环境。
 
-## 发布验收
+## 验证与使用边界
 
-首个 Skill 已完成以下验证：
+Skill 的静态结构可通过 `python skills/validate.py` 检查。FactorMiner 的安装与产品测试参照[产品指南](../docs/FactorMiner_Product_Report_ZH.md)，当前支持本机单用户源码 checkout；wheel 本身不包含完整工作区与前端。
 
-- 独立模式：从“放量突破后短期延续”的自然语言直觉生成完整、框架无关的研究任务卡；
-- FactorMiner 增强模式：在最新 `main` 上使用公开 CLI 完成配置、受约束扩展、真实挖掘、快照和标准 Inspector 闭环；
-- 标签一致性：`target`、元数据、parquet 快照和 Inspector 使用同一 forward-return 公式；
-- 最小扩展：Target Builder 已支持的 3-bar next-open 标签不会生成自定义标签或 Inspector 适配器；
-- 回归验证：提交 `f97e249` 对应测试集为 60/60 通过，Target 专项测试为 6/6 通过。
-
-这些结果证明执行链路和研究约束按设计工作，不代表任何因子有效、可交易或能够获得未来收益。
+独立模式输出研究设计，不声称已经执行。增强模式须核对实际源码、行情、配置、标签和产物；配置化标签与窗口应一致，测试期参与选择时不能继续称为未见 holdout。历史运行记录或静态校验通过都不证明因子有效、可交易或未来收益。
 
 ## 贡献约定
 

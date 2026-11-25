@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Play, Filter, Terminal } from 'lucide-react';
 import ReactECharts from 'echarts-for-react';
 import { useWebSocket } from '../hooks/useWebSocket';
+
+const terminalTaskStatuses = new Set(['completed', 'failed', 'completed_empty']);
 
 export function Launchpad() {
   const [selectedMiner, setSelectedMiner] = useState<string>('');
@@ -18,30 +20,31 @@ export function Launchpad() {
   // Track scatter points and logs per task
   const [taskData, setTaskData] = useState<Record<string, { scatter: any[], logs: string[] }>>({});
 
-  const { lastMessage, isConnected } = useWebSocket('ws://localhost:8000/ws/monitor');
-
-  useEffect(() => {
-    if (!lastMessage) return;
+  const receiveMiningEvent = useCallback((message: any) => {
+    if (!message) return;
     
-    if (lastMessage.type === 'task_update' && lastMessage.task) {
+    if (message.type === 'task_update' && message.task) {
       setTasks(prev => {
-        const index = prev.findIndex(t => t.id === lastMessage.task.id);
+        const index = prev.findIndex(t => t.id === message.task.id);
         if (index !== -1) {
+          // A replay or delayed progress event cannot undo a confirmed terminal.
+          if (terminalTaskStatuses.has(prev[index].status)) return prev;
           const updated = [...prev];
-          updated[index] = lastMessage.task;
+          updated[index] = message.task;
           return updated;
         }
-        return [lastMessage.task, ...prev];
+        return [message.task, ...prev];
       });
       // Also update selected task if it's currently open
       setSelectedTask((current: any | null) => {
-        if (current && current.id === lastMessage.task.id) {
-          return lastMessage.task;
+        if (current && current.id === message.task.id) {
+          if (terminalTaskStatuses.has(current.status)) return current;
+          return message.task;
         }
         return current;
       });
-    } else if (lastMessage.type === 'scatter') {
-      const tid = lastMessage.task_id;
+    } else if (message.type === 'scatter') {
+      const tid = message.task_id;
       if (tid) {
         setTaskData(prev => {
           const current = prev[tid] || { scatter: [], logs: [] };
@@ -49,13 +52,13 @@ export function Launchpad() {
             ...prev,
             [tid]: {
               ...current,
-              scatter: [...current.scatter, [lastMessage.epoch, lastMessage.ic, lastMessage.complexity]]
+              scatter: [...current.scatter, [message.epoch, message.ic, message.complexity]]
             }
           };
         });
       }
-    } else if (lastMessage.type === 'log') {
-      const tid = lastMessage.task_id;
+    } else if (message.type === 'log') {
+      const tid = message.task_id;
       if (tid) {
         setTaskData(prev => {
           const current = prev[tid] || { scatter: [], logs: [] };
@@ -63,13 +66,15 @@ export function Launchpad() {
             ...prev,
             [tid]: {
               ...current,
-              logs: [...current.logs.slice(-49), lastMessage.text]
+              logs: [...current.logs.slice(-49), message.text]
             }
           };
         });
       }
     }
-  }, [lastMessage]);
+  }, []);
+
+  const { isConnected } = useWebSocket('ws://localhost:8000/ws/monitor', true, receiveMiningEvent);
 
   useEffect(() => {
     // Fetch Miners
@@ -104,7 +109,12 @@ export function Launchpad() {
     fetch('http://localhost:8000/api/tasks')
       .then(res => res.json())
       .then(data => {
-        if (data.tasks) setTasks(data.tasks);
+        if (data.tasks) setTasks(current => {
+          // Live events may arrive while the initial HTTP snapshot is in flight.
+          // Keep those rows and fill only task IDs that have not arrived yet.
+          const liveIds = new Set(current.map(task => task.id));
+          return [...current, ...data.tasks.filter((task: any) => !liveIds.has(task.id))];
+        });
       })
       .catch(err => console.error('Failed to fetch tasks:', err));
   }, []);

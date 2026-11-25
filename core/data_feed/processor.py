@@ -14,6 +14,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def from_epoch_milliseconds(values: pd.Series) -> pd.Series:
+    """Decode exchange timestamps as UTC-naive, retaining the input resolution."""
+    dates = pd.to_datetime(values, unit="ms", utc=True).dt.tz_localize(None)
+    # pandas versions choose different default units for integer timestamps.
+    # Keep historic millisecond files stable without truncating fractional input.
+    if pd.api.types.is_integer_dtype(values.dtype):
+        return dates.astype("datetime64[ms]")
+    return dates
+
+
 class DataProcessor:
     """数据处理器"""
     

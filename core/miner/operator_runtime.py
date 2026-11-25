@@ -94,14 +94,29 @@ def _terminal_value(node: Any, data: Any) -> Any:
         if isinstance(data, dict):
             if node in data:
                 return data[node]
-            return _zero_like_data(data)
         if isinstance(data, pd.DataFrame) and node in data.columns:
             return data[node]
-        return _zero_like_data(data)
+        raise OperatorRuntimeError(f"Missing required input stream '{node}' for AST evaluation.")
     if isinstance(node, (int, float)):
         zero = _zero_like_data(data)
         return zero + node
     raise OperatorRuntimeError(f"Invalid AST terminal {node!r}; expected a stream name or numeric constant.")
+
+
+def validate_ast(node: Any) -> None:
+    """Validate stored AST structure without requiring market data."""
+    if isinstance(node, (str, int, float)):
+        return
+    if not isinstance(node, dict) or "op" not in node:
+        raise OperatorRuntimeError(f"Invalid AST terminal {node!r}; expected a stream name or numeric constant.")
+    spec = get_operator_spec(node["op"])
+    if node.get("left") is None:
+        raise OperatorRuntimeError(f"Operator '{node['op']}' is missing its left operand.")
+    validate_ast(node["left"])
+    if spec["arity"] == 2:
+        if node.get("right") is None:
+            raise OperatorRuntimeError(f"Binary operator '{node['op']}' is missing its right operand.")
+        validate_ast(node["right"])
 
 
 def evaluate_ast(node: Any, data: Any) -> Any:

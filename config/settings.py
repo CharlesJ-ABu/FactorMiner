@@ -2,11 +2,10 @@
 FactorMiner 主配置文件
 """
 
-import os
 from pathlib import Path
 
 # 项目根目录
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path.cwd()
 
 # 数据目录
 DATA_DIR = PROJECT_ROOT / "data"

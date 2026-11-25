@@ -11,9 +11,24 @@ logger = logging.getLogger(__name__)
 
 
 class InspectorMetricEngine:
-    """
-    因子审查指标引擎：计算全维度的因子统计量，包含 IC/RankIC、IR、t-stat、Lag 衰减及分组多空收益。
-    """
+    """因子审查指标引擎：IC/RankIC、IR、t-stat、衰减及分组收益。"""
+
+    @staticmethod
+    def _rolling_spearman(factor: pd.Series, returns: pd.Series, window: int = 20,
+                          min_periods: int = 10) -> pd.Series:
+        # Rank only observations available inside each window. Full-sample
+        # ranks would change past rolling correlations when future rows arrive.
+        values = []
+        for end in range(len(factor)):
+            start = max(0, end + 1 - window)
+            left = factor.iloc[start:end + 1]
+            right = returns.iloc[start:end + 1]
+            valid = left.notna() & right.notna()
+            if valid.sum() < min_periods or left[valid].nunique() < 2 or right[valid].nunique() < 2:
+                values.append(np.nan)
+            else:
+                values.append(left[valid].corr(right[valid], method="spearman"))
+        return pd.Series(values, index=factor.index, dtype=float)
 
     @staticmethod
     def calculate_comprehensive_metrics(
@@ -24,6 +39,7 @@ class InspectorMetricEngine:
         n_quantiles: int = 5,
         price_data: Any = None,
         target_spec: ForwardReturnTarget | Dict[str, Any] | None = None,
+        periods: List[List[str]] | None = None,
     ) -> Dict[str, Any]:
         """
         计算全套审查指标字典。
@@ -71,9 +87,7 @@ class InspectorMetricEngine:
         # 2. 逐 bar / 滚动 相关性 (Rolling / Overall)
         # 为评估 IC 稳定性，计算 20-bar 滚动相关性序列
         rolling_pearson = clean_f.rolling(20, min_periods=10).corr(clean_r).dropna()
-        rank_f = clean_f.rank()
-        rank_r = clean_r.rank()
-        rolling_spearman = rank_f.rolling(20, min_periods=10).corr(rank_r).dropna()
+        rolling_spearman = InspectorMetricEngine._rolling_spearman(clean_f, clean_r).dropna()
 
         # 如果总体计算：
         p_ic = clean_f.corr(clean_r, method="pearson")
@@ -112,8 +126,25 @@ class InspectorMetricEngine:
                 if isinstance(target_spec, ForwardReturnTarget)
                 else ForwardReturnTarget.from_config(target_spec)
             )
+            price_segments = [price_data]
+            if periods is not None:
+                # RealDataClient builds each requested period independently.
+                # Preserve those boundaries even when two periods are adjacent.
+                utc_index = pd.to_datetime(price_data.index, utc=True)
+                price_segments = [
+                    price_data.loc[
+                        (utc_index >= pd.to_datetime(period[0], utc=True))
+                        & (utc_index <= pd.to_datetime(period[1], utc=True))
+                    ]
+                    for period in periods if len(period) == 2
+                ]
             for lag in lags:
-                lag_ret = normalized_target.with_horizon(lag).build(price_data)
+                lag_target = normalized_target.with_horizon(lag)
+                lag_ret = (
+                    pd.concat([lag_target.build(segment) for segment in price_segments])
+                    if price_segments
+                    else pd.Series(np.nan, index=price_data.index, name="returns")
+                )
                 mask_k = factor_values.notna() & lag_ret.notna()
                 if mask_k.sum() >= 10:
                     ric_k = factor_values[mask_k].corr(
@@ -153,18 +184,21 @@ class InspectorMetricEngine:
             
             q_dict = {}
             for q_idx in range(n_quantiles):
-                q_dict[f"Q{q_idx+1}"] = float(q_returns.get(q_idx, 0.0))
+                value = q_returns.get(q_idx)
+                q_dict[f"Q{q_idx+1}"] = float(value) if value is not None and pd.notna(value) else None
             
             # 结算 Long-Short 多空价差 (Q5 - Q1)
-            q_first = q_returns.get(0, 0.0)
-            q_last = q_returns.get(n_quantiles - 1, 0.0)
-            q_dict["Long_Short"] = float(q_last - q_first)
+            q_first = q_dict["Q1"]
+            q_last = q_dict[f"Q{n_quantiles}"]
+            q_dict["Long_Short"] = (
+                float(q_last - q_first) if q_first is not None and q_last is not None else None
+            )
 
             result["quantiles"] = q_dict
         except Exception as e:
             logger.debug("Quantile calculation failed: %s", e)
-            result["quantiles"] = {f"Q{i+1}": 0.0 for i in range(n_quantiles)}
-            result["quantiles"]["Long_Short"] = 0.0
+            result["quantiles"] = {f"Q{i+1}": None for i in range(n_quantiles)}
+            result["quantiles"]["Long_Short"] = None
 
         # 5. 因子换手率 (Turnover)
         diff_abs = clean_f.diff().abs().mean()
@@ -223,6 +257,6 @@ class InspectorMetricEngine:
             "pearson": calc_cs_stats(p_ics),
             "spearman": calc_cs_stats(s_ics),
             "decay": decay,
-            "quantiles": {"Q1": 0.0, "Q5": 0.0, "Long_Short": 0.0},
+            "quantiles": {"Q1": None, "Q5": None, "Long_Short": None},
             "turnover": float(turnover) if pd.notna(turnover) else 0.0,
         }

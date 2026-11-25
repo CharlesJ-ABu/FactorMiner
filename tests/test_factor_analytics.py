@@ -1,10 +1,15 @@
 import tempfile
 import unittest
 import os
+import asyncio
+import json
+import math
 
 import numpy as np
 import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocket
 
 from core.analysis.factor_analytics import analyze_factor_snapshot
 from core.miner.entities import FactorMetadata
@@ -100,6 +105,73 @@ class FactorAnalyticsTests(unittest.TestCase):
                 self.assertEqual(len(batch.json()["updated"]), 2)
             finally:
                 os.chdir(previous_cwd)
+
+
+@pytest.mark.parametrize("diagnostic", [float("inf"), float("-inf"), float("nan")])
+def test_nonfinite_diagnostics_do_not_break_http_results_or_change_stored_metrics(
+    tmp_path, monkeypatch, diagnostic,
+):
+    import api.main as api
+
+    monkeypatch.chdir(tmp_path)
+    storage = LocalFactorStorage("factor_db")
+    metrics = {"IC": 0.0, "RankIC": 0.0, "Turnover": 0.0, "fitness_score": 0.0,
+               "diagnostic": diagnostic, "nested": {"values": [diagnostic, -3.0]}}
+    storage.save_gp_factor(0, FactorMetadata("delivery", "GP", "test", metrics=metrics))
+    path = tmp_path / "factor_db" / "metadata" / "delivery.json"
+    original = path.read_bytes()
+    task = {"id": "delivery-task", "start_time": "2024-01-01", "status": "completed",
+            "factors": [{"metrics": metrics}]}
+    monkeypatch.setattr(api.TaskManager, "tasks", {task["id"]: task})
+    monkeypatch.setattr("core.storage.factor_storage.get_global_storage", lambda: storage)
+    with TestClient(api.app, raise_server_exceptions=False) as client:
+        responses = {route: client.get(route) for route in (
+            "/api/factors", "/api/factors/delivery", "/api/dashboard", "/api/tasks", "/api/stats",
+        )}
+    for route, response in responses.items():
+        assert response.status_code == 200, (route, response.text)
+        json.loads(response.text, parse_constant=lambda value: pytest.fail(f"Non-JSON token: {value}"))
+    received_metrics = [
+        responses["/api/factors"].json()["factors"][0]["metrics"],
+        responses["/api/factors/delivery"].json()["metadata"]["metrics"],
+        responses["/api/dashboard"].json()["factors"]["top_by_fitness"][0]["metrics"],
+        responses["/api/tasks"].json()["tasks"][0]["factors"][0]["metrics"],
+        responses["/api/stats"].json()["recent_activity"][0]["factors"][0]["metrics"],
+    ]
+    for actual in received_metrics:
+        assert actual["fitness_score"] == 0.0
+        assert actual["diagnostic"] is None
+        assert actual["nested"]["values"] == [None, -3.0]
+    assert path.read_bytes() == original
+    assert not math.isfinite(metrics["diagnostic"])
+    assert not math.isfinite(task["factors"][0]["metrics"]["diagnostic"])
+
+
+@pytest.mark.parametrize("diagnostic", [float("inf"), float("-inf"), float("nan")])
+def test_websocket_metrics_use_strict_json_without_mutating_task(diagnostic):
+    from api.ws_manager import ConnectionManager
+
+    event = {"type": "task_update", "task": {"id": "test", "status": "completed",
+        "factors": [{"metrics": {"fitness_score": -3.0, "diagnostic": [diagnostic, 0.0]}}]}}
+
+    async def run():
+        sent = []
+        async def receive():
+            return {"type": "websocket.connect"}
+        async def send(message):
+            sent.append(message)
+        socket = WebSocket({"type": "websocket", "path": "/ws/monitor", "headers": [],
+                            "query_string": b""}, receive, send)
+        manager = ConnectionManager()
+        await manager.connect(socket)
+        await manager.broadcast(event)
+        wire = next(message["text"] for message in sent if message["type"] == "websocket.send")
+        return json.loads(wire, parse_constant=lambda value: pytest.fail(f"Non-JSON token: {value}"))
+
+    actual = asyncio.run(run())
+    assert actual["type"] == "task_update" and actual["task"]["status"] == "completed"
+    assert actual["task"]["factors"][0]["metrics"] == {"fitness_score": -3.0, "diagnostic": [None, 0.0]}
+    assert not math.isfinite(event["task"]["factors"][0]["metrics"]["diagnostic"][0])
 
 
 if __name__ == "__main__":

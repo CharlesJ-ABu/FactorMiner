@@ -10,6 +10,15 @@ class InspectorReporter:
     """
 
     @staticmethod
+    def _format_quantiles(quantiles: Dict[str, Any]) -> tuple[str, str]:
+        groups = " | ".join(
+            f"{key}: " + (f"{value * 10000:.1f}bps" if value is not None else "N/A")
+            for key, value in quantiles.items() if key != "Long_Short"
+        )
+        spread = quantiles.get("Long_Short")
+        return groups or "N/A", f"{spread * 10000:+.1f} bps" if spread is not None else "N/A"
+
+    @staticmethod
     def print_inspection_report(
         expression_str: str,
         results_by_pair: Dict[str, Dict[str, Any]],
@@ -30,6 +39,14 @@ class InspectorReporter:
 
             # 2. 逐交易对打印指标大表
             for pair, metrics in results_by_pair.items():
+                if "error" in metrics:
+                    console.print(Panel(
+                        Text(f"Inspection unavailable\n{metrics['error']}", style="bold red"),
+                        title=f"Symbol Inspection: {pair}",
+                        expand=False,
+                    ))
+                    console.print("\n")
+                    continue
                 table = Table(
                     title=f"📊 Symbol Inspection: [bold cyan]{pair}[/bold cyan]",
                     show_header=True,
@@ -67,10 +84,9 @@ class InspectorReporter:
 
                 # Quantiles & Long-Short
                 quantiles = metrics.get("quantiles", {})
-                q_str = " | ".join([f"{k}: {v*10000:.1f}bps" for k, v in quantiles.items() if k != "Long_Short"])
-                ls_val = quantiles.get("Long_Short", 0.0) * 10000
-                table.add_row("Quantile Returns", "Group Means (Q1..Q5)", q_str if q_str else "N/A")
-                table.add_row("", "Long-Short Spread (Q5-Q1)", f"[bold gold1]{ls_val:+.1f} bps[/bold gold1]")
+                q_str, spread_str = InspectorReporter._format_quantiles(quantiles)
+                table.add_row("Quantile Returns", "Group Means (Q1..Q5)", q_str)
+                table.add_row("", "Long-Short Spread (Q5-Q1)", f"[bold gold1]{spread_str}[/bold gold1]")
 
                 # Turnover
                 turnover = metrics.get("turnover", 0.0)
@@ -84,8 +100,13 @@ class InspectorReporter:
             print(f"=== Factor Inspection Report: {expression_str} ===")
             for pair, metrics in results_by_pair.items():
                 print(f"Pair: {pair}")
+                if "error" in metrics:
+                    print(f"  Inspection unavailable: {metrics['error']}")
+                    continue
                 print(f"  RankIC Overall: {metrics.get('spearman', {}).get('overall', 0.0):.4f}")
                 print(f"  RankIC IR: {metrics.get('spearman', {}).get('ir', 0.0):.2f}")
                 print(f"  RankIC t-stat: {metrics.get('spearman', {}).get('t_stat', 0.0):.2f}")
                 print(f"  Decay: {metrics.get('decay')}")
-                print(f"  Quantiles: {metrics.get('quantiles')}")
+                q_str, spread_str = InspectorReporter._format_quantiles(metrics.get("quantiles", {}))
+                print(f"  Quantiles: {q_str}")
+                print(f"  Long-Short Spread (Q5-Q1): {spread_str}")

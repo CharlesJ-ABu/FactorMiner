@@ -5,6 +5,7 @@
 
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional
 import ccxt
@@ -16,10 +17,9 @@ class UserConfigManager:
     
     def __init__(self, config_dir: str = None):
         if config_dir is None:
-            config_dir = Path(__file__).parent / "user_config"
+            config_dir = Path.cwd() / "config" / "user_config"
         
         self.config_dir = Path(config_dir)
-        self.config_dir.mkdir(parents=True, exist_ok=True)
         self.config_file = self.config_dir / "config.json"
         self.load_config()
     
@@ -34,12 +34,23 @@ class UserConfigManager:
                 'data_sources': [],
                 'preferences': {}
             }
-            self.save_config()
     
     def save_config(self):
         """保存配置"""
-        with open(self.config_file, 'w', encoding='utf-8') as f:
-            json.dump(self.config, f, indent=2, ensure_ascii=False)
+        self.config_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=self.config_dir, delete=False
+            ) as handle:
+                temporary = Path(handle.name)
+                json.dump(self.config, handle, indent=2, ensure_ascii=False)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, self.config_file)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
     
     def add_exchange_config(self, name: str, exchange_id: str, api_key: str = None, 
                            secret: str = None, password: str = None, sandbox: bool = False) -> bool:
@@ -134,4 +145,4 @@ class UserConfigManager:
 
 
 # 全局配置管理器实例
-config_manager = UserConfigManager() 
+config_manager = UserConfigManager()

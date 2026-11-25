@@ -60,7 +60,7 @@ class LLMReflectableMixIn:
 
 class FactorExpressionAST(FactorExpression, LineageTrackableMixIn):
     """供遗传规划 (GP) 专用的 AST 表达式"""
-    def __init__(self, ast_dict: Dict, parent_ids: List[str] = None):
+    def __init__(self, ast_dict: Any, parent_ids: List[str] = None):
         FactorExpression.__init__(self)
         LineageTrackableMixIn.__init__(self, parent_ids)
         self.ast_dict = ast_dict
@@ -70,7 +70,7 @@ class FactorExpressionAST(FactorExpression, LineageTrackableMixIn):
 
         return evaluate_ast(self.ast_dict, data)
         
-    def get_source(self) -> Dict:
+    def get_source(self) -> Any:
         return self.ast_dict
         
     def get_complexity(self) -> str:
@@ -152,12 +152,10 @@ class FactorExpressionTensor(FactorExpression):
         self.model_instance = model_instance # PyTorch 模型实例
         
     def compute(self, data: pd.DataFrame):
-        # NN 训练阶段不在这里截断计算，需要保留梯度图
-        if self.model_instance:
-            # 假设 data 转为 tensor 传入
-            # return self.model_instance(data)[:, self.channel_idx]
-            pass
-        return None
+        predictor = getattr(self.model_instance, "predict_channel", None)
+        if not callable(predictor):
+            raise ValueError("NN factor requires a restored model with predict_channel().")
+        return predictor(data, self.channel_idx)
         
     def get_source(self) -> Dict:
         return {"model_version": self.model_version_id, "channel": self.channel_idx}

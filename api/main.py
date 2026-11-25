@@ -1,20 +1,40 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from api.ws_manager import manager
+from api.ws_manager import (
+    LOCAL_BROWSER_ORIGINS, json_safe, manager, public_payload, redact_text,
+    websocket_origin_allowed,
+)
 import asyncio
 import random
 import time
 import os
 import datetime
-import traceback
 import dataclasses
+import copy
+import logging
+import math
+import re
+import stat
+from contextvars import ContextVar
 from pathlib import Path
 
-app = FastAPI(title="FactorMiner V4 API")
+class FiniteJSONResponse(JSONResponse):
+    def render(self, content) -> bytes:
+        return super().render(json_safe(public_payload(content)))
+
+
+app = FastAPI(title="FactorMiner V4 API", default_response_class=FiniteJSONResponse)
 
 class TaskManager:
     tasks = {}
+    # Latest download events live for this API process, like mining tasks.
+    # Keep them separate so mining task list/stat schemas remain unchanged.
+    download_tasks = {}
+
+_mining_task_context: ContextVar[str | None] = ContextVar("mining_task_id", default=None)
+_mining_logger_levels: dict[str, tuple[int, int]] = {}
 
 class LaunchRequest(BaseModel):
     miner: str
@@ -44,7 +64,7 @@ LIFECYCLE_STATUSES = {"DISCOVERED", "INSPECTED", "PAPER_TRADING", "LIVE", "RETIR
 # Configure CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=list(LOCAL_BROWSER_ORIGINS),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -65,30 +85,122 @@ async def get_miners():
     # Only return registered custom miners
     custom_miners = list(MinerRegistry._registry.keys())
     
-    return {"miners": custom_miners, "load_errors": load_report.errors}
+    return {"miners": custom_miners, "load_errors": [
+        "A user module failed to load. See local server logs." for _ in load_report.errors
+    ]}
 
 @app.get("/api/configs")
 async def get_configs():
-    import json
-    config_dir = os.path.join("user_workspace", "configs")
-    if not os.path.exists(config_dir):
+    config_dir = Path("user_workspace") / "configs"
+    if not config_dir.is_dir() or config_dir.is_symlink() or config_dir.parent.is_symlink():
         return {"configs": {}}
-    
     configs_data = {}
-    for f in os.listdir(config_dir):
-        if f.endswith(".json"):
+    for path in sorted(config_dir.iterdir()):
+        if path.suffix == ".json" and path.is_file() and not path.is_symlink():
             try:
-                with open(os.path.join(config_dir, f), 'r') as file:
-                    configs_data[f] = json.load(file)
-            except Exception as e:
-                configs_data[f] = {"error": str(e)}
-                
+                configs_data[path.name] = _config_summary(_read_selected_config(path.name))
+            except HTTPException:
+                configs_data[path.name] = {"error": "Invalid or unavailable JSON configuration."}
     return {"configs": configs_data}
+
+
+def _read_selected_config(name: str) -> dict:
+    """Read one regular, direct-child JSON configuration without following links."""
+    import json
+
+    if not name or Path(name).name != name or "/" in name or "\\" in name or not name.endswith(".json"):
+        raise HTTPException(status_code=422, detail="Select a JSON file from the configuration list.")
+    root = Path("user_workspace") / "configs"
+    if root.is_symlink() or root.parent.is_symlink():
+        raise HTTPException(status_code=422, detail="Configuration links are not selectable.")
+    directory_fd = None
+    try:
+        directory_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory_fd)
+        with os.fdopen(descriptor, "r", encoding="utf-8") as source:
+            if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+                raise ValueError("not a regular configuration")
+            value = json.load(source)
+        if not isinstance(value, dict):
+            raise ValueError("configuration must be an object")
+        return value
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="Invalid or unavailable JSON configuration.") from exc
+    finally:
+        if directory_fd is not None:
+            os.close(directory_fd)
+
+
+def _config_summary(config: dict) -> dict:
+    """Expose only the strictly typed fields consumed by Launchpad's preview."""
+    summary = {}
+    for name in ("population_size", "max_iterations"):
+        if type(config.get(name)) is int:
+            summary[name] = config[name]
+    feeds = config.get("data_feeds")
+    if isinstance(feeds, dict):
+        preview = {}
+        for name in ("timeframe", "mining_mode"):
+            if isinstance(feeds.get(name), str):
+                preview[name] = feeds[name]
+        pairs = feeds.get("pairs")
+        if isinstance(pairs, list) and all(isinstance(item, str) for item in pairs):
+            preview["pairs"] = pairs[:]
+        periods = feeds.get("mine_period")
+        if isinstance(periods, list) and all(
+            isinstance(period, list) and len(period) == 2 and all(isinstance(item, str) for item in period)
+            for period in periods
+        ):
+            preview["mine_period"] = copy.deepcopy(periods)
+        summary["data_feeds"] = preview
+    fitness = config.get("fitness")
+    if isinstance(fitness, dict) and isinstance(fitness.get("hook"), str):
+        summary["fitness"] = {"hook": fitness["hook"]}
+    space = config.get("search_space")
+    operators = space.get("allowed_operators") if isinstance(space, dict) else None
+    if isinstance(operators, list) and all(isinstance(item, str) for item in operators):
+        summary["search_space"] = {"allowed_operators": operators[:]}
+    return public_payload(summary, _known_secrets(config))
+
+
+def _known_secrets(config: dict) -> tuple[str, ...]:
+    secrets = set()
+    sensitive = re.compile(
+        r"(?i)(?:api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|password|credential|"
+        r"(?:^|_)(?:keys?|token|secret)(?:$|_))"
+    )
+
+    def collect(value, private=False):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                collect(item, private or bool(sensitive.search(str(key))))
+        elif isinstance(value, list):
+            for item in value:
+                collect(item, private)
+        elif private and isinstance(value, str) and value:
+            secrets.add(value)
+            if value in os.environ:
+                secrets.add(os.environ[value])
+    collect(config)
+    for name, value in os.environ.items():
+        if value and sensitive.search(name):
+            secrets.add(value)
+    return tuple(secrets)
+
+
+def _candidate_complexity(candidate):
+    try:
+        getter = getattr(candidate, "get_complexity", None)
+        value = getter() if callable(getter) else getattr(candidate, "complexity", None)
+    except Exception:
+        return None
+    if type(value) in (int, float):
+        return value if math.isfinite(value) else None
+    return value if isinstance(value, str) else None
 
 @app.get("/api/exchange_meta")
 async def get_exchange_meta(exchange: str, trade_type: str = "futures"):
     # Try to fetch from CCXT, fallback if it fails (e.g., 451 error)
-    import traceback
 
     fallback_symbols = [
         "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT", "ADA/USDT",
@@ -257,18 +369,28 @@ def _factor_summary(metadata):
         "created_at": metadata.created_at,
         "display": display,
         "logic_kind": logic["kind"],
-        "snapshot_available": bool(metadata.data_lineage.get("snapshot_file")),
+        "snapshot_available": (
+            metadata.data_lineage.get("snapshot_status") not in {"pending", "failed"}
+            and bool(metadata.data_lineage.get("snapshot_file"))
+        ),
     }
 
 def _factor_detail(metadata):
     values_path = Path("factor_db") / "values" / f"{metadata.factor_id}.parquet"
-    snapshot_available = values_path.is_file()
+    snapshot_available = (
+        metadata.data_lineage.get("snapshot_status") not in {"pending", "failed"}
+        and values_path.is_file()
+    )
+    public_metadata = dataclasses.asdict(metadata)
+    lineage = public_metadata["data_lineage"]
+    # A plugin or filesystem exception can carry arbitrary private diagnostics.
+    lineage.pop("snapshot_error", None)
     return {
-        "metadata": dataclasses.asdict(metadata),
+        "metadata": public_metadata,
         "logic": _factor_logic(metadata),
         "audit_snapshot": {
             "values_available": snapshot_available,
-            "lineage": metadata.data_lineage,
+            "lineage": lineage,
             "message": (
                 f"Snapshot contains {metadata.data_lineage.get('snapshot_rows', 0)} aligned factor/forward-return observations."
                 if snapshot_available
@@ -294,7 +416,7 @@ def _factor_analysis_payload(factor_id: str):
     try:
         analysis = analyze_factor_snapshot(snapshot)
     except SnapshotAnalysisError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise HTTPException(status_code=422, detail="Snapshot analysis failed. Check the persisted factor data.") from exc
     return {"factor": _factor_summary(metadata), "lineage": metadata.data_lineage, "analysis": analysis}
 
 @app.get("/api/dashboard")
@@ -442,6 +564,7 @@ async def update_factor_lifecycle(factor_id: str, req: LifecycleUpdateRequest):
 
 @app.post("/api/launch")
 async def launch_mining(req: LaunchRequest, background_tasks: BackgroundTasks):
+    _read_selected_config(req.config)
     task_id = f"T-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{random.randint(100, 999)}"
     
     task_data = {
@@ -467,6 +590,7 @@ async def launch_mining(req: LaunchRequest, background_tasks: BackgroundTasks):
     return {"task_id": task_id}
 
 async def run_mining_task_background(task_id: str, miner_name: str, config_name: str):
+    import copy
     import json
     import os
     import time
@@ -476,20 +600,41 @@ async def run_mining_task_background(task_id: str, miner_name: str, config_name:
     start_time = time.time()
     task = TaskManager.tasks[task_id]
     main_loop = asyncio.get_running_loop()
+    context_token = _mining_task_context.set(task_id)
+    pending_broadcasts = []
+    secrets = _known_secrets({})
+    pair_index = 0
+    pair_count = 1
+
+    def broadcast_from_worker(message):
+        pending_broadcasts.append(asyncio.run_coroutine_threadsafe(
+            manager.broadcast(public_payload(message, secrets)), main_loop
+        ))
     
     # Create a custom logging handler to broadcast real logs to the UI
     class WebsocketLogHandler(logging.Handler):
+        def filter(self, record):
+            return _mining_task_context.get() == task_id
+
         def emit(self, record):
-            log_entry = self.format(record)
-            task["logs"] = [*task["logs"][-199:], log_entry]
-            asyncio.run_coroutine_threadsafe(
-                manager.broadcast({
-                    "task_id": task_id,
-                    "type": "log",
-                    "text": log_entry
-                }),
-                main_loop
+            safe_record = copy.copy(record)
+            # Warning/error records frequently embed preformatted exceptions.
+            # Keep full diagnostics in local handlers, not in replayable UI logs.
+            arguments = record.args.values() if isinstance(record.args, dict) else record.args
+            exception_argument = isinstance(record.msg, BaseException) or any(
+                isinstance(item, BaseException) for item in (arguments or ())
             )
+            if record.levelno >= logging.WARNING or record.exc_info or record.stack_info or exception_argument:
+                safe_record.msg = "Operation reported a warning or error; see local server logs."
+                safe_record.args = ()
+            safe_record.exc_info = safe_record.exc_text = safe_record.stack_info = None
+            log_entry = redact_text(self.format(safe_record), secrets)[:2000]
+            task["logs"] = [*task["logs"][-199:], log_entry]
+            broadcast_from_worker({
+                "task_id": task_id,
+                "type": "log",
+                "text": log_entry
+            })
             
     ws_handler = WebsocketLogHandler()
     ws_handler.setFormatter(logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s', datefmt='%H:%M:%S'))
@@ -498,13 +643,15 @@ async def run_mining_task_background(task_id: str, miner_name: str, config_name:
     # Attach only to FactorMiner and dynamically loaded user modules. Setting the
     # root logger globally would duplicate Uvicorn logs and interfere with parallel tasks.
     task_loggers = [logging.getLogger(name) for name in ("core", "custom_miners", "custom_fitness")]
-    previous_logger_levels = {task_logger: task_logger.level for task_logger in task_loggers}
     for task_logger in task_loggers:
+        original_level, users = _mining_logger_levels.get(task_logger.name, (task_logger.level, 0))
+        _mining_logger_levels[task_logger.name] = (original_level, users + 1)
         task_logger.setLevel(logging.INFO)
         task_logger.addHandler(ws_handler)
     
     def progress_callback(epoch, max_epoch, best_factor):
-        progress = int((epoch / max_epoch) * 100) if max_epoch > 0 else 0
+        fraction = epoch / max_epoch if max_epoch > 0 else 0
+        progress = int(((pair_index + fraction) / pair_count) * 100)
         task["progress"] = progress
         
         elapsed = time.time() - start_time
@@ -515,28 +662,20 @@ async def run_mining_task_background(task_id: str, miner_name: str, config_name:
             
             # Optionally emit scatter data here too based on best_factor metrics
             ic = best_factor.metrics.get("IC", 0) if hasattr(best_factor, "metrics") else 0
-            asyncio.run_coroutine_threadsafe(
-                manager.broadcast({
-                    "task_id": task_id,
-                    "type": "scatter",
-                    "epoch": epoch,
-                    "ic": ic,
-                    "complexity": 5  # mock complexity or read from factor
-                }),
-                main_loop
-            )
+            broadcast_from_worker({
+                "task_id": task_id,
+                "type": "scatter",
+                "epoch": pair_index * max_epoch + epoch,
+                "ic": ic,
+                "complexity": _candidate_complexity(best_factor),
+            })
             
         # Safely broadcast from synchronous thread back to main event loop
-        asyncio.run_coroutine_threadsafe(
-            manager.broadcast({"type": "task_update", "task": task}),
-            main_loop
-        )
+        broadcast_from_worker({"type": "task_update", "task": copy.deepcopy(task)})
 
     try:
-        config_path = os.path.join("user_workspace", "configs", config_name)
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-            
+        config = _read_selected_config(config_name)
+        secrets = _known_secrets(config)
         config["paradigm"] = miner_name
 
         # 后台任务与 CLI 使用同一套插件发现流程；不能依赖此前是否访问过
@@ -549,31 +688,49 @@ async def run_mining_task_background(task_id: str, miner_name: str, config_name:
         task["miner"] = config["paradigm"]
         
         from core.data_feed.real_client import RealDataClient
-        data_client = RealDataClient(config)
-        
-        director = FactorMinerDirector(config, data_client)
-        max_iter = config.get("max_iterations", 10)
-        
-        # We must run director.run in a separate thread to avoid blocking FastAPI
-        best_factors = await asyncio.to_thread(
-            director.run, max_iterations=max_iter, progress_callback=progress_callback
-        )
-        
+        feeds = config.get("data_feeds", {})
+        pairs = feeds.get("pairs", [])
+        sequential = feeds.get("mining_mode", "sequential_single") == "sequential_single"
+        run_pairs = pairs if sequential and pairs else [None]
+        pair_count = len(run_pairs)
+        best_factors = []
+        task["factors"] = []
+
+        def run_pair(run_config):
+            # Loading data (including auto-download) and initializing the miner
+            # belong in the same worker as execution, not on the API event loop.
+            data_client = RealDataClient(run_config)
+            director = FactorMinerDirector(run_config, data_client)
+            candidates = director.run(
+                max_iterations=run_config.get("max_iterations", 10),
+                progress_callback=progress_callback,
+            )
+            return candidates, director.get_latest_factor_ids()
+
+        for pair_index, pair in enumerate(run_pairs):
+            run_config = copy.deepcopy(config)
+            if pair is not None:
+                run_config["data_feeds"]["pairs"] = [pair]
+            # Keep sequential_single's per-pair data and lineage contract identical to CLI.
+            candidates, factor_ids = await asyncio.to_thread(run_pair, run_config)
+            best_factors.extend(candidates)
+            task["factors"].extend(
+                public_payload({
+                    "factor_id": factor_id,
+                    "logic_hash": getattr(candidate, "logic_hash", ""),
+                    "logic": candidate.to_display_string(max_length=160),
+                    "complexity": _candidate_complexity(candidate),
+                    "metrics": candidate.metrics,
+                }, secrets)
+                for factor_id, candidate in zip(factor_ids, candidates)
+            )
+            task["result_count"] = len(best_factors)
+
         task["progress"] = 100
         if best_factors:
             task["status"] = "completed"
             task["result_count"] = len(best_factors)
             task["hash"] = getattr(best_factors[0], 'logic_hash', 'N/A')
-            task["factors"] = [
-                {
-                    "factor_id": factor_id,
-                    "logic_hash": getattr(candidate, "logic_hash", ""),
-                    "logic": candidate.to_display_string(max_length=160),
-                    "complexity": candidate.get_complexity(),
-                    "metrics": candidate.metrics,
-                }
-                for factor_id, candidate in zip(director.get_latest_factor_ids(), best_factors)
-            ]
         else:
             task["status"] = "completed_empty"
             task["result_count"] = 0
@@ -581,19 +738,29 @@ async def run_mining_task_background(task_id: str, miner_name: str, config_name:
             
     except Exception as e:
         task["status"] = "failed"
-        task["error_msg"] = str(e) + "\n" + traceback.format_exc()
+        task["error_msg"] = "Mining task failed. Check the selected configuration and local server logs."
+        logging.getLogger("api.tasks").exception("Mining task %s failed", task_id)
         
     finally:
         for task_logger in task_loggers:
             task_logger.removeHandler(ws_handler)
-            task_logger.setLevel(previous_logger_levels[task_logger])
-        elapsed = time.time() - start_time
-        task["duration"] = f"{int(elapsed // 60)}m {int(elapsed % 60)}s"
+            original_level, users = _mining_logger_levels[task_logger.name]
+            if users == 1:
+                task_logger.setLevel(original_level)
+                del _mining_logger_levels[task_logger.name]
+            else:
+                _mining_logger_levels[task_logger.name] = (original_level, users - 1)
         try:
-            # Need a hack to broadcast from this async context
-            await manager.broadcast({"type": "task_update", "task": task})
+            # Worker snapshots must arrive before the task's terminal update.
+            await asyncio.gather(*(asyncio.wrap_future(future) for future in pending_broadcasts),
+                                 return_exceptions=True)
+            elapsed = time.time() - start_time
+            task["duration"] = f"{int(elapsed // 60)}m {int(elapsed % 60)}s"
+            await manager.broadcast(public_payload({"type": "task_update", "task": task}, secrets))
         except Exception:
             pass
+        finally:
+            _mining_task_context.reset(context_token)
 
 class BatchCoverageRequest(BaseModel):
     exchange: str
@@ -624,7 +791,7 @@ async def get_data_coverage(exchange: str, symbol: str, timeframe: str, trade_ty
     try:
         target_file = data_path("data", exchange, symbol, timeframe, trade_type)
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise HTTPException(status_code=422, detail="Invalid exchange, symbol, timeframe or trade type.") from exc
     if not target_file.parent.exists():
         return {"exists": False, "message": "Directory not found"}
     if not target_file.exists():
@@ -653,11 +820,26 @@ async def get_data_coverage(exchange: str, symbol: str, timeframe: str, trade_ty
                 "filepath": str(target_file)
             }
     except Exception as e:
-        return {"exists": False, "error": str(e)}
+        return {"exists": False, "error": "Unable to read local data. See local server logs."}
+
+async def publish_download_progress(event: dict):
+    # Update before sending: a job can finish while every monitor is offline.
+    snapshot = public_payload(copy.deepcopy(event), _known_secrets({}))
+    TaskManager.download_tasks[snapshot["task_id"]] = snapshot
+    await manager.broadcast(snapshot)
+
 
 @app.post("/api/download_data")
 async def download_data(req: DownloadRequest, background_tasks: BackgroundTasks):
-    task_id = f"DOWNLOAD-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+    import uuid
+
+    if not req.symbols or not req.timeframes or not req.trade_types:
+        raise HTTPException(status_code=422, detail="Select at least one symbol, timeframe and trade type.")
+    task_id = f"DOWNLOAD-{uuid.uuid4().hex}"
+    TaskManager.download_tasks[task_id] = {
+        "type": "download_progress", "task_id": task_id, "status": "running",
+        "progress": 0, "message": "Download queued.",
+    }
     background_tasks.add_task(
         run_batch_download_task_background,
         task_id, req.exchange, req.symbols, req.timeframes, req.start_date, req.end_date, req.trade_types, req.download_mode
@@ -670,23 +852,34 @@ async def run_batch_download_task_background(task_id: str, exchange: str, symbol
     
     total_tasks = len(symbols) * len(timeframes) * len(trade_types)
     current_task = 0
+    main_loop = asyncio.get_running_loop()
+    pending_broadcasts = []
+    results = []
+    secrets = _known_secrets({})
 
-    def get_progress_callback(symbol_name, task_index):
+    def get_progress_callback(symbol_name, timeframe, trade_type, task_index):
         def progress_callback(progress, message):
             # Scale progress across all tasks
             overall_progress = int(((task_index + (progress / 100)) / total_tasks) * 100)
+            if not isinstance(message, str) or re.search(r"(?i)error|exception|failed|failure|unresolved gap|失败|错误", message):
+                message = "Download reported a problem. See local server logs."
+            else:
+                message = redact_text(message, secrets)[:1000]
             
-            try:
-                loop = asyncio.get_running_loop()
-                loop.create_task(manager.broadcast({
+            future = asyncio.run_coroutine_threadsafe(
+                publish_download_progress({
                     "type": "download_progress",
                     "task_id": task_id,
                     "symbol": symbol_name,
+                    "timeframe": timeframe,
+                    "trade_type": trade_type,
+                    "status": "running",
                     "progress": overall_progress,
                     "message": f"[{task_index + 1}/{total_tasks}] {symbol_name}: {message}"
-                }))
-            except RuntimeError:
-                pass
+                }),
+                main_loop,
+            )
+            pending_broadcasts.append(future)
         return progress_callback
 
     for symbol, timeframe, trade_type in itertools.product(symbols, timeframes, trade_types):
@@ -706,7 +899,7 @@ async def run_batch_download_task_background(task_id: str, exchange: str, symbol
             
             downloader = SmartBatchDownloader()
             downloader.exchange_id = exchange # We need a way to pass exchange to it!
-            callback = get_progress_callback(symbol, current_task)
+            callback = get_progress_callback(symbol, timeframe, trade_type, current_task)
             callback(0, "Initializing...")
             await asyncio.sleep(0.5) # Slight delay for UI
             
@@ -722,23 +915,57 @@ async def run_batch_download_task_background(task_id: str, exchange: str, symbol
                 download_mode=download_mode
             )
             
-            if isinstance(result, dict) and not result.get('success', True):
-                callback(100, f"Error: {result.get('error', 'Unknown error')}")
-            else:
+            success = isinstance(result, dict) and result.get("success") is True
+            error = None if success else "Download target failed. See local server logs."
+            if success:
                 callback(100, "Successfully completed!")
+            else:
+                callback(100, f"Error: {error}")
                 
         except Exception as e:
-            callback = get_progress_callback(symbol, current_task)
-            callback(100, f"Error: {str(e)}")
+            success, error = False, "Download target failed. See local server logs."
+            logging.getLogger("api.downloads").exception("Download task %s target failed", task_id)
+            callback = get_progress_callback(symbol, timeframe, trade_type, current_task)
+            callback(100, f"Error: {error}")
             
+        results.append({"symbol": symbol, "timeframe": timeframe, "trade_type": trade_type,
+                        "success": success, "error": error})
+        # Drain queued worker callbacks before emitting the batch terminal state.
+        # A delayed "running" event must never follow "completed"/"failed".
+        await asyncio.gather(*(asyncio.wrap_future(future) for future in pending_broadcasts),
+                             return_exceptions=True)
+        pending_broadcasts.clear()
         current_task += 1
+
+    succeeded = sum(result["success"] for result in results)
+    failed = len(results) - succeeded
+    status = "completed" if succeeded == total_tasks and total_tasks else (
+        "partial_failed" if succeeded else "failed"
+    )
+    await publish_download_progress({
+        "type": "download_progress", "task_id": task_id, "status": status,
+        "progress": 100, "succeeded": succeeded, "failed": failed, "total": total_tasks,
+        "results": results,
+        "message": f"Batch download {status}: {succeeded}/{total_tasks} succeeded, {failed} failed.",
+    })
 
 @app.websocket("/ws/monitor")
 async def websocket_endpoint(websocket: WebSocket):
+    if not websocket_origin_allowed(websocket):
+        await websocket.close(code=1008)
+        return
     await manager.connect(websocket)
     try:
+        # Reuse the normal event shape so the client's task-ID filter and
+        # terminal-state absorption also cover reconnects and fast submissions.
+        for snapshot in list(TaskManager.download_tasks.values()):
+            await websocket.send_json(json_safe(public_payload(copy.deepcopy(snapshot))))
+        for task in list(TaskManager.tasks.values()):
+            await websocket.send_json(json_safe(public_payload({"type": "task_update", "task": copy.deepcopy(task)})))
         while True:
             # Just keep the connection alive
             data = await websocket.receive_text()
     except WebSocketDisconnect:
+        pass
+    finally:
         manager.disconnect(websocket)

@@ -2,6 +2,7 @@ import argparse
 import sys
 import logging
 import asyncio
+from pathlib import Path
 
 def setup_parser():
     parser = argparse.ArgumentParser(description="FactorMiner V4 Global CLI")
@@ -41,6 +42,12 @@ def setup_parser():
 def main():
     parser = setup_parser()
     args = parser.parse_args()
+    if args.command in {"mine", "inspect"}:
+        # Installed console scripts start in the executable's directory. Let
+        # trusted workspace plugins import their sibling modules just as in -m.
+        workspace_parent = str(Path(args.user_dir).resolve().parent)
+        if workspace_parent not in sys.path:
+            sys.path.append(workspace_parent)
     
     if args.command == "mine":
         from core.commands import mine as miner_main

@@ -79,14 +79,16 @@ class FactorMinerDirector:
         from datetime import datetime
         
         self.latest_factor_ids = []
+        snapshot_failures = []
         for cand in candidates:
             factor_id = f"fac_{uuid.uuid4().hex[:8]}"
-            self.latest_factor_ids.append(factor_id)
+            get_parents = getattr(cand, "get_lineage_parents", None)
             
             metadata = FactorMetadata(
                 factor_id=factor_id,
                 miner_type=self.config.get("paradigm"),
-                user_id="CharlesJ-ABu",
+                user_id=self.config.get("user_id") or "unknown",
+                parent_ids=list(get_parents() or []) if callable(get_parents) else [],
                 metrics=cand.metrics,
                 logic_hash=getattr(cand, 'logic_hash', ""),
                 generation_config={
@@ -94,22 +96,26 @@ class FactorMinerDirector:
                     for key in ("max_iterations", "population_size", "top_k_factors", "hidden_dim")
                     if key in self.config
                 },
-                created_at=datetime.now().isoformat()
+                created_at=datetime.now().isoformat(),
+                data_lineage={
+                    **self._snapshot_lineage(getattr(cand, "evaluation_split", "mine"), cand),
+                    "snapshot_status": "pending",
+                },
             )
             
             # 存储分流
             from core.miner.expressions import FactorExpressionAST, FactorExpressionCode, FactorExpressionTensor, FactorExpressionAction
             if isinstance(cand, FactorExpressionAST):
-                self.storage_client.save_gp_factor(cand.get_source(), metadata)
+                saved = self.storage_client.save_gp_factor(cand.get_source(), metadata)
             elif isinstance(cand, FactorExpressionCode):
-                self.storage_client.save_llm_factor(
+                saved = self.storage_client.save_llm_factor(
                     cand.get_source(),
                     cand.get_reflection_history(),
                     metadata,
                     provenance=cand.get_provenance(),
                 )
             elif isinstance(cand, FactorExpressionAction):
-                self.storage_client.save_rl_factor(cand.get_source(), b"", metadata)
+                saved = self.storage_client.save_rl_factor(cand.get_source(), b"", metadata)
             elif isinstance(cand, FactorExpressionTensor):
                 src = cand.get_source()
                 artifact_reference = {}
@@ -140,14 +146,34 @@ class FactorMinerDirector:
                                 "Failed to persist weights for model %s: %s",
                                 src["model_version"], exc,
                             )
-                self.storage_client.save_nn_factor_channel(
+                saved = self.storage_client.save_nn_factor_channel(
                     src["model_version"],
                     src["channel"],
                     metadata,
                     artifact_reference,
                 )
+            else:
+                raise TypeError(f"Unsupported factor expression: {type(cand).__name__}")
 
-            self._save_factor_snapshot(factor_id, cand)
+            if not saved:
+                raise RuntimeError(
+                    f"Failed to persist metadata for factor {factor_id}; "
+                    f"completed factor IDs: {self.latest_factor_ids}"
+                )
+
+            try:
+                self._save_factor_snapshot(factor_id, cand)
+            except Exception as exc:
+                snapshot_failures.append(f"{factor_id}: {exc}")
+            else:
+                self.latest_factor_ids.append(factor_id)
+
+        if snapshot_failures:
+            raise RuntimeError(
+                f"Factor archival incomplete: {len(snapshot_failures)} snapshot(s) failed; "
+                f"completed factor IDs: {self.latest_factor_ids}. "
+                + "; ".join(snapshot_failures)
+            )
 
     def _snapshot_lineage(
         self,
@@ -216,9 +242,18 @@ class FactorMinerDirector:
                 lineage,
             )
             if not saved:
-                logger.warning("No Phase II snapshot persisted for factor %s", factor_id)
+                metadata = self.storage_client.get_metadata(factor_id)
+                error = metadata.data_lineage.get("snapshot_error") if metadata else None
+                raise RuntimeError(error or "Storage did not persist the Phase II snapshot")
         except Exception as exc:
-            logger.warning("Failed to materialize Phase II snapshot for factor %s: %s", factor_id, exc)
+            record_failure = getattr(self.storage_client, "record_snapshot_failure", None)
+            if callable(record_failure):
+                try:
+                    record_failure(factor_id, str(exc))
+                except Exception:
+                    logger.exception("Failed to record snapshot failure for factor %s", factor_id)
+            logger.error("Failed to materialize Phase II snapshot for factor %s: %s", factor_id, exc)
+            raise
 
     def _print_results_table(self, candidates):
         try:

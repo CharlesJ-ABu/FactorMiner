@@ -19,25 +19,46 @@ async def run_downloader(args):
     
     symbols = [s.strip() for s in args.symbols.split(",")]
     timeframes = [t.strip() for t in args.timeframes.split(",")]
+    if not all(symbols) or not all(timeframes):
+        logging.error("Symbols and timeframes must contain non-empty entries.")
+        raise SystemExit(1)
     
     downloader = SmartBatchDownloader()
+    results = []
     
     for symbol in symbols:
         for timeframe in timeframes:
             logging.info(f"Downloading {symbol} {timeframe} ({args.type}) from {args.start} to {args.end} (mode: {args.mode})...")
-            await asyncio.to_thread(
-                downloader.download_ohlcv_batch,
-                exchange_id=args.exchange,
-                symbol=symbol,
-                timeframe=timeframe,
-                start_date=args.start,
-                end_date=args.end,
-                trade_type=args.type,
-                progress_callback=None,
-                download_mode=args.mode
-            )
+            try:
+                result = await asyncio.to_thread(
+                    downloader.download_ohlcv_batch,
+                    exchange_id=args.exchange,
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    start_date=args.start,
+                    end_date=args.end,
+                    trade_type=args.type,
+                    progress_callback=None,
+                    download_mode=args.mode
+                )
+                success = isinstance(result, dict) and result.get("success") is True
+                error = None if success else (
+                    result.get("error", "Downloader returned no successful result")
+                    if isinstance(result, dict) else "Downloader returned no successful result"
+                )
+            except Exception as exc:
+                success, error = False, str(exc)
+            results.append({"symbol": symbol, "timeframe": timeframe, "trade_type": args.type,
+                            "success": success, "error": error})
+            if not success:
+                logging.error("Download failed for %s %s (%s): %s", symbol, timeframe, args.type, error)
             
-    logging.info("Batch download completed.")
+    failures = [result for result in results if not result["success"]]
+    if failures:
+        logging.error("Batch download failed: %d/%d targets failed.", len(failures), len(results))
+        raise SystemExit(1)
+    logging.info("Batch download completed: all %d targets succeeded.", len(results))
+    return results
 
 if __name__ == "__main__":
     args = parse_args()

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Rocket, FileSearch, Database, LayoutDashboard, Languages } from 'lucide-react';
 import { useI18n } from '../i18n';
@@ -61,7 +62,9 @@ export function MainLayout() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto bg-background p-6">
-        <Outlet />
+          <Suspense fallback={<p role="status" className="p-6 text-muted-foreground">{t('common.loading')}</p>}>
+            <Outlet />
+          </Suspense>
       </main>
     </div>
   );

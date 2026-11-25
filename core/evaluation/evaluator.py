@@ -1,6 +1,9 @@
 import concurrent.futures
 import traceback
 import logging
+import math
+from contextvars import copy_context
+from numbers import Real
 from typing import List, Dict, Any
 
 from core.miner.expressions import FactorExpression
@@ -196,6 +199,12 @@ class ParallelEvaluator:
                     fitness_score = abs(rank_ic) * 100.0 * penalty
                     metrics = {**base_metrics, "coverage": coverage, "fitness_score": float(fitness_score)}
                 
+                # Invalid hook results must never enter ranking or successful
+                # feedback. Zero and negative finite scores remain meaningful.
+                score = metrics.get("fitness_score")
+                if not isinstance(score, Real) or not math.isfinite(score):
+                    raise FactorOutputError("fitness_score must be a finite real number")
+
                 expr.metrics = metrics
                 return CandidateEvaluation(
                     candidate=expr,
@@ -217,7 +226,10 @@ class ParallelEvaluator:
             max_workers=worker_count,
             thread_name_prefix="factor-evaluator",
         ) as executor:
-            results = list(executor.map(safe_compute, candidates))
+            # Preserve the caller's task-local logging identity in each worker.
+            # Each candidate needs its own Context so they can run concurrently.
+            futures = [executor.submit(copy_context().run, safe_compute, expr) for expr in candidates]
+            results = [future.result() for future in futures]
             
         feedback.results.extend(results)
         return feedback

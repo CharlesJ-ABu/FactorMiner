@@ -1,0 +1,7 @@
+# Python source distributions contain the engine and its build inputs.
+# Example workspaces, Web assets and tests are distributed in the Git checkout.
+global-exclude *
+include LICENSE README.md MANIFEST.in setup.py pyproject.toml requirements-core.txt
+recursive-include core *.py
+recursive-include api *.py
+include config/__init__.py config/settings.py config/user_config.py

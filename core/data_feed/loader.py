@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import os
 import warnings
+from core.data_feed.processor import from_epoch_milliseconds
 from core.data_feed.naming import data_path
 warnings.filterwarnings('ignore')
 
@@ -126,7 +127,7 @@ class DataLoader:
             elif 'time' in data.columns:
                 data.set_index('time', inplace=True)
             elif 'timestamp' in data.columns:
-                data['date'] = pd.to_datetime(data['timestamp'], unit='ms')
+                data['date'] = from_epoch_milliseconds(data['timestamp'])
                 data.set_index('date', inplace=True)
                 data.drop('timestamp', axis=1, inplace=True)
             
@@ -284,8 +285,8 @@ class DataLoader:
             预处理后的数据
         """
         # 处理缺失值
-        data = data.fillna(method='ffill')
-        data = data.fillna(method='bfill')
+        data = data.ffill()
+        data = data.bfill()
         
         # 删除全为NaN的行
         data = data.dropna(how='all')

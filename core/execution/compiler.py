@@ -6,6 +6,7 @@ from core.miner.expressions import (
     FactorExpressionCode,
 )
 from core.storage.factor_storage import FactorStorageInterface
+from core.miner.operator_runtime import validate_ast
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +54,7 @@ class FactorCompiler:
 
         if logic_type in {"json_ast", "ast"}:
             ast_dict = logic_ref.get("ast")
-            if not isinstance(ast_dict, dict):
-                raise ValueError(f"Factor {factor_id} contains no valid AST.")
+            validate_ast(ast_dict)
             expression = FactorExpressionAST(ast_dict=ast_dict)
             return expression.compute
 
@@ -101,9 +101,8 @@ class FactorCompiler:
         else:
             raise ValueError(f"Unsupported miner type: {miner_type}")
 
-    def _compile_ast_to_numexpr(self, ast_dict: dict):
-        if not isinstance(ast_dict, dict):
-            raise ValueError("GP AST must be a dictionary.")
+    def _compile_ast_to_numexpr(self, ast_dict: Any):
+        validate_ast(ast_dict)
         return FactorExpressionAST(ast_dict=ast_dict).compute
 
     def deploy_to_live_server(self, factor_id: str, server_target: str):

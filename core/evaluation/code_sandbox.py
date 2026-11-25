@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import ast
-import multiprocessing
+import os
+import pickle
+import subprocess
+import sys
 import traceback
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Union
 
 import pandas as pd
@@ -334,6 +338,17 @@ def _sandbox_worker(connection, code_str: str, data: Any, limits: SandboxLimits)
         connection.close()
 
 
+class _WorkerOutput:
+    """Send the existing worker result over the dedicated subprocess pipe."""
+
+    def send(self, result: dict) -> None:
+        pickle.dump(result, sys.stdout.buffer, protocol=pickle.HIGHEST_PROTOCOL)
+        sys.stdout.buffer.flush()
+
+    def close(self) -> None:
+        sys.stdout.close()
+
+
 class RestrictedSandbox:
     """Validate statically, then execute in a bounded short-lived process."""
 
@@ -358,36 +373,56 @@ class RestrictedSandbox:
         data: Any,
     ) -> Union[pd.Series, pd.DataFrame]:
         self.validate_code(code_str)
-        context = multiprocessing.get_context("spawn")
-        parent, child = context.Pipe(duplex=False)
-        process = context.Process(
-            target=_sandbox_worker,
-            args=(child, code_str, data, self.limits),
-            daemon=True,
+        # NumPy may initialize BLAS while pandas is imported, before the worker
+        # can set resource limits. Limit only the child's import-time threads;
+        # RLIMIT_CPU still counts its total CPU time, including these imports.
+        environment = os.environ.copy()
+        for name in (
+            "OPENBLAS_NUM_THREADS",
+            "OMP_NUM_THREADS",
+            "OMP_THREAD_LIMIT",
+            "MKL_NUM_THREADS",
+            "VECLIB_MAXIMUM_THREADS",
+            "NUMEXPR_NUM_THREADS",
+            "BLIS_NUM_THREADS",
+        ):
+            environment[name] = "1"
+        payload = pickle.dumps(
+            (code_str, data, vars(self.limits)),
+            protocol=pickle.HIGHEST_PROTOCOL,
         )
-        process.start()
-        child.close()
+        process = subprocess.Popen(
+            [sys.executable, "-B", str(Path(__file__).resolve()), "--sandbox-worker"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=environment,
+        )
         try:
-            if not parent.poll(self.limits.timeout_seconds):
-                process.terminate()
-                process.join(timeout=1)
-                if process.is_alive() and hasattr(process, "kill"):
-                    process.kill()
-                    process.join(timeout=1)
-                raise SandboxTimeoutError(
-                    f"LLM factor execution exceeded {self.limits.timeout_seconds:.2f}s"
-                )
-            result = parent.recv()
-        except EOFError as exc:
-            raise SandboxExecutionError(
-                f"LLM factor worker exited without a result (exit code {process.exitcode})"
+            output, _ = process.communicate(
+                input=payload,
+                timeout=self.limits.timeout_seconds,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise SandboxTimeoutError(
+                f"LLM factor execution exceeded {self.limits.timeout_seconds:.2f}s"
             ) from exc
         finally:
-            parent.close()
-            process.join(timeout=1)
-            if process.is_alive():
-                process.terminate()
-                process.join(timeout=1)
+            if process.poll() is None:
+                process.kill()
+            process.wait()
+            for stream in (process.stdin, process.stdout, process.stderr):
+                if stream is not None:
+                    stream.close()
+
+        if process.returncode != 0 or not output:
+            raise SandboxExecutionError(
+                f"LLM factor worker exited without a result (exit code {process.returncode})"
+            )
+        try:
+            result = pickle.loads(output)
+        except Exception as exc:
+            raise SandboxExecutionError("LLM factor worker returned an invalid result") from exc
 
         if result["status"] == "success":
             return result["output"]
@@ -396,3 +431,10 @@ class RestrictedSandbox:
         if error_type == "FactorOutputError":
             raise FactorOutputError(message)
         raise SandboxExecutionError(f"{error_type}: {message}")
+
+
+if __name__ == "__main__" and sys.argv[1:] == ["--sandbox-worker"]:
+    # Keep the payload independent of the project's import path so the CLI may
+    # invoke this absolute file from a different working directory.
+    worker_code, worker_data, worker_limits = pickle.load(sys.stdin.buffer)
+    _sandbox_worker(_WorkerOutput(), worker_code, worker_data, SandboxLimits(**worker_limits))

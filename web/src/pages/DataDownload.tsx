@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Download, CheckCircle2, Info, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Download, CheckCircle2, AlertCircle, Info, Loader2 } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { createDownloadEventTracker, downloadOutcome, emptyDownloadState, isTerminalDownloadStatus, reduceDownloadProgress } from '../utils/downloadStatus';
+import type { DownloadProgressEvent, DownloadState } from '../utils/downloadStatus';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 
@@ -31,14 +33,15 @@ export function DataDownload() {
   
   const [downloadMode, setDownloadMode] = useState('merge');
   
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [downloadMsg, setDownloadMsg] = useState('');
+  const downloadEvents = useRef(createDownloadEventTracker());
+  const [download, setDownload] = useState<DownloadState>(emptyDownloadState);
+  const isDownloading = download.status === 'running';
+  const progress = download.progress;
+  const downloadMsg = download.message;
+  const outcome = downloadOutcome(download.status);
   const [logs, setLogs] = useState<string[]>([]);
   
   const [coverageResults, setCoverageResults] = useState<any[]>([]);
-
-  const { lastMessage } = useWebSocket('ws://localhost:8000/ws/monitor');
 
   // Fetch Meta
   useEffect(() => {
@@ -84,17 +87,18 @@ export function DataDownload() {
     return () => clearTimeout(timer);
   }, [fetchCoverage]);
 
-  useEffect(() => {
-    if (lastMessage?.type === 'download_progress') {
-      setProgress(lastMessage.progress);
-      setDownloadMsg(lastMessage.message);
-      setLogs(prev => [...prev.slice(-99), lastMessage.message]);
-      if (lastMessage.progress >= 100) {
-        setIsDownloading(false);
-        fetchCoverage();
-      }
-    }
-  }, [lastMessage, fetchCoverage]);
+  const applyDownloadEvent = useCallback((event: DownloadProgressEvent) => {
+    setDownload(current => reduceDownloadProgress(current, event, event.task_id));
+    setLogs(prev => [...prev.slice(-99), event.message]);
+    if (isTerminalDownloadStatus(event.status ?? '')) fetchCoverage();
+  }, [fetchCoverage]);
+
+  const receiveDownloadEvent = useCallback((event: DownloadProgressEvent | null) => {
+    const accepted = downloadEvents.current.receive(event);
+    if (accepted) applyDownloadEvent(accepted);
+  }, [applyDownloadEvent]);
+
+  const { isConnected } = useWebSocket('ws://localhost:8000/ws/monitor', true, receiveDownloadEvent);
 
   const handleDownload = () => {
     if (symbols.length === 0 || timeframes.length === 0 || !tradeType) {
@@ -102,9 +106,8 @@ export function DataDownload() {
       return;
     }
 
-    setIsDownloading(true);
-    setProgress(0);
-    setDownloadMsg('Starting download...');
+    downloadEvents.current.start();
+    setDownload({ status: 'running', progress: 0, message: 'Starting download...' });
     setLogs(['> Initializing batch download job...', '> Contacting server...']);
     
     // Format dates back to YYYY-MM-DD
@@ -123,10 +126,18 @@ export function DataDownload() {
         trade_types: [tradeType],
         download_mode: downloadMode
       })
+    }).then(async response => {
+      if (!response.ok) throw new Error(`Download request failed (${response.status})`);
+      const data = await response.json();
+      if (typeof data.task_id !== 'string' || !data.task_id) throw new Error('Download task ID was not returned');
+      const buffered = downloadEvents.current.accept(data.task_id);
+      if (buffered) applyDownloadEvent(buffered);
     }).catch(err => {
       console.error(err);
-      setIsDownloading(false);
-      setDownloadMsg('Failed to start download');
+      downloadEvents.current.reset();
+      const message = err instanceof Error ? err.message : 'Failed to start download';
+      setDownload({ status: 'failed', progress: 0, message });
+      setLogs(prev => [...prev, message]);
     });
   };
 
@@ -313,10 +324,10 @@ export function DataDownload() {
         </div>
 
         {/* Dynamic Display Area: Coverage OR Console */}
-        {isDownloading || progress === 100 ? (
+        {isDownloading || outcome ? (
           <div className="mb-8 p-4 bg-[#0a0a0a] rounded-lg border border-border flex flex-col max-h-60 overflow-hidden shadow-inner">
             <div className="flex items-center gap-2 text-primary font-bold text-sm mb-3 border-b border-border/50 pb-2">
-              {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : download.status === 'completed' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
               Execution Console
             </div>
             <div className="overflow-y-auto font-mono text-xs text-muted-foreground flex flex-col gap-1 pr-2">
@@ -375,6 +386,11 @@ export function DataDownload() {
         <div className="mt-auto">
           {isDownloading ? (
             <div className="space-y-2">
+              {!isConnected && (
+                <p className="text-sm text-amber-500" role="status">
+                  Monitoring connection interrupted. Reconnecting; the task may still be running.
+                </p>
+              )}
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span className="truncate pr-4">{downloadMsg}</span>
                 <span>{progress}%</span>
@@ -386,14 +402,15 @@ export function DataDownload() {
                 />
               </div>
             </div>
-          ) : progress === 100 ? (
+          ) : outcome ? (
             <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2 p-4 bg-green-500/10 text-green-500 border border-green-500/20 rounded-lg">
-                <CheckCircle2 className="w-5 h-5" />
-                <span>Successfully completed batch download!</span>
+              <div className={`flex items-center gap-2 p-4 border rounded-lg ${outcome.tone === 'success' ? 'bg-green-500/10 text-green-500 border-green-500/20' : outcome.tone === 'warning' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
+                {outcome.tone === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                <span>{outcome.message}</span>
               </div>
+              <p className="text-sm text-muted-foreground">{downloadMsg}</p>
               <button 
-                onClick={() => setProgress(0)}
+                onClick={() => { downloadEvents.current.reset(); setDownload(emptyDownloadState); }}
                 className="w-full text-sm text-muted-foreground hover:text-foreground underline transition-colors"
               >
                 Start another batch

@@ -1,5 +1,18 @@
 # FactorMiner V4 架构设计：统一因子挖掘范式
 
+更新于 2026-11-25。当前交付是从源码 checkout 运行的本机单用户研究工具，Python ≥3.10（实测 3.12）、Node.js ≥22.12。安装、测试与文件管理见[产品指南](../FactorMiner_Product_Report_ZH.md)。wheel 提供 Python 引擎、API 和 CLI；工作区、示例及前端来自源码。
+
+本文同时保留接口设计与算法教学示意。标为“设计示意/规划”的伪代码不保证可直接运行；当前契约以源码及下表为准：
+
+| 能力 | 当前实现 | 尚未交付的范围 |
+| --- | --- | --- |
+| 候选生成 | GP 变异/精英、参考 RL 权重更新、NumPy NN、LLM 代码与反馈 | 完整 GP 交叉、内置 Actor-Critic/通用 GPU 计算图 |
+| 评估 | 本地 1–64 线程、IC/RankIC/因子变化、源码哈希去重 | Ray/Celery、所有 Miner 的语义软去重、组合优化 |
+| 存档 | AST/源码/NN 工件、快照、数据血缘、声明的父引用/模型来源 | 任意 Miner 的完整搜索状态与 RL 策略恢复 |
+| 审查 | CLI 复评与 Web 快照/树图/比较、人工生命周期标签 | 真实交易净值、NN 三维/重要性图、自动因果审查 |
+| 执行 | 重建本地 Python callable | C++ 编译、交易网关、远端部署 |
+
+
 ## 核心设计理念
 
 为了兼容 GP、RL、NN、LLM 四种因子挖掘范式，FactorMiner V4 将“挖掘”动作高度抽象为一个通用的**“搜索与优化”闭环过程**：`生成候选 -> 回测评价 -> 模型更新 -> 再生成`。
@@ -29,7 +42,7 @@ class FactorExpression(ABC):
         统一计算接口。
         - AST派生类: 在这里遍历解析树并计算
         - Code派生类: 在这里使用 exec/eval 计算
-        - DL派生类: 在这里执行 model.forward(data)
+        - NN派生类: 在这里执行 model.forward(data)
         """
         pass
         
@@ -53,7 +66,7 @@ class LLMReflectableMixIn:
 
 ---
 
-## 2. 核心抽象接口设计 (BaseMiner)
+## 2. 核心抽象接口设计 (BaseMiner，设计示意)
 
 为了彻底解决“NN 范式评价断层”、“大模型同质化”以及“演进状态丢失”等架构痛点，V4 引入了统一的评测反馈结构 `EvaluationFeedback` 与 `DiversityFilter`。
 
@@ -65,7 +78,7 @@ import hashlib
 @dataclass
 class EvaluationFeedback:
     """统一的评测反馈体，兼容标量指标和张量计算图"""
-    metrics: List[Dict[str, float]]          # 传统指标（IC, Sharpe等）
+    metrics: List[Dict[str, float]]          # 传统指标（IC、RankIC、Turnover、fitness）
     raw_outputs: Optional[torch.Tensor] = None # DL流派前向传播直接吐出的 Tensor
     raw_targets: Optional[torch.Tensor] = None # 用于 DL 计算 Loss 的配置化未来收益标签
 
@@ -171,7 +184,7 @@ class BaseFactorMiner(ABC):
 
 ## 3. 标准化存储与谱系追踪 (FactorStorage)
 
-由于四个流派在生成因子的“本质形态”上存在巨大差异，如果我们只用粗暴的二进制（Blob）存储，因子的可读性、回溯性和实盘复现性就会彻底崩溃。在 FactorMiner V4 中，系统通过 `FactorMetadata` 承载因子的谱系灵魂，并通过统一的存储接口，对不同流派采用不同的底层异构落地策略，最终进行标准化的肉体存储。
+不同范式分别保存 AST、源码或模型工件，再以统一快照保存因子值和标签。元数据记录数据血缘、选定配置、Miner 声明的父代引用及模型来源；父引用不保证都是已入库 Factor ID，也不等于完整搜索过程可恢复。下面的接口草图展示设计分工，实际字段以 `core/miner/entities.py` 与存储实现为准。
 
 ### 3.1 谱系与元数据定义 (FactorMetadata)
 
@@ -186,7 +199,7 @@ class FactorMetadata:
     user_id: str                     # 提交/运行该任务的研究员ID
     
     # 【新增】因子生命周期状态机
-    # 状态流转: DISCOVERED (刚挖出) -> INSPECTED (已人工审查) -> PAPER_TRADING (模拟盘) -> LIVE (实盘) -> RETIRED (衰减退役)
+    # 人工状态标记；PAPER_TRADING/LIVE 不会启动模拟盘或实盘
     lifecycle_status: str = field(default="DISCOVERED") 
     
     # 谱系追踪 (Lineage): 支撑因子的达尔文演进或反思链条
@@ -200,7 +213,7 @@ class FactorMetadata:
     # NN -> {"storage_type": "model_channel", "model_version": "v4.1", "channel_idx": 42}
     
     # 评测指标 (肉体成绩单)
-    metrics: Dict[str, float] = field(default_factory=dict) # 留存当时的评估指标 (IC, IR, Sharpe等)
+    metrics: Dict[str, float] = field(default_factory=dict) # 留存当时的评估指标（IC、RankIC、Turnover、fitness）
     created_at: str = ""
 ```
 
@@ -223,7 +236,7 @@ class FactorStorageInterface(ABC):
         """
         【GP 流派存储方案】
         - 做法：将不可导的公式树直接序列化为标准的 JSON AST 格式存储（存入 NoSQL 或文件系统）。
-        - 优势：极度轻量，完美支持跨平台复现。生产实盘引擎可以直接读取 JSON 树并用 C++ 表达式解析器高效复现。
+        - 当前用途：保存可由本地 AST runtime 恢复的表达式；C++ 解析器属于规划。
         """
         pass
         
@@ -233,7 +246,7 @@ class FactorStorageInterface(ABC):
         【RL 流派存储方案】
         - 做法：存储两部分。
           1. 最终翻译出来的显式数学公式代码字符串或 Action 序列（用于可解释性分析）。
-          2. 产生该轨迹的 Policy 网络当前 Epoch 的权重快照（用于增量强化学习或行为回放）。
+          2. 接口可接受策略权重，但当前 Director 的 action 分支未提供完整策略 checkpoint；参考 RL 保存 AST。
         """
         pass
         
@@ -244,7 +257,7 @@ class FactorStorageInterface(ABC):
         - 做法：
           1. 存储经过沙盒验证、可单独运行的纯 Python 源代码脚本（以 .py 文本资产存储）。
           2. 将大模型生成该因子时的“思考、反思、报错日志（Reflection Log）”一并存入数据库。
-        - 优势：研究员可以直接在线 review 代码，甚至可以直接把生成的 py 文件挂载到实盘定时任务中。
+        - 当前用途：研究员审查源码和反思；恢复执行仍经沙箱，不构成实盘部署。
         """
         pass
         
@@ -328,9 +341,9 @@ class LLMFactorMiner(BaseFactorMiner):
 
 ## 4. 并行评测引擎与去重缓存 (ParallelEvaluator)
 
-在实际生产中，`evaluate_candidates` 不能是简单的 for 循环。GP 会产生数万个 AST，LLM 评估要等网络 I/O。我们需要一个异步/多进程的分发器，并且要支持“表达式去重与缓存”（避免重复计算相同因子的面值）。
+当前 `ParallelEvaluator` 使用本地 ThreadPoolExecutor，默认 8 线程，`evaluation.max_workers` 可设 1–64，实际线程数不超过候选数。通用去重是源码 MD5，参考 NN 另有输出相关性筛选；不等于所有语义重复都被拦截。
 
-引入一个单例的 `EvaluationEngine`，它内部维护一个计算缓存和多进程/分布式池（如使用 Ray 或 Celery）。
+下面的 `EvaluationEngine` / Ray 代码仅是未实现的分布式设计示意，不是当前依赖、安装步骤或运行入口。当前没有 Ray/Celery 调度和共享计算缓存服务。
 
 ```python
 import hashlib
@@ -406,13 +419,15 @@ LLM 生成代码不能在 Miner、Evaluator 或 Inspector 进程中直接执行�
 
 1. 使用 Python AST 白名单，只允许向量化的 pandas/NumPy 表达式和局部变量赋值；
 2. 禁止 import、循环、函数/类定义、文件访问、动态解释执行、私有属性和魔术方法；
-3. 在短生命周期的 `spawn` 子进程中执行，并设置墙钟超时、CPU、内存和文件描述符限制；
+3. 在短生命周期的独立 `subprocess` 中执行，并设置墙钟超时、CPU、内存和文件描述符限制；
 4. 返回前严格验证类型、索引、列、数值 dtype、有限值和输入对齐关系。
 
 `FactorExpressionCode` 采用 fail-closed 语义：没有显式传入
 `RestrictedSandbox` 时直接拒绝计算，不存在退回裸 `exec()` 的兼容路径。顺序模式要求
 `factor` 是与输入索引完全一致的 `pandas.Series`；`cross_asset` 模式要求它是与所有特征
 DataFrame 的时间索引和资产列完全一致的 `pandas.DataFrame`。
+
+沙箱入口使用绝对脚本路径，从其他工作目录调用也不依赖项目 `PYTHONPATH`。创建子进程时复制环境，仅对子进程限制 BLAS/OMP 线程为 1，避免数值库导入的多线程开销耗尽预算；不修改父环境。默认仍为 3 秒累计 CPU（包括导入）、5 秒墙钟及 1024 MiB 内存，沿用原资源限制的平台适用条件，未给因子额外 CPU 额度。超时或其他异常路径回收进程与管道。
 
 字符串关键字黑名单不是安全边界，也不得重新引入。新增 pandas/NumPy 能力时，应在 AST
 属性白名单中逐项开放，并同时增加允许用例和逃逸负向测试。
@@ -455,9 +470,9 @@ class MinerState:
 
 ---
 
-## 7. 完整实现范例：LLMFactorMiner
+## 7. LLMFactorMiner 接口设计示意
 
-结合所有补充后的完整流派实现雏形：以 LLM 派系为例。让我们看看整合了上述补充后，大模型挖掘器（`LLMFactorMiner`）在生产中是如何被极简实现的：
+下面用伪代码说明 LLM 的生成、评价与反馈分工；可运行参考实现是 `user_workspace/custom_miners/my_custom_llm.py`，不能把示意代码作为生产实现复制。
 
 ```python
 class LLMFactorMiner(BaseFactorMiner):
@@ -514,6 +529,8 @@ class LLMFactorMiner(BaseFactorMiner):
 
 ### 8.1 遗传规划 (Genetic Programming, GP)
 
+当前 `MyCustomGP` 实现随机树、变异和精英保留。下图及伪代码中的交叉概率/种群比例用于讲解一般 GP，不是当前默认参数或已实现交叉策略。
+
 **核心思想**: 
 将数学公式视作抽象语法树 (AST)。初始随机生成大量树，保留表现好的“精英树”，通过交叉 (Crossover) 和变异 (Mutation) 繁衍下一代。这是一种典型的达尔文进化论思想。
 
@@ -569,6 +586,8 @@ def genetic_programming_mining(data, num_generations=50, pop_size=1000):
 
 ### 8.2 强化学习 (Reinforcement Learning, RL)
 
+当前 `MyCustomRL` 根据评分调整算子和字段的概率权重；内置 `RL` 是随机动作与更新占位骨架。下面的 Policy 网络、优势函数与反向传播是扩展设计示意，不是当前已交付 Actor-Critic/PPO/DQN。
+
 **核心思想**:
 将生成公式看作一个“马尔可夫决策过程 (MDP)”。Agent 序列化地添加操作符或数据列。最终公式计算出因子的夏普比率作为 Reward，通过策略梯度（PPO/DQN）更新 Agent。
 
@@ -621,9 +640,8 @@ def rl_factor_mining(data, num_episodes=1000):
     return agent
 ```
 
-> **架构解耦与 PyTorch 无缝接入说明**
-> 在初期的轻量级验证或轻资产环境中，用户完全可以使用纯 Python（如维护一个概率字典 `self.action_probs`）来实现 Policy Gradient 并更新模型。
-> 而当需要接入笨重的深度学习网络（如真实的 PPO/DQN）时，由于 `update_model` 的完全解耦，用户只需在内部导入 PyTorch，将 Feedback 转为 Tensor Reward，然后调用标准的反向传播代码（`loss.backward(); optimizer.step()`）。底层数据流和回测引擎对这种切换完全“无感”，真正做到了算法实现与系统框架的 100% 分离。
+> **模型扩展边界**
+> 参考 RL 使用概率字典实现评分反馈。接入 PyTorch/PPO/DQN 需要用户实现相应训练、候选物化、评分和恢复逻辑；接口可扩展不代表这些算法已经实现，也不能仅添加一次导入便保证兼容。
 
 </details>
 
@@ -688,6 +706,8 @@ def llm_factor_mining(data, max_iterations=50):
 
 ### 8.4 NN：神经网络与深度表征学习
 
+下方深度时序网络图和 PyTorch 代码用于说明扩展方向。当前参考实现是 NumPy MLP，默认不需要 GPU，也不依赖共享框架保留完整 PyTorch autograd 图。
+
 **核心思想**:
 放弃寻找“明确的数学公式”。直接把全市场的股票数据切片张量，喂给深度神经网络。网络最后一层输出的隐变量 (Latent Variable) 直接作为因子的截面打分。
 
@@ -713,11 +733,11 @@ def llm_factor_mining(data, max_iterations=50):
 
 ### 8.4.1 训练张量与可保存因子的边界
 
-NN 的训练中间产物不能直接当作因子落盘。以 `MyCustomNNMiner` 为例，`channel=-1` 表示完整模型输出，仅用于让 `ParallelEvaluator` 返回带梯度的原始张量并完成反向传播；它不是最终可查看或交易的单因子。
+NN 的训练中间产物不能直接落盘为因子。参考 `MyCustomNNMiner` 用 `channel=-1` 和 `NNTrainingTensor.requires_grad` 标志进入训练分支；它是训练载荷，NumPy 模型在自身 train 方法中更新参数，并非保存了通用 autograd 图。
 
-每轮权重更新后，Miner 将冻结的模型快照的每个输出通道物化为 `FactorExpressionTensor(model_version_id, channel_idx)`：单品种通道返回对齐行情索引的 `pd.Series`，跨资产通道返回时间 × 资产的 `pd.DataFrame`。模型仅在 `mine_period` 拟合权重和标准化参数，通道使用 `test_period` 的样本外 IC、RankIC、Turnover 与自定义 fitness 排名；跨轮候选还会按数值相关性过滤并保留全程 Top-K。
+每轮权重更新后，Miner 将冻结的模型快照的每个输出通道物化为 `FactorExpressionTensor(model_version_id, channel_idx)`：单品种通道返回对齐行情索引的 `pd.Series`，跨资产通道返回时间 × 资产的 `pd.DataFrame`。模型仅在 `mine_period` 拟合权重和标准化参数，有 test_period 时用该段指标选择通道，否则使用训练段。test_period 因参与选择承担验证集作用，最终结论还需未参与选择的独立数据；跨轮候选按输出相关性筛选并保留 Top-K。
 
-`model_version_id` 由完整模型包内容摘要生成；每个通道同时拥有由 `{"model_version", "channel"}` 导出的逻辑哈希。`FactorMinerDirector` 保存时会把可恢复模型包写入 `factor_db/models/<model_version>.npz`，其中包含权重、偏置、特征顺序、标准化参数、数据模式和 schema 版本；新通道使用 `{"type": "nn_channel", "model_version": ..., "channel": ...}`，并附加可选的 `model_file`、`model_format` 与特征元数据。历史 `dl_channel` 和 `factor_db/weights/<model_version>.pt` 裸权重档案继续可读。
+`model_version_id` 由完整模型包内容摘要生成；每个通道同时拥有由 `{"model_version", "channel"}` 导出的逻辑哈希。`FactorMinerDirector` 保存时会把可恢复模型包写入 `factor_db/models/<model_version>.npz`，其中包含权重、偏置、特征顺序、标准化参数、数据模式和 schema 版本；新通道使用 `{"type": "nn_channel", "model_version": ..., "channel": ...}`，并附加可选的 `model_file`、`model_format` 与特征元数据。历史 `dl_channel` 元数据可兼容读取；缺少可移植模型包的旧裸权重不能猜测恢复。
 
 <details><summary>底层逻辑参考实现</summary>
 
@@ -755,10 +775,10 @@ def dl_factor_mining(train_loader, epochs=100):
 
 | 流派 | `generate_candidates` 的物理产物 | `evaluate_candidates` 的核心职责 | `update_model` 的真实动作 | `MinerState` 记录的记忆实体 |
 | :--- | :--- | :--- | :--- | :--- |
-| **GP** | 随机或交叉变异产生的 AST 公式树 | 多进程跑树解析，计算标量 IC/IR | 精英留存，强制淘汰低分树 | 优质的基因树种群 (Population) |
-| **RL** | Policy 网络采样出的一组 Action 轨迹 | 快速计算因子多空收益的夏普比率 | 计算优势函数，利用策略梯度更新网络 | 策略网络的权重与 Replay Buffer |
+| **GP 参考实现** | 随机/变异 AST | 线程池计算 IC/RankIC/fitness | 精英选择 | 种群；归档保留逻辑和声明的父引用 |
+| **MyCustomRL** | 带动作记录的 AST | 统一相关性评分 | 更新算子/字段概率权重 | 运行时采样权重与精英；不承诺策略 checkpoint |
 | **LLM** | 提取 Markdown 得到的 Python 源码 | 沙盒执行代码，拦截危险指令并测算 IC | 将表现或报错信息转化为文本反思日志 | 成功与失败的 Few-shot 案例库 |
-| **NN** | 特征提取网络前向传播得到的 Tensor 隐通道 | 保持计算图不塌陷，计算 Batch IC Loss | 执行 `loss.backward()` 与权重更新 | 神经网络本身的参数字典 (.pt 权重) |
+| **NN 参考实现** | 训练载荷，训练后物化输出通道 | 按当前评估切片评分通道 | NumPy 模型训练 | 可移植模型包、通道和输入定义 |
 
 ---
 
@@ -767,123 +787,96 @@ def dl_factor_mining(train_loader, epochs=100):
 在 V4 架构中，高质量的模型离不开强健的数据供养层。整个 `data_feed` 模块不仅负责历史数据的拉取，还需要在内存中完成无缝的时区对齐、断层填补以及前端元数据的级联分发。
 
 ### 9.1 基于流动性感知的元数据路由
-前端通过 `/api/exchange_meta` 实时获取 CCXT 所支持的 `Exchange -> TradeType -> Symbol`。后端在此阶段会额外抓取 24 小时 `quoteVolume` 并进行倒序排序，这能确保前端下拉框中优先展示市场上流动性最好的主力合约/现货（如 BTC, ETH, SOL）。这一机制同时也能避免多市场混合下载时产生的错位（如现货独有的山寨币被意外放入期货下载队列）。
+前端通过 `/api/exchange_meta` 获取 USDT 标的和周期。元数据和 ticker 可用时，按 24h quoteVolume 排序并最多返回 200 个标的；失败时使用排序或静态名单。静态名单存在不证明交易所可达、标的受支持或流动性排序仍有效。Web 市场类型单选，标的与周期多选。
 
 ### 9.2 底层持久化与查询的一致性保证
 由于 CCXT 在不同市场下返回的 Symbol 格式差异巨大（如期货 `1000CAT/USDT:USDT`，现货 `1000CAT/USDT`），在持久化层面，V4 严格统一了从内存符号到物理文件名的转换规范：
 `safe_symbol = symbol.replace('/', '_').replace(':', '_')`
 
 唯一允许的落盘格式为：`{safe_symbol}-{timeframe}-{trade_type}.feather`。例如，永续合约 `BTC/USDT:USDT` 必须落盘为 `BTC_USDT_USDT-1m-futures.feather`；读取器不会回退匹配旧命名。
-无论是批处理下载器（`Batch Downloader`）、增量下载器，还是引擎读取器（`Real Data Client`）、断层修补器（`Gap Filler`），都必须通过上述绝对规则进行映射，保证了从硬盘扫描到内存加载的数据资产 100% 对齐。
+无论是批处理下载器（`Batch Downloader`）、增量下载器，还是引擎读取器（`Real Data Client`）、断层修补器（`Gap Filler`），都必须通过上述绝对规则进行映射，保持下载和读取的文件寻址一致；具体数据质量仍需健康检查。
+
+当前下载实现将日期参数和无时区的行情时间解释为 UTC。旧文件的带时区时间先转为 UTC，再去掉时区；检测缺口、请求和合并保持相同的真实时刻。补洞只请求 `[第一根缺失 K 线, 下一根已有 K 线)`，复用下载任务的原 CCXT 实例，合并和落盘使用该实例的交易所身份与任务市场类型。连续 3 次没有前进的响应会抛出 `DataGapFillError`，下载入口返回失败并停止落盘，保留原文件；不会将此错误吞掉后进入重复自动修复。
+
+普通及批量下载共用分页逻辑，按最后收到的 K 线推进到明确的 UTC `[start, end)` 请求边界。保存前以该请求区间的应有根数检查完整性，包含首尾缺失；这个下载完整性分母与因子 Coverage 的研究定义不同。实际 OHLC 逻辑计数进入健康评分，非法价格关系不能通过最终保存门。两种下载器均采用同目录唯一临时 Feather 写入和原子替换，写入失败传播原错误、清理临时文件并保留已有文件。旧行情按 `date → time → timestamp(ms)` 与读取器一致的优先顺序统一 UTC，在健康检查前合并；无法读取、识别或时间缺失时停止。健康门后仅发布已验证数据，不再次混入未经检查的旧行，也不将合并失败另存文件报告为成功。
+
+原子替换只保证单次文件发布完整。为保留并发合并区间，两个下载入口按 `Path.resolve()` 后的目标路径共用进程内 `RLock`，从首次读取旧文件持有至合并、补缺、健康检查和发布结束；异常及失败返回均释放锁。主下载请求在锁外，不同文件可并行。调用内按实际 exchange.id、symbol、timeframe 和 trade_type 固定保存路径，传入合并和保存 helper，避免共享下载器实例的身份字段被另一线程覆盖。该保护仅覆盖同一进程线程，没有新增锁文件或跨进程、跨机器写入协议。
+
+`DataDownloader.download_ohlcv` 同时接受 UTC 日期或时间戳边界，选择区间内固定周期 K 线的开时。读取器的 inclusive period 转为 `ceil(start)` 到 `floor(end) + interval` 的半开请求，并传递实际交易所；原切片和标签语义不变。`overwrite` 在首次合并之前分流，避免旧区间混入；必需 OHLCV 的非有限值独立拒绝，不依赖缺失比例阈值。当前固定时长周期至 1d，不在此次修改中增加周/月日历契约。
 
 ### 9.3 沉浸式数据补全 Console
-对于量化研究员而言，数据的完整性检查是一个“黑盒”。V4 架构在 Web 端集成了基于 WebSocket 的长连接控制台（Execution Console），实现了 CCXT 单步请求、K 线拉取重试、断层 Gap 合并等后端日志向前端 Drawer 的实时穿透，将枯燥的 ETL 过程转化为了极具安全感的可视化反馈。
+Data Center 在页面内显示进度、补缺与错误摘要；一批下载组合顺序执行，独立任务可以并行。控制台不是逐根 K 线的完整日志归档，也不以百分比代替结果状态。
+
+下载后台在主协程捕获事件循环，工作线程通过线程安全调度投递进度。Web 挖掘任务按 `sequential_single` 的交易对逐一创建客户端和 Director，汇总结果并按标的数折算总进度；`cross_asset` 保持一次共同执行。两者是 `data_feeds.mining_mode` 仅有的合法值，省略时默认 `sequential_single`。共享启动校验和 RealDataClient 构造均在读行情前拒绝未知字符串及错误类型，防止实际只读首个标的却记录多标的血缘。数据读取、RealDataClient / Director 构造和运行位于同一次工作线程调用内，避免行情读取或自动下载阻塞 API 事件循环。每次 Director 的配置只包含其实际输入的交易对，以保持血缘一致。
+
+挖掘任务也在发布终态前排空工作线程广播。每条任务日志按上下文归属，评估器为每个并发候选复制调用上下文；共享 logger 的级别在最后一个活动任务结束时恢复，避免串任务或提前丢失日志。候选结果仍按提交顺序返回，评估线程数使用 evaluation.max_workers 配置。
+
+下载任务使用唯一 `task_id`，状态为 `running / completed / failed / partial_failed`；发布终态前等待已提交的线程进度广播完成。前端只消费当前任务事件，以明确终态控制成功或失败展示。CLI 下载逐组合汇总，任何失败导致退出码 `1`。
+
+WebSocket 提供可选的逐事件回调，保持其他页面的 `lastMessage` 接口兼容。下载页面在 HTTP 提交期间按任务 ID 暂存事件，响应后只回放当前任务并清空暂存；已确认终态不被迟到进度覆盖。提交错误或重试会清空旧状态。
+
+Launchpad 同样逐事件处理任务、日志和散点，避免连续消息在 React 批量渲染时只留下最后一条。初始 HTTP 快照按任务 ID 补入尚未出现的行，保留请求期间先到的实时状态；表格与选中任务的 completed / failed / completed_empty 不被迟到进度覆盖。下载事件先写入 `TaskManager.download_tasks` 的最新快照再广播；WebSocket 连接时重放其 `download_progress`，并将现有 `TaskManager.tasks` 作为普通 `task_update` 重放，恢复断线期间错过的终态。下载监控断线仅提示连接中断与重连，不改变任务的成功/失败判定。状态只保留在本 API 进程内，重启后不恢复任务历史；未新增持久化任务服务。
+
+连接由当前 effect 管理：卸载或 URL 切换时关闭所属连接、取消重连计时器并忽略迟到事件；正常断线仍按原策略重连。
 
 ---
 
-## 10. 算子库解耦与全局策略驱动 (Config-Strategy Driven)
+## 10. 算子扩展、数据配置与 CLI
 
-为了实现彻底的控制反转 (IoC)，并让终端研究员摆脱繁重的“类继承”与“框架底层耦合”，FactorMiner V4 提供了一个全局的 `OperatorRegistry` 算子注册中心，并通过**唯一对外网关 `FactorMinerDirector`** 进行声明式调度。
+### 10.1 注册中心与输入契约
 
-### 10.1 全局算子注册中心 (OperatorRegistry)
-
-为了防止沙盒拦截自定义算子，也为了让 GP 和 RL 能够自动感知用户写了哪些新算子，V4 抛弃了“在 Miner 类里写函数”的做法，转而采用全局字典池的设计。
+`OperatorRegistry` 提供单目/双目算子分发，`EvaluatorRegistry` 注册评分。下面展示调用接口，不复制核心注册器实现：
 
 ```python
-# ==========================================
-# 框架侧：提供全局注册表
-# ==========================================
-    _registry = {}
+from core.miner.registry import OperatorRegistry, EvaluatorRegistry
 
----
+@OperatorRegistry.register(arity=1)
+def rolling_mean_10(series):
+    return series.rolling(10).mean()
 
-## 10. 数据供养层与 Config-Driven CLI (RealDataClient)
+@EvaluatorRegistry.register_fitness_hook("rankic_score")
+def rankic_score(factor_values, returns, base_metrics):
+    return abs(base_metrics["RankIC"]) * 100
+```
 
-在 FactorMiner V4 中，为了实现工业级的数据回测和策略挖掘分离，我们彻底剥离了代码中硬编码的 Mock 数据，转而采用与 Freqtrade 类似的 **Config-Driven（配置驱动） CLI 工作流**。
+算子仅支持 arity=1 或 2，签名必须匹配；多元 AST 是未实现方向。输出需保持输入索引/资产列和维度，正常预热 NaN 可以保留。`required_streams` 是参考 Miner 的候选终端、模型特征或 LLM 提示字段，不是全局读取白名单。
 
-### 10.1 统一配置入口 (config.json)
+### 10.2 数据配置与公开入口
 
-所有的静态参数、运行边界、以及与挖掘流派无关的基础环境配置全部抽离至 `config.json`，核心结构包含时间片切割机制：
+真实数据由 `RealDataClient` 按交易所、市场、symbol 和周期读取 `data/` 的 Feather 文件。顺序模式逐标的执行；截面模式按时间/资产对齐。缺文件时可触发自动下载，已有完整本地数据的普通因子计算可离线运行。
+
+以下为数据配置片段，完整可运行示例见[产品指南](../FactorMiner_Product_Report_ZH.md)：
 
 ```json
 {
-    "data_feeds": {
-        "exchange": "binance",
-        "instrument_type": "futures",
-        "timeframe": "1m",
-        "pairs": ["BTC/USDT:USDT", "SUI/USDT:USDT"],
-        "mine_period": [["2025-07-20", "2025-08-01"]],
-        "test_period": [["2025-08-02", "2025-08-15"]],
-        "mining_mode": "sequential_single"
-    }
+  "data_feeds": {
+    "exchange": "binance",
+    "instrument_type": "futures",
+    "timeframe": "1h",
+    "pairs": ["BTC/USDT:USDT"],
+    "required_streams": ["close", "volume"],
+    "mine_period": [["2024-01-01 00:00:00", "2024-01-07 23:00:00"]],
+    "test_period": [["2024-01-08 00:00:00", "2024-01-10 23:00:00"]],
+    "mining_mode": "sequential_single"
+  }
 }
 ```
 
-### 10.2 真实数据源切片 (RealDataClient)
-
-系统内部提供 `RealDataClient` 组件接管底层 `data/` 目录中高速 `.feather` 格式的访问权限：
-- **动态寻址**：根据 CCXT 原始标的自动定位 `data/{exchange}/{instrument_type}/{safe_symbol}-{timeframe}-{instrument_type}.feather`。
-- **时间段切片与拼接**：自动遍历 `mine_period` 中的多个时段，提取并过滤掉不需要的震荡市或噪声数据段，通过 `pd.concat` 无缝拼接出一块纯净的训练集传给底层挖掘器。
-- **模式切换**：支持 `sequential_single` 串行单品种挖掘模式，避免在 GP 等基于一维序列的算子引擎中发生不同资产数据的错位滚动。
-
-### 10.3 高级批量数据下载与元数据引擎 (Advanced Batch Downloader)
-
-为了彻底解决数据准备的痛点，V4 架构引入了基于 CCXT 强驱动的独立批处理下载引擎。
-- **智能元数据探针与网络降级 (Meta Fallback)**：系统启动时动态探查交易所 (如 Binance) 的存活状态和可下载特征维度 (`symbols`, `timeframes`, `trade_types`)。当遭受网络封锁（如 HTTP 451）时，底层探测器将无缝降级 (Fallback) 返回内置的 36+ 种高优主流代币白名单，保障平台在极端网络下依然可运行。
-- **笛卡尔积排列并发引擎**：通过 `POST /api/batch_data_coverage`，底层系统支持接受多维度数组特征传入。在后端运用 `itertools.product` 将 `Symbols × TradeTypes × Timeframes` 动态解包为微任务队列，并通过 `WebSockets` 实现在前端对每一个排列组合 (Permutation) 本地数据的精确覆盖率探查与下载状态广播。
-- **智能合并与对齐策略**：支持 `merge`（去重合并）、`fill_gap`（自动嗅探断点并双向延展填充缺口）以及 `overwrite`（强覆盖），最大程度减少网络 IO。
-
-### 10.4 工业级 CLI 入口 (main.py)
-
-利用 `main.py` 提供的标准化 CLI 入口，研究员完全不需要修改引擎的任何源码，只需指定外挂的配置和 Miner 插件目录即可完成无休止的后台计算：
+时间按 UTC 解释，挖掘/测试切片含末端 K 线，标签在各段独立构造。CLI 入口为 `factorminer` 或等价的 `python -m core.cli`。准备好配置所需行情和扩展后：
 
 ```bash
-python main.py --miner MyCustomGP --config user_workspace/configs/config.json --user-dir user_workspace
-```    
-
-### 10.5 算子维度与数据特征的解耦 (Arity & Streams)
-
-在使用 GP 等依托于数学语法树的挖掘流派时，系统在设计上实现了**“暴露特征（Leaves）”与“算子维度（Arity）”的完全解耦**：
-
-1. **`required_streams` (特征暴露)**：
-   在 `config.json` 中配置的 `required_streams: ["close", "volume"]` 仅代表向算法环境注入的基础变量特征（即树的底层叶子节点）。如果底层 `.feather` 文件中拥有 `open, high, low, close, volume, funding_rate`，则完全可以将它们全部配置在此处。算法会在生成公式时随机抓取这些数据列作为基础计算元素。
-   
-2. **算子输入维度 (Operator Arity)**：
-   系统不限制算子只能计算两个特征。算子能吞吐的变量数量完全取决于其注册时的 `arity` 属性：
-   - **一元算子 (Unary, arity=1)**：如 `ts_delay(x)`, `log(x)`。
-   - **二元算子 (Binary, arity=2)**：如 `add(x, y)`, `corr(x, y)`。
-   - **多元算子 (N-ary, arity=N)**：如 `condition(A>B, C, D)` (arity=3)，或复杂的 `vwap(high, low, close, volume)` (arity=4)。
-   
-   只需通过 `@OperatorRegistry.register(name="my_n_ary_op", arity=N)` 在 `user_workspace` 中进行外挂注册，底层架构便能自动感知并生成拥有多条分支的巨大语法树。
-
----
-
-    @classmethod
-    def register(cls, name=None, arity=1):
-        def decorator(func):
-            op_name = name or func.__name__
-            cls._registry[op_name] = {"func": func, "arity": arity}
-            return func
-        return decorator
-
-class EvaluatorRegistry:
-    _registry = {}
-    
-    @classmethod
-    def register_fitness_hook(cls, hook_name):
-        def decorator(func):
-            cls._registry[hook_name] = func
-            return func
-        return decorator
+python -m core.cli mine --miner MyCustomGP --config user_workspace/configs/config.json --user-dir user_workspace
 ```
 
-### 9.2 用户层极致的声明式脚本体验 (Freqtrade 范式)
+Data Center 对每个组合显示文件范围与记录数；API 批次内部顺序处理下载，WebSocket 广播状态。merge 合并、overwrite 替换、fill_gap 请求补缺；现行固定周期和原子写入约束见上文数据流水线。
 
-终端研究员不再需要了解底层框架的代码，我们将研发模式升级为了开源量化界极其优雅的 **“Freqtrade 范式” (物理隔离 + 动态加载)**。
+### 10.3 用户工作区与声明式配置
+
+用户可在工作区定义配置与扩展，不必修改核心调度；扩展在主进程动态导入，只应加载可信代码，目录分离不是安全隔离。
 
 **研发流 (User Workflow)：**
 
-1. **配置编写**: 研究员在 `user_workspace/configs/` 中编写 JSON 或 YAML 配置。
+1. **配置编写**: 研究员在 `user_workspace/configs/` 中编写 JSON 配置；当前入口不解析 YAML。
 2. **算子与挖掘机开发**: 研究员在 `user_workspace/custom_miners/` 和 `user_workspace/custom_operators/` 目录中放入自定义的 `.py` 文件，通过 `@MinerRegistry.register` 或 `@OperatorRegistry.register` 进行声名。
 
 ```python
@@ -918,28 +911,31 @@ factorminer mine --miner MyCustomGP --config user_workspace/configs/demo_config.
 **启动校验与验证闭环：**
 
 - DynamicLoader 返回模块加载报告；CLI 和 WebUI Launchpad 在创建数据客户端前汇总模块导入错误、Miner 存在性、data_feeds 基础字段、算子注册/arity、Fitness Hook 名称。
+- 执行扩展模块前将其注册到 `sys.modules`，所有导入异常路径均恢复或删除该项，支持延迟注解 dataclass；普通错误聚合后阻止启动，`SystemExit` / `KeyboardInterrupt` 清理后原样传播。AST 引用了不存在的输入流时抛出明确错误，数值终端 `0` 与正常滚动预热 NaN 保留原有语义。
 - 算子注册只允许 arity 为 1 或 2，函数签名必须覆盖声明的参数数量；Fitness Hook 必须接收 factor_values、returns、base_metrics。未知配置会失败并返回可行动的错误，而非回退为零因子或默认评分。
 - tests/test_cli_smoke.py 在临时目录写入最小 Feather 数据，实际调用公开 CLI 验证 MyCustomGP、MyCustomRL、MyCustomLLM、NN 均能完成一轮并落盘因子元数据。
 - 真实运行的档案指标采用稳定键名 `IC`、`RankIC`、`Turnover`、`fitness_score`。前端摘要、任务结果和 Inspector 必须直接消费该契约；不能以不存在的小写别名读取并将缺失值误呈现为零。变更 Python 执行链路后需重启 FastAPI；重启只丢弃 `TaskManager` 的内存 Tracker，不影响 `LocalFactorStorage` 的 metadata 和 values 快照。
+- 标量候选返回成功前要求 `fitness_score` 为有限数值；自定义 Hook 的 NaN、Infinity 或缺失分数进入现有逐候选错误反馈。零分、负分和额外诊断指标保持原值，训练阶段的梯度张量分支保持原接口。
+- HTTP 默认响应、WebSocket 广播及连接重放共用递归 JSON 转换：非有限浮点诊断值在传输副本中变为 `null`，字典、列表及嵌套结构中的有限数值保持不变。转换不修改任务内存或原档案；评分接受门仍要求有限 `fitness_score`，不因展示需要放宽。
 
 README 的目录地图以该边界为准：`core/` 只承担研究执行，`api/` 负责服务与任务可观测性，`web/` 负责研究工作台，`user_workspace/` 是策略、算子和评分的用户扩展面，`factor_db/` 只保存可追溯的研究产物。
 
 ---
 
-## 10. 因子实盘落地与白盒审查 (Compiler & Inspector)
+## 11. 因子恢复与白盒审查 (Compiler & Inspector)
 
 统一闭环跑完后，面对海量的因子，系统还需要解决“怎么看”和“怎么用”的问题。为此，FactorMiner V4 引入了 `FactorInspector` 和 `FactorCompiler`。
 
-### 10.1 补齐“怎么用”：FactorCompiler (实盘推理编译器)
+### 11.1 FactorCompiler：本地 callable 恢复
 
-目前因子被存为了 AST 字典、Python 源码或 PyTorch 权重。但在实盘高频交易系统中，我们不可能每次收到一个新的 Tick 数据，就去解析一次 JSON AST 或者跑一次沙盒 `exec()`。实盘需要的是极低延迟的流式计算。
+当前可恢复档案包括合法 AST、受限 Python 源码和带加载器契约的完整 NN 模型工件。恢复不等于接入实盘。
 
-`FactorCompiler` 的职责是：在研究员决定将某个因子上线实盘时，把因子的“灵魂（元数据）”编译成底层 C++ 或高性能引擎能直接调用的流式算子。
+`FactorCompiler` 将这些档案重建为本地 Python callable；C++、流式 Tick 引擎与交易网关都不在当前实现范围。
 
 ```python
 class FactorCompiler:
     """
-    因子上线编译器：将存储的因子逻辑转化为实盘极速推理模块
+    因子恢复器：将持久化逻辑重建为本地 callable
     """
     def __init__(self, storage_client, sandbox):
         self.storage = storage_client
@@ -970,11 +966,21 @@ class FactorCompiler:
 推送、回滚和远端健康检查尚未实现，因此接口不得返回“部署成功”。接入真实传输层后，
 只有收到远端节点确认并记录部署版本时才能转为成功状态。
 
-### 10.2 补齐“怎么看”：FactorInspector (白盒化审查台)
+AST 恢复接受字段字符串、数值常量及合法算子树，结构校验与运行时使用同一算子注册表。CLI Resolver 可用注册的 `model_format` 加载 `nn_channel` / `dl_channel` 的完整工件并按保存通道推理；旧裸权重、缺失文件、无效通道和未知格式明确失败。当前 CLI Inspector 按单标的提供输入，拒绝跨资产 NN 复评；直接使用 Resolver 时仍须提供模型要求的完整数据结构。Web 已存快照展示无需重新推理。
+
+Inspector 的交易所与市场参数仅在显式提供时覆盖配置，随后才使用 Binance/futures 默认值。真实数据读取与切片边界统一 UTC，保持标签对齐。逐标的错误以 `error` 返回，报告显示不可用及原因，不补造零指标；其他标的继续执行，任一失败令 CLI 返回 `1`。
+
+Inspector 复用评估器的数值与轴一致性检查，再检查至少 10 个共同有效观测；无有效输出、Infinity、错位或样本不足进入不可用分支，保持原指标公式与 Coverage 分母。inspect 入口消费动态模块加载报告，存在导入错误时在构造引擎和读取数据前退出。显式配置必须可读且为合法 JSON 对象，否则同样退出；只有省略配置才使用默认值。Resolver 的直接 AST 参数用是否为 `None` 判断是否提供，数值终端 `0` 不会被遗漏。
+
+Inspector 将实际请求 periods 传入 Lag 计算，每段独立构造各 horizon 的标签后拼接；相邻但显式分开的时间段也保持各自末端 NaN。分组仍使用原 qcut 算法，缺组和依赖缺组的 Long_Short 为 `None`，Rich 与纯文本均显示 `N/A`，不补造零收益；真实零收益保留。跨资产分组收益尚未实现，原占位值同样标为不可用。
+
+CLI Inspector 的滚动 Spearman 在每个窗口内独立排名：窗口为最近 20 个共同有效观测，至少 10 个观测；不使用全区间排名计算历史窗口。IR 固定乘 sqrt(252)，未按周期/交易日历校准。默认 Lag 为 1、2、3、5、10。输出 Coverage、共同有效 Coverage 与文件覆盖范围不同；详见评分指南。
+
+### 11.2 FactorInspector：白盒审查
 
 研究员跑完 `director.run()` 之后，如果只看到控制台打印“捕获 50 个圣杯因子”，这在真实量化团队里是过不了风控的。研究员需要“打开黑盒”，看看这个因子长什么样、各分位数收益如何、是否发生过拟合。
 
-`FactorInspector` 增加了一层专业的可视化白盒审查能力，它对接下游的 Alphalens 等专业量化分析库，不仅把 Parquet 文件里的面值画成图，还能把因子的“逻辑”反向翻译成人话。
+当前 CLI 使用 `core/inspector/`，Web 使用 `core/analysis/factor_analytics.py` 分析快照。下方是早期可视化设计示意，Alphalens、SHAP 和相关私有绘图方法尚未接入；可用功能见后面的 Web 章节。
 
 ```python
 class FactorInspector:
@@ -1005,42 +1011,42 @@ class FactorInspector:
 
 ---
 
-## 11. 工程落地状态 (Implementation Status)
+## 12. 工程落地状态 (Implementation Status)
 
-基于上述 V4 架构设计的理念，底层四大挖掘范式**已全部成功落地，并完成了端到端验证闭环**：
+当前已实现的参考入口如下。它们不是前文全部算法示意、规划图表或交易能力的验收：
 
-- **GP (MyCustomGPMiner)**: 验证了基于抽象语法树的进化、变异和交叉，能够根据配置进行因子繁衍。
+- **GP (MyCustomGPMiner)**: 实现随机 AST、变异和精英选择；完整交叉策略仍是扩展方向。
 - **RL (MyCustomRLMiner)**: 验证了策略梯度思想，通过概率权重字典实现了无 PyTorch 依赖的轻量级强化学习寻优闭环。
-- **LLM (MyCustomLLMMiner)**: 成功实现了大语言模型反思记忆（Reflection Loop）驱动的代码生成。验证了并行执行沙盒 `RestrictedSandbox` 的安全性，并在缺乏真实 API Key 时，验证了系统的容灾限流及优雅降级机制。
-- **NN (MyCustomNNMiner)**: 基于纯 NumPy 构建了包含反向传播（Backpropagation）能力的微型张量机制 `MockTensor`。训练完成后，模型输出会按通道物化、评分、保留 Top-K，并将权重与通道元数据一同持久化，已打通 CLI 与 Web 的统一结果链路。
-- **并行评估与沙盒引擎 (ParallelEvaluator)**: 全面打通了回测评分闭环。验证了 `EvaluatorRegistry` 对于外部自定义挂钩 (`custom_fitness`) 的无缝动态注入（如实现了惩罚换手率的 `my_bear_market_hunter`），保证了回测评价维度的无限扩展。
-- **因子归因与审查引擎 (FactorInspectorEngine)**: 实现了 `core/inspector/` 独立审查模块与 `factorminer inspect` CLI 命令。支持从 Factor ID、AST 字典字符串或 Python 源码解析因子，在多币种与样本外 (OOS) 时间段计算 Coverage（有效覆盖率）、Pearson/RankIC (Mean/Std/IR/t-stat)、Lag 1..10 延迟衰减、5-Quantile 组间收益与换手率，并利用 Rich 库输出终端卡片面板。
+- **LLM (MyCustomLLMMiner)**: 提供代码生成、沙箱反馈和反思。真实实验使用 require_live_api=true、allow_fallback=false；缺凭证拒绝启动，失败请求不冒充模型候选。离线测试不证明真实模型服务可达。
+- **NN (MyCustomNNMiner)**: 采用 NumPy MLP 和训练载荷，在模型内更新权重。训练完成后，模型输出会按通道物化、评分、保留 Top-K，并将权重与通道元数据一同持久化，已打通 CLI 与 Web 的统一结果链路。
+- **并行评估与沙箱**: 统一指标、有限主评分门和自定义 Hook；源码白名单/独立进程不替代前视偏差、过拟合或平台安全审查。
+- **因子归因与审查引擎 (FactorInspectorEngine)**: 实现了 `core/inspector/` 独立审查模块与 `factorminer inspect` CLI 命令。支持从 Factor ID、AST 字典字符串或 Python 源码解析因子，在多币种与样本外 (OOS) 时间段计算 Coverage（有效覆盖率）、Pearson/RankIC (Mean/Std/IR/t-stat)、默认 Lag 1、2、3、5、10 衰减、5-Quantile 组间收益与换手率，并利用 Rich 库输出终端卡片面板。
 
-以上所有的完整实现均无缝外挂于 `user_workspace/custom_miners/` 和 `user_workspace/configs/` 目录下，实现了引擎核心代码的**零入侵**，完美兑现了“Config-Driven 配置驱动与逻辑插件化”的架构愿景。
+用户扩展与配置位于 user_workspace，核心负责调度、评分和存档。完整测试命令见[产品指南](../FactorMiner_Product_Report_ZH.md#验证与当前边界)；离线测试不代表交易收益或所有私人扩展已获验证。
 
 ---
 
-## 12. 现代化 Web UI 与前后端分离架构
+## 13. Web UI 与前后端分离架构
 
-在彻底完善后端引擎的基础上，FactorMiner V4 引入了基于 **React (Vite) + FastAPI** 的纯正前后端分离控制台，替代了原有的 CLI 与 Flask 方案。
+FactorMiner V4 使用 **React (Vite) + FastAPI** 前后端分离控制台，保留当前 CLI，并替代历史 Flask/Streamlit 界面。
 
-### 12.1 页面空间与布局重构
+### 13.1 页面空间与布局重构
 采用**顶部 Tab 导航栏**替代传统的左侧边栏，将屏幕的横向空间极限释放，为展现宽表数据、超长生命周期 ECharts 及长堆栈信息提供充足的视野支撑。
 
-### 12.2 全局指挥中心 (Command Center)
+### 13.2 全局指挥中心 (Command Center)
 - **无感心跳**：提供 `Engine Online` 状态的探测。
-- **全局看板**：由 FastAPI `/api/stats` 接口驱动，宏观统计并展示 Task 总量、落盘因子的总量、以及综合成功率。
+- **全局看板**：由 FastAPI `/api/dashboard` 驱动，展示任务、因子库存、生命周期和高分候选。
 - **活动时间线**：Timeline 组件记录后端异步调度任务的轨迹。
 
 现行 Research Dashboard 进一步使用 `GET /api/dashboard` 作为单次聚合快照：任务部分来自内存中的 `TaskManager`（运行中任务和近期执行记录），因子部分来自持久化 `factor_db/metadata`（总量、Miner 分布、生命周期覆盖率和按 fitness 排序的候选）。因此服务重启后历史任务时间线会按既有内存策略清空，但因子档案和研究质量概览仍然保留。前端只展示这两类真实来源，并将因子链接到 Inspector、任务入口链接到 Launchpad。
 
-### 12.3 异步调度与 WebSocket 实时流推送
+### 13.3 异步调度与 WebSocket 实时流推送
 传统的 Web 提交长耗时任务往往会导致请求超时或阻塞主线程。V4 采用真正的异步池化策略：
-1. **任务分发**：前端提交 JSON (Miner & Config) 至 `/api/launch`，FastAPI 借助 `BackgroundTasks` 分配后台守护线程启动 `FactorMinerDirector.run()`，不阻塞 HTTP 响应。
+1. **任务分发**：前端提交 JSON (Miner & Config) 至 `/api/launch`，FastAPI 借助 BackgroundTasks 调用 asyncio.to_thread，将同步数据读取、初始化与运行放入工作线程。
 2. **状态挂载**：任务挂载至全局内存态字典 `TaskManager`。
-3. **实时推送**：注入回调勾子 `progress_callback` 进底层演化循环（`epoch` 级别）。每一次种群繁衍，底层直接透过 `ws_manager.broadcast` 将状态压入 WebSocket 管道，前端通过 `Launchpad` 的 Drawer 实现在无感刷新下的微秒级进度条呈现。
+3. **实时推送**：epoch 回调经事件循环广播状态与最佳候选 IC/实际复杂度；Launchpad 模态详情逐事件消费，颜色按复杂度映射，不代表谱系或收益。没有微秒级延迟保证。
 
-### 12.4 Factor Inspector Phase II：可复现快照、Tearsheet 与批量审查
+### 13.4 Factor Inspector Phase II：可复现快照、Tearsheet 与批量审查
 
 Inspector 不能读取 `TaskManager` 中的临时任务结果作为因子档案：服务重启后该内存会丢失，且 CLI 产生的因子也不会出现。Phase I 以 `LocalFactorStorage` 中的 `factor_db/metadata/*.json` 为唯一目录来源，并提供以下 API：
 
@@ -1054,12 +1060,14 @@ Phase II 在 Director 落盘逻辑工件后，重新以该候选和同一数据�
 
 对 MyCustomGP 的真实 Feather 回归应检查完整闭环：配置允许的用户算子会生成符合 arity 的 AST；AST runtime 产生可对齐的序列；Evaluator 写入上述四项指标；Director 最后将同一候选的逻辑、指标、数据血缘及 values/forward-return 快照持久化。只看到模块成功导入或任务完成并不足以证明该链路有效。
 
+某候选快照失败时保留可诊断的元数据，`pending` / `failed` 档案不可分析；同批其他候选继续，已完成的档案保留。CLI 以失败退出，本机日志列出成功和失败 ID；Web 报失败，公开错误做脱敏。旧档案按已有快照读取。
+
 Tearsheet API 只分析上述 parquet：单标的计算时序滚动 IC、逐期因子差分换手和全样本分位平均未来收益；截面模式计算逐期截面 IC 的滚动均值、资产矩阵换手和逐期分位组合的平均未来收益。没有快照会返回明确的重新挖掘提示，绝不以模拟曲线替代。
 
 Inspector 支持选择 2–5 个具有快照的因子调用比较 API，以同一口径对齐并叠加其滚动 IC；同时提供批量生命周期更新 API。测试套件以临时 FactorStorage 和 FastAPI TestClient 覆盖快照 schema、顺序/截面分析、比较和批量审查端点。
 
-### 12.5 三语界面与研究工件边界
+### 13.5 三语界面与研究工件边界
 
 前端采用轻量本地 i18n Context，支持 `zh`、`en`、`de` 三种界面语言。初始语言由浏览器语言推断，用户通过顶部导航选择后写入 `localStorage`；翻译词典集中在 `web/src/i18n.tsx`，避免页面中散落条件判断。第一批覆盖全局导航、Research Dashboard 与 Factor Inspector，后续页面按相同键空间扩展。
 
-语言层只负责操作性 UI 文案：导航、按钮、状态说明、筛选项、空态及解释性提示。因子 ID、逻辑哈希、交易对、AST/表达式、代码、模型版本、权重文件，以及 IC、RankIC 等研究指标缩写均作为不可翻译的原始工件保留。后端保持返回稳定枚举与结构化数据，绝不向 API 注入某一种自然语言的业务文案。
+语言层只负责操作性 UI 文案：导航、按钮、状态说明、筛选项、空态及解释性提示。因子 ID、逻辑哈希、交易对、AST/表达式、代码、模型版本、权重文件，以及 IC、RankIC 等研究指标缩写均作为不可翻译的原始工件保留。后端状态枚举保持稳定；部分日志和错误消息仍使用原语言，界面翻译不改变研究工件。

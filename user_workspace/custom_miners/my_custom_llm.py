@@ -253,7 +253,10 @@ Reflection History from previous generations (learn from it):
             parent_ids=["custom_llm_batch_generate"],
             provenance={
                 "generator": self.__class__.__name__,
-                "model": self.config.get("llm_api_config", {}).get("model", ""),
+                "model": (
+                    getattr(getattr(self, "api_manager", None), "model", "")
+                    if generation_source == "live_api" else ""
+                ),
                 "prompt_sha256": prompt_hash,
                 "iteration": epoch,
                 "candidate_index": candidate_index,

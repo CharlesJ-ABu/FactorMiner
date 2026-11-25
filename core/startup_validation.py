@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Iterable
 
+from core.data_feed.real_client import validate_mining_mode
 from core.evaluation.targets import TargetConfigError, target_from_config
 from core.miner.operator_runtime import OperatorRuntimeError, resolve_operator_specs
 from core.miner.registry import EvaluatorRegistry, MinerRegistry
@@ -74,6 +75,10 @@ def validate_mining_startup(config: Dict[str, Any], load_report: ModuleLoadRepor
     else:
         errors.extend(_as_error_list(data_feeds.get("pairs"), "data_feeds.pairs"))
         errors.extend(_as_error_list(data_feeds.get("required_streams"), "data_feeds.required_streams"))
+        try:
+            validate_mining_mode(data_feeds.get("mining_mode", "sequential_single"))
+        except ValueError as exc:
+            errors.append(str(exc))
 
     search_space = config.get("search_space", {})
     if search_space and not isinstance(search_space, dict):

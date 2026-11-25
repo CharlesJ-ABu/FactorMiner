@@ -4,7 +4,7 @@ import logging
 from typing import Any, Dict, Union
 
 from core.evaluation.code_sandbox import RestrictedSandbox
-from core.miner.expressions import FactorExpression, FactorExpressionAST, FactorExpressionCode
+from core.miner.expressions import FactorExpression, FactorExpressionAST, FactorExpressionCode, FactorExpressionTensor
 from core.storage.factor_storage import FactorStorageInterface, LocalFactorStorage
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,26 @@ class FactorResolver:
             logic_ref = getattr(meta, "logic_reference", {}) or {}
             l_type = logic_ref.get("type")
 
-            if l_type == "json_ast" and "ast" in logic_ref:
+            if l_type in {"nn_channel", "dl_channel"}:
+                from core.miner.nn import load_nn_model
+
+                model_file = logic_ref.get("model_file")
+                model_format = logic_ref.get("model_format")
+                if not model_file or not model_format:
+                    raise ValueError(
+                        f"NN factor {factor_id} uses a legacy artifact that cannot be "
+                        "reconstructed. Re-run mining to create a portable model bundle."
+                    )
+                channel = logic_ref.get("channel")
+                if not isinstance(channel, int) or isinstance(channel, bool) or channel < 0:
+                    raise ValueError(f"NN factor {factor_id} has no valid saved channel.")
+                model = load_nn_model(model_format, self.storage.load_model_artifact(model_file))
+                return FactorExpressionTensor(
+                    model_version_id=logic_ref.get("model_version", model_file),
+                    channel_idx=channel,
+                    model_instance=model,
+                )
+            elif l_type in {"json_ast", "ast"} and "ast" in logic_ref:
                 return FactorExpressionAST(ast_dict=logic_ref["ast"])
             elif l_type == "python_source" and "source_file" in logic_ref:
                 source_file = logic_ref["source_file"]
@@ -65,7 +84,7 @@ class FactorResolver:
                 raise ValueError(f"Metadata for factor '{factor_id}' contains no supported logic reference.")
 
         # 2. 直接从传入的 ast_dict 或 ast_str 解析
-        if ast_dict:
+        if ast_dict is not None:
             return FactorExpressionAST(ast_dict=ast_dict)
 
         if ast_str:

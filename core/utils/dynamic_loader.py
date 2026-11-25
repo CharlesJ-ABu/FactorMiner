@@ -1,6 +1,7 @@
 import os
 import importlib.util
 import logging
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
@@ -47,15 +48,28 @@ def load_user_modules(workspace_path: str = "user_workspace"):
                 continue
                 
             module_name = f"{target}.{file_path.stem}"
+            missing = object()
+            previous_module = sys.modules.get(module_name, missing)
             try:
                 spec = importlib.util.spec_from_file_location(module_name, str(file_path))
                 if spec and spec.loader:
                     module = importlib.util.module_from_spec(spec)
+                    # Match normal import semantics (dataclasses and forward
+                    # annotations resolve their defining module through sys.modules).
+                    sys.modules[module_name] = module
                     spec.loader.exec_module(module)
                     loaded_count += 1
                     report.loaded_modules.append(module_name)
                     logger.debug(f"Successfully loaded user module: {module_name} from {file_path}")
-            except Exception as e:
+            except BaseException as e:
+                if previous_module is missing:
+                    sys.modules.pop(module_name, None)
+                else:
+                    sys.modules[module_name] = previous_module
+                # Cleanup also applies to interpreter exits and interruptions,
+                # but those must retain their original propagation semantics.
+                if not isinstance(e, Exception):
+                    raise
                 message = f"Failed to load user module {file_path}: {type(e).__name__}: {e}"
                 logger.error(message)
                 report.errors.append(message)

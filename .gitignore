@@ -22,6 +22,7 @@ wheels/
 MANIFEST
 
 # Virtual environments
+.venv/
 venv/
 env/
 ENV/
@@ -57,6 +58,7 @@ config/user_config/
 config/user_config.json
 
 # Temporary files
+.cache/
 *.tmp
 *.temp
 temp/
@@ -83,8 +85,8 @@ dmypy.json
 
 # Environment variables
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Backup files
 *.bak
@@ -102,7 +104,6 @@ factor_db/
 user_workspace/experiments/
 web/node_modules/
 web/dist/
-.env
 *.tsbuildinfo
 
 # Obsidian

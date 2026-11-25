@@ -4,9 +4,12 @@ from typing import Any, Dict, List, Union
 
 from core.data_feed.real_client import RealDataClient
 from core.evaluation.targets import ForwardReturnTarget
+from core.evaluation.evaluator import ParallelEvaluator
+from core.evaluation.code_sandbox import FactorOutputError
 from core.inspector.metrics import InspectorMetricEngine
 from core.inspector.reporter import InspectorReporter
 from core.inspector.resolver import FactorResolver
+from core.miner.expressions import FactorExpressionTensor
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +54,8 @@ class FactorInspectorEngine:
         pairs: List[str] = None,
         periods: List[List[str]] = None,
         timeframe: str = None,
-        exchange: str = "binance",
-        instrument_type: str = "futures",
+        exchange: str = None,
+        instrument_type: str = None,
     ) -> Dict[str, Dict[str, Any]]:
         """
         对指定因子在指定的币种和时期进行审查。
@@ -65,6 +68,16 @@ class FactorInspectorEngine:
             ast_dict=ast_dict,
         )
         expression_display = expression.to_display_string()
+        if isinstance(expression, FactorExpressionTensor):
+            model = expression.model_instance
+            model_spec = model.get_model_spec() if callable(getattr(model, "get_model_spec", None)) else {}
+            mode = getattr(model, "mode", None) or model_spec.get("mining_mode")
+            if mode == "cross_asset":
+                raise ValueError(
+                    "CLI Inspector loads one pair at a time and cannot re-evaluate a cross_asset NN. "
+                    "Use FactorResolver with the model's complete feature-to-DataFrame mapping, "
+                    "or view the saved snapshot in Web Inspector."
+                )
         logger.info("Inspecting Factor Expression: %s", expression_display)
         target_spec = self._resolve_target(factor_id)
         logger.info("Inspection target: %s", target_spec.definition())
@@ -74,8 +87,8 @@ class FactorInspectorEngine:
         target_pairs = pairs or df_cfg.get("pairs", ["BTC/USDT:USDT"])
         target_periods = periods or df_cfg.get("mine_period", [["2025-07-20", "2025-08-15"]])
         target_tf = timeframe or df_cfg.get("timeframe", "5m")
-        target_exchange = exchange or df_cfg.get("exchange", "binance")
-        target_inst = instrument_type or df_cfg.get("instrument_type", "futures")
+        target_exchange = exchange if exchange is not None else df_cfg.get("exchange", "binance")
+        target_inst = instrument_type if instrument_type is not None else df_cfg.get("instrument_type", "futures")
 
         results_by_pair: Dict[str, Dict[str, Any]] = {}
 
@@ -94,17 +107,27 @@ class FactorInspectorEngine:
                 }
             }
 
-            data_client = RealDataClient(cfg)
-            data = data_client.get_data()
-            returns = data_client.get_returns()
-
-            if data is None or (hasattr(data, "empty") and data.empty):
-                logger.warning("No data available for pair %s in specified period.", pair)
-                results_by_pair[pair] = {"coverage": 0.0, "total_bars": 0, "valid_bars": 0}
-                continue
-
             try:
+                data_client = RealDataClient(cfg)
+                data = data_client.get_data()
+                returns = data_client.get_returns()
+
+                if data is None or (hasattr(data, "empty") and data.empty):
+                    message = f"No data available for pair {pair} in specified period."
+                    logger.warning(message)
+                    results_by_pair[pair] = {"error": message}
+                    continue
+
                 factor_values = expression.compute(data)
+                # Inspection must enforce the same output axes and finite-value
+                # contract as mining before pandas can silently align inputs.
+                ParallelEvaluator._validate_metric_inputs(factor_values, returns)
+                valid_bars = int((factor_values.notna() & returns.notna()).sum())
+                if valid_bars < 10:
+                    raise FactorOutputError(
+                        f"Insufficient joint valid observations: {valid_bars}/{len(returns)}; "
+                        "inspection requires at least 10."
+                    )
                 close_prices = data["close"] if "close" in data.columns else None
 
                 metrics = InspectorMetricEngine.calculate_comprehensive_metrics(
@@ -113,13 +136,14 @@ class FactorInspectorEngine:
                     close_prices=close_prices,
                     price_data=data,
                     target_spec=target_spec,
+                    periods=target_periods,
                 )
                 metrics["target"] = target_spec.as_dict()
                 metrics["forward_return_definition"] = target_spec.definition()
                 results_by_pair[pair] = metrics
             except Exception as e:
                 logger.error("Failed to evaluate factor on pair %s: %s", pair, e, exc_info=True)
-                results_by_pair[pair] = {"error": str(e), "coverage": 0.0}
+                results_by_pair[pair] = {"error": str(e)}
 
         # 4. 打印格式化终端报告
         InspectorReporter.print_inspection_report(expression_display, results_by_pair)

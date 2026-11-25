@@ -1,11 +1,12 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { MainLayout } from './layouts/MainLayout';
 import { Home } from './pages/Home';
-import { Launchpad } from './pages/Launchpad';
-import { DataDownload } from './pages/DataDownload';
-import { Inspector } from './pages/Inspector';
-import { useEffect } from 'react';
+import { lazy, useEffect } from 'react';
 import { I18nProvider } from './i18n';
+
+const Launchpad = lazy(() => import('./pages/Launchpad').then(page => ({ default: page.Launchpad })));
+const DataDownload = lazy(() => import('./pages/DataDownload').then(page => ({ default: page.DataDownload })));
+const Inspector = lazy(() => import('./pages/Inspector').then(page => ({ default: page.Inspector })));
 
 function App() {
   // Force dark mode
