@@ -28,7 +28,7 @@
     *   介绍 `MyCustomLLM` 的用户扩展点、环境变量凭证、独立 Recorder、无头运行和研究报告生成。
 *   **[Fitness Hook 编写指南](fitness_hook_guideline.md)**
     *   评分签名、覆盖率口径、可运行配置与失败行为。
-*   **[用户扩展与算子示例](../README.md#-自定义-miner算子与-fitness-hook)**
+*   **[用户扩展与算子示例](../README.zh-CN.md#-自定义-miner算子与-fitness-hook)**
     *   注册 Miner、算子和评分函数的当前接口。
 
 ## 🕰️ 3. 历史遗留归档 (Legacy V3)

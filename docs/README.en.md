@@ -1,6 +1,6 @@
 # FactorMiner V4 documentation
 
-[简体中文](README.md) · [Project overview](../README.en.md)
+[简体中文](README.md) · [Project overview](../README.md)
 
 FactorMiner is a local, single-user workbench for quantitative factor research. To run your first experiment, start with the **[product and installation guide](FactorMiner_Product_Report_EN.md)**. It covers the source checkout, configuration, a complete GP example, CLI and Web UI workflows, file management and known limits.
 
@@ -18,7 +18,7 @@ FactorMiner is a local, single-user workbench for quantitative factor research. 
 - [Networking and optional proxies](guides/vpn_setup.en.md) covers the local API, exchange connectivity and offline use.
 - [Custom LLM experiments](guides/custom_llm_experiments.en.md) describes `MyCustomLLM`, environment variables, the independent recorder, headless runs and reports.
 - [Writing a fitness hook](fitness_hook_guideline.en.md) explains the scoring signature, definitions of coverage and turnover, an executable example and error handling.
-- [Custom miners, operators and fitness hooks](../README.en.md#custom-miners-operators-and-fitness-hooks) shows how to register extensions.
+- [Custom miners, operators and fitness hooks](../README.md#custom-miners-operators-and-fitness-hooks) shows how to register extensions.
 - [Frontend setup and checks](../web/README.en.md) covers Node.js, Vite and the connection to the backend.
 - [Research skills](../skills/README.en.md) introduces the [research architect](../skills/factorminer-research-architect/SKILL.en.md), [task card](../skills/factorminer-research-architect/assets/research-task-card.en.md), [research protocol](../skills/factorminer-research-architect/references/research-protocol.en.md), [evaluation cases](../skills/factorminer-research-architect/references/evaluation-cases.en.md) and [FactorMiner adapter](../skills/factorminer-research-architect/references/factorminer-adapter.en.md).
 - [LLM factor guardrails review](reviews/llm_guardrails_20260724.md) is the July 2026 engineering review, originally published in English.

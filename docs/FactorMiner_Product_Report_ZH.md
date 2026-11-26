@@ -480,7 +480,7 @@ python -m core.cli inspect --help
 
 ## 维护参考
 
-- [项目 README](../README.md)：项目入口与扩展示例。
+- [项目 README](../README.zh-CN.md)：项目入口与扩展示例。
 - [架构文档](architecture/v4_architecture_design.md)：模块关系及已实现契约。
 - [产品需求文档](FactorMiner_PRD.md)：产品需求和演进方向。
 - [CLI 定义](../core/cli.py)、[API 定义](../api/main.py)：参数与服务接口。

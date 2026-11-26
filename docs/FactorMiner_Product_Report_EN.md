@@ -482,7 +482,7 @@ Tests do not automatically establish a factor's economic value, and they do not 
 
 ## Maintenance References
 
-- [Project README](../README.en.md): Project entry point and extension examples.
+- [Project README](../README.md): Project entry point and extension examples.
 - [Architecture Design](architecture/v4_architecture_design.en.md): Module relationships and implemented contracts.
 - [Product Requirements](FactorMiner_PRD.en.md): Product requirements and development direction.
 - [CLI Definitions](../core/cli.py), [API Definitions](../api/main.py): Parameters and service interfaces.
