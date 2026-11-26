@@ -1,5 +1,7 @@
 # 网络、代理与本机服务说明
 
+[English](vpn_setup.en.md)
+
 先完成[产品指南](../FactorMiner_Product_Report_ZH.md)中的源码安装。FactorMiner 默认只监听本机，当前没有完整认证和多租户体系。网络可达性、交易所是否提供指定市场和本地行情是否完整是不同条件。
 
 ## 区分本机 API 与外部行情

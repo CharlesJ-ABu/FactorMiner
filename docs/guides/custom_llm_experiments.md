@@ -1,5 +1,7 @@
 # 自定义 LLM 与实验留痕指南
 
+[English](custom_llm_experiments.en.md)
+
 `MyCustomLLM` 是用户工作区中的参考实现。用户可以修改 Prompt、候选生成、
 Reflection 和 Top-K 选择，而不需要改动 `core/`。实验文件写入、JSONL 事件和输出
 诊断由独立的 `LLMExperimentRecorder` 负责，避免研究留痕逻辑淹没自定义 Miner。

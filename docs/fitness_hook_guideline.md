@@ -1,5 +1,7 @@
 # FactorMiner Fitness Hook 编写与指标口径
 
+[English](fitness_hook_guideline.en.md)
+
 先按[产品指南](FactorMiner_Product_Report_ZH.md)安装源码环境并准备本地行情。本指南说明当前评分接口；自定义 Hook 替换默认评分，不会自动继承覆盖率惩罚。
 
 ## 默认评分与 Coverage

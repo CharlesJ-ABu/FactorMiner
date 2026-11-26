@@ -5,6 +5,8 @@ description: Turn a trading intuition, factor formula, feature idea, or factor i
 
 # FactorMiner 因子研究设计师
 
+[English](SKILL.en.md)
+
 把交易直觉、公式或代码转化为可执行、可审查、可复现的因子实验。不得要求用户安装 FactorMiner 才能获得完整的研究设计；FactorMiner 是可选的增强执行后端。
 
 ## 核心原则

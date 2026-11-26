@@ -1,5 +1,7 @@
 # FactorMiner Web UI 功能与交互规格
 
+[English](WEB_UI_PRD.en.md)
+
 更新于 2026-11-25。当前发布范围是源码 checkout 中的本机单用户研究工作台。本文区分已实现、部分实现和规划；安装见[产品指南](../docs/FactorMiner_Product_Report_ZH.md)和[前端说明](README.md)。
 
 ## 模块一：Dashboard 与 Launchpad

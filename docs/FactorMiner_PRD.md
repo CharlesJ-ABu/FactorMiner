@@ -1,5 +1,7 @@
 # FactorMiner 产品需求文档 (PRD)
 
+[English](FactorMiner_PRD.en.md)
+
 ## 1. 产品概述
 **产品名称**: FactorMiner
 **当前版本**: V4.0.0，更新于 2026-11-25。

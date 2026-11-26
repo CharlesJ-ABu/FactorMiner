@@ -1,5 +1,7 @@
 # FactorMiner V4 待办事项
 
+[English](TODO.en.md)
+
 > 🚀 **项目状态**: V4 架构底层引擎已搭建完毕，成功跑通 GP、RL、NN、LLM 四大异构挖掘范式！评估引擎 (`ParallelEvaluator` + `custom_fitness` 钩子) 也已通过沙盒与真实数据回测的闭环验证。目前正处于补齐“持久化存储”并向 Web UI 界面对接的阶段。
 
 ## 🔄 当前核心任务 (进行中)

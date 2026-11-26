@@ -1,5 +1,7 @@
 # 简化因子架构指南
 
+[English](new_architecture_guide.en.md)
+
 ## 概述
 
 新的因子架构完全简化了因子存储和计算流程，移除了 `functions/` 文件夹，直接调用 `user_algo` 中的函数进行因子计算。

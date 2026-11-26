@@ -1,5 +1,7 @@
 # FactorMiner API 文档
 
+[English](api.en.md)
+
 ## 概述
 
 FactorMiner 提供完整的API接口，支持程序化调用因子挖掘功能。

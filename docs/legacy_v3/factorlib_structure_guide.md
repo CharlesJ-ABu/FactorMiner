@@ -1,5 +1,7 @@
 # FactorLib 文件夹结构指南
 
+[English](factorlib_structure_guide.en.md)
+
 ## 概述
 
 FactorLib 已重新组织为两个主要文件夹：`technicals/`（传统技术指标）和 `minactors/`（挖掘因子），使文件管理更加清晰和有序。

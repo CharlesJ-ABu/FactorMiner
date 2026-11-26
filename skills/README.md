@@ -1,5 +1,7 @@
 # FactorMiner Skills
 
+[English](README.en.md)
+
 本目录收录可以独立使用、并能在 FactorMiner 仓库中渐进增强的 Agent Skills。
 
 ## 可用 Skills

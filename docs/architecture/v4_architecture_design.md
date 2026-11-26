@@ -1,5 +1,7 @@
 # FactorMiner V4 架构设计：统一因子挖掘范式
 
+[English](v4_architecture_design.en.md)
+
 更新于 2026-11-25。当前交付是从源码 checkout 运行的本机单用户研究工具，Python ≥3.10（实测 3.12）、Node.js ≥22.12。安装、测试与文件管理见[产品指南](../FactorMiner_Product_Report_ZH.md)。wheel 提供 Python 引擎、API 和 CLI；工作区、示例及前端来自源码。
 
 本文同时保留接口设计与算法教学示意。标为“设计示意/规划”的伪代码不保证可直接运行；当前契约以源码及下表为准：

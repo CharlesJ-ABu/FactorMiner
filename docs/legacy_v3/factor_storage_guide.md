@@ -1,5 +1,7 @@
 # 📁 FactorMiner 因子存储架构详解
 
+[English](factor_storage_guide.en.md)
+
 ## 🎯 概述
 
 FactorMiner 现在使用全新的V3因子存储架构，基于 `FactorEngine` 和 `TransparentFactorStorage` 系统。本文档详细说明了当前的因子存储结构和管理方式。

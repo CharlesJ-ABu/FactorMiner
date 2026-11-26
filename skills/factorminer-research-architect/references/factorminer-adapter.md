@@ -1,5 +1,7 @@
 # FactorMiner 增强模式适配协议
 
+[English](factorminer-adapter.en.md)
+
 ## 目录
 
 1. 环境检测

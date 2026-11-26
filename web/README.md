@@ -1,5 +1,7 @@
 # FactorMiner Web
 
+[English](README.en.md)
+
 React、TypeScript 与 Vite 前端，提供 Dashboard、Launchpad、Inspector 和 Data Center。当前用于源码 checkout 中的本机单用户研究流程。
 
 需要 Node.js ≥22.12。后端需另行安装、启动，步骤见[产品指南](../docs/FactorMiner_Product_Report_ZH.md)。Python wheel 提供 CLI/API 模块，不包含前端站点或完整工作区。

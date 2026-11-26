@@ -1,5 +1,7 @@
 # 因子研究任务卡
 
+[English](research-task-card.en.md)
+
 > 状态标记：已提供 / 暂定假设 / 已验证 / 未验证
 
 ## 1. 研究问题

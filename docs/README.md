@@ -1,5 +1,7 @@
 # FactorMiner V4 官方文档体系
 
+[English](README.en.md)
+
 当前发布范围是从源码 checkout 运行的本机单用户因子研究工具。下面区分使用指南、功能需求和历史归档；需求文档中的规划项不代表已交付功能。
 
 首次了解或安装当前版本，请先阅读 **[FactorMiner V4 产品说明与安装配置指南](FactorMiner_Product_Report_ZH.md)**：包含实际功能、环境准备、启动命令、完整入门配置、使用流程、文件管理和已知限制。
